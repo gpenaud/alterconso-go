@@ -24,6 +24,7 @@
     <div class="col-md-4 accountBlock">
       {{if .User}}
       <div style="text-align:right;">
+        <a href="/user/choose" style="color:#888;font-size:0.9em;margin-right:12px;"><i class="icon icon-chevron-left"></i> Accueil</a>
         <a href="#" style="color:#888;font-size:0.9em;margin-right:12px;"><i class="icon icon-info"></i> Aide</a>
         <div class="dropdown" style="display:inline-block;">
           <a href="#" class="userName dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
@@ -37,9 +38,6 @@
             {{end}}
             <li><a href="/user/logout"><i class="icon icon-delete"></i> Déconnexion</a></li>
           </ul>
-        </div>
-        <div style="margin-top:4px;">
-          <a href="/user/choose" style="color:#888;font-size:0.9em;"><i class="icon icon-chevron-left"></i> Accueil</a>
         </div>
       </div>
       {{else}}
@@ -97,6 +95,7 @@
   <div class="row">
     <div class="col-md-12">
       <ol class="breadcrumb" style="margin-bottom:0;">
+        <li><a href="/user/choose">Accueil</a></li>
         {{if .Group}}<li><a href="/user/choose">Groupe : {{.Group.Name}}</a></li>{{end}}
         {{range .Breadcrumb}}
         <li><a href="{{.Link}}">{{.Name}}</a></li>
