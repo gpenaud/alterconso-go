@@ -1,0 +1,45 @@
+{{define "content"}}
+{{template "amapadmin_nav" .}}
+<div class="col-md-9">
+  <h2>Permanences</h2>
+  <div class="article">
+    <h3>Rôles de bénévoles</h3>
+    <p>Ici vous pouvez définir les rôles de bénévoles.</p>
+
+    {{if .VolunteerRoles}}
+    <table class="table table-bordered table-condensed">
+      <thead>
+        <tr>
+          <th>Rôle de bénévole</th>
+          <th>Catalogue correspondant</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .VolunteerRoles}}
+        <tr>
+          <td>{{.Name}}</td>
+          <td>{{if .Catalog}}{{.Catalog.Name}}{{end}}</td>
+          <td>
+            <a href="/amapadmin/volunteers/edit/{{.ID}}" class="btn btn-default btn-xs">
+              <i class="icon icon-edit"></i> Modifier
+            </a>
+            <a href="/amapadmin/volunteers/delete/{{.ID}}" class="btn btn-default btn-xs"
+               onclick="return confirm('Supprimer ce rôle ?')">
+              <i class="icon icon-delete"></i> Supprimer
+            </a>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <p class="text-muted">Aucun rôle de bénévole défini.</p>
+    {{end}}
+
+    <a href="/amapadmin/volunteers/new" class="btn btn-default btn-sm">
+      <i class="icon icon-plus"></i> Nouveau rôle
+    </a>
+  </div>
+</div>
+{{end}}

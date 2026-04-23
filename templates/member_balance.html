@@ -1,0 +1,33 @@
+{{define "content"}}
+<div class="row">
+  <div class="col-md-10">
+    <div class="article">
+      <h3><i class="icon icon-payment-type"></i> Soldes des membres</h3>
+      <table class="table table-bordered table-condensed table-hover">
+        <thead>
+          <tr class="greyhead">
+            <th>Membre</th><th>Email</th><th class="text-right">Solde</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Entries}}
+          <tr>
+            <td><a href="/member/view/{{.ID}}">{{.LastName}} {{.FirstName}}</a></td>
+            <td>{{.Email}}</td>
+            <td class="text-right" style="color:{{if lt .Balance 0.0}}#C00{{else}}#080{{end}};font-weight:bold;">
+              {{printf "%.2f" .Balance}} €
+            </td>
+            <td>
+              <a href="/member/payments/{{.ID}}" class="btn btn-xs btn-default">Détail</a>
+              <a href="/transaction/insertPayment/{{.ID}}" class="btn btn-xs btn-primary">+ Paiement</a>
+            </td>
+          </tr>
+          {{else}}
+          <tr><td colspan="4" class="text-muted text-center">Aucun membre.</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{{end}}

@@ -1,0 +1,58 @@
+{{define "content"}}
+<div class="col-md-12">
+  <div class="article">
+    <div class="text-center">
+      <h3>Valider la distribution du {{.Date}}</h3>
+      <h4><i class="icon icon-map-marker"></i> {{.Place}}</h4>
+      {{if .Confirmed}}
+      <div style="font-size:1.5em;margin:32px;color:#080;">
+        <i class="icon icon-check"></i> Validée
+      </div>
+      {{else}}
+      <div style="color:#AAA;font-size:1.5em;margin:32px;">
+        <i class="icon icon-circle-empty"></i> Non validée
+      </div>
+      {{end}}
+    </div>
+
+    {{if .Users}}
+    <table class="table table-bordered table-hover table-condensed">
+      <thead>
+        <tr class="greyhead"><th>Membre</th><th class="text-right">Total commande</th><th></th></tr>
+      </thead>
+      <tbody>
+        {{range .Users}}
+        <tr class="{{if .Validated}}success{{else}}danger{{end}}">
+          <td>{{.UserName}}</td>
+          <td class="text-right">{{printf "%.2f" .Total}} €</td>
+          <td>
+            {{if .Validated}}
+            <span class="label label-success"><i class="icon icon-check"></i> Validé</span>
+            {{else}}
+            <span class="label label-danger">À valider</span>
+            {{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{end}}
+
+    {{if not .Confirmed}}
+    <p class="text-center">
+      <a href="/distribution/validate/{{.MultiDistrib.ID}}?action=validate"
+         class="btn btn-lg btn-primary"
+         onclick="return confirm('Confirmer la validation de cette distribution ?')">
+        <i class="icon icon-check"></i> Valider la distribution
+      </a>
+    </p>
+    {{end}}
+
+    <p>
+      <a href="/distribution" class="btn btn-default">
+        <i class="icon icon-chevron-left"></i> Retour
+      </a>
+    </p>
+  </div>
+</div>
+{{end}}

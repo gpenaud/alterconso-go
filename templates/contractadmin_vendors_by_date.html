@@ -1,0 +1,56 @@
+{{define "content"}}
+<div class="col-md-10 col-md-offset-1">
+
+  <h2 style="font-style:italic;font-weight:bold;margin:0 0 24px;font-size:1.8em;">
+    Vue globale des commandes - livraison du {{.DayLabel}}
+  </h2>
+
+  {{if .Vendors}}
+  {{range .Vendors}}
+  <div style="background:#fff;border:1px solid #ddd;border-radius:4px;margin-bottom:24px;">
+    <div style="padding:14px 18px;border-bottom:1px solid #ddd;background:#f5f5f5;font-size:1.30em;">
+      <em><b>Commande {{.CatalogName}} - {{.VendorName}}</b></em>
+    </div>
+    <table class="table table-bordered table-striped" style="margin-bottom:0;">
+      <thead>
+        <tr>
+          <th style="width:10%;">Quantités</th>
+          <th>Produit</th>
+          <th style="width:18%;">Référence</th>
+          <th style="width:20%;">Prix unitaire TTC</th>
+          <th style="width:12%;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Lines}}
+        <tr>
+          <td>{{.Qty}}</td>
+          <td>{{.Product}}</td>
+          <td style="color:#888;font-size:0.9em;">{{.Ref}}</td>
+          <td>{{printf "%.2f" .UnitPrice}} €</td>
+          <td>{{printf "%.2f" .Total}} €</td>
+        </tr>
+        {{end}}
+      </tbody>
+      <tfoot>
+        <tr style="background:#f5f5f5;">
+          <td style="font-weight:bold;">Total</td>
+          <td colspan="3"></td>
+          <td style="font-weight:bold;">{{printf "%.2f" .Total}} €</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {{end}}
+
+  {{else}}
+  <div style="background:#fff;border:1px solid #ddd;border-radius:4px;padding:20px;">
+    <p class="text-muted">Aucune commande pour cette distribution.</p>
+  </div>
+  {{end}}
+
+  <a href="/contractAdmin/ordersByDate/{{.DateISO}}/{{.Group.ID}}" class="btn btn-default btn-sm" style="margin-top:4px;">
+    <i class="icon icon-chevron-left"></i> Retour
+  </a>
+</div>
+{{end}}

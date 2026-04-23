@@ -1,0 +1,21 @@
+{{template "base" .}}
+
+{{define "body"}}
+<div class="row header" style="margin-top:10px;">
+  <div class="col-md-8">
+    <div style="margin-bottom:22px;">
+      <a href="https://alterconso.leportail.org" target="_blank">
+        <img src="/img/logo3.png" alt="Alterconso" />
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="col-md-12" style="height:500px;">
+  <script language="javascript">
+    document.addEventListener("DOMContentLoaded", function(event) {
+      _.loginBox('{{if .Redirect}}{{.Redirect}}{{else}}/user/choose{{end}}', null, false, false);
+    });
+  </script>
+</div>
+{{end}}

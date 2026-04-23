@@ -1,0 +1,22 @@
+{{define "content"}}
+<div class="col-md-12">
+  <div class="article">
+    <h3>Quitter le groupe</h3>
+    <div class="alert alert-warning">
+      <i class="icon icon-alert"></i>
+      Êtes-vous sûr de vouloir quitter le groupe <b>{{if .Group}}{{.Group.Name}}{{end}}</b> ?<br/>
+      Vous perdrez l'accès à ce groupe et à ses commandes.
+    </div>
+    <p>
+      <a href="/account/quit?token=confirm" class="btn btn-danger"
+         onclick="return confirm('Confirmer : quitter ce groupe ?')">
+        <i class="icon icon-delete"></i> Quitter le groupe
+      </a>
+      &nbsp;
+      <a href="/home" class="btn btn-default">
+        <i class="icon icon-chevron-left"></i> Annuler
+      </a>
+    </p>
+  </div>
+</div>
+{{end}}

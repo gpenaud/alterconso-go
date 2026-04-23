@@ -1,0 +1,57 @@
+{{define "content"}}
+<div class="col-md-12">
+  <div class="article">
+    <h3>Participation aux permanences</h3>
+
+    <form method="GET" style="margin-bottom:16px;">
+      <div style="display:inline-block;margin-right:12px;">
+        <label>Du</label>
+        <input type="date" name="from" class="form-control" style="display:inline-block;width:auto;" value="{{.From}}" />
+      </div>
+      <div style="display:inline-block;margin-right:12px;">
+        <label>au</label>
+        <input type="date" name="to" class="form-control" style="display:inline-block;width:auto;" value="{{.To}}" />
+      </div>
+      <button type="submit" class="btn btn-primary">OK</button>
+    </form>
+
+    {{if .Members}}
+    <table class="table table-bordered table-hover table-condensed">
+      <thead>
+        <tr class="greyhead">
+          <th>Membre</th>
+          <th class="text-center">Permanences faites</th>
+          <th class="text-center">Total distributions</th>
+          <th class="text-center">Taux</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Members}}
+        <tr>
+          <td><a href="/member/view/{{.UserID}}">{{.Name}}</a></td>
+          <td class="text-center">{{.Done}}</td>
+          <td class="text-center">{{.ToBeDone}}</td>
+          <td class="text-center">
+            {{if gt .ToBeDone 0}}
+            {{$rate := 0}}
+            <span class="{{if ge .Done .ToBeDone}}text-success{{else if eq .Done 0}}text-danger{{else}}text-warning{{end}}">
+              {{.Done}}/{{.ToBeDone}}
+            </span>
+            {{else}}
+            —
+            {{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <p class="text-muted">Aucun membre trouvé.</p>
+    {{end}}
+
+    <a href="/distribution" class="btn btn-default btn-sm">
+      <i class="icon icon-chevron-left"></i> Retour
+    </a>
+  </div>
+</div>
+{{end}}

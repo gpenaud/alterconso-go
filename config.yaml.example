@@ -1,0 +1,39 @@
+# Alterconso — fichier de configuration
+# Copier en config.yaml et adapter les valeurs.
+# Les secrets (mots de passe, clés) peuvent aussi être passés
+# via variables d'environnement (priorité sur ce fichier).
+
+# Serveur
+port: "8080"
+debug: false
+
+# Base de données MySQL
+db_host: localhost
+db_port: "3306"
+db_user: alterconso
+db_password: ""        # ou env DB_PASSWORD
+db_name: alterconso
+
+# Authentification
+jwt_secret: ""         # ou env JWT_SECRET — générer : openssl rand -hex 32
+jwt_expiry_hours: 168  # 7 jours
+
+# Clé applicative (hash MD5 mots de passe legacy)
+key: ""                # ou env APP_KEY
+
+# Domaine public (utilisé dans les liens des emails)
+host: alterconso.leportail.org
+
+# Email — SMTP Brevo
+smtp_host: smtp-relay.brevo.com
+smtp_port: "587"
+smtp_user: ""          # ou env SMTP_USER (adresse email Brevo)
+smtp_password: ""      # ou env SMTP_PASSWORD (clé API Brevo)
+default_email: noreply@alterconso.fr
+
+# Notifications
+notifications:
+  # Durée maximale d'inactivité : un utilisateur n'ayant pas commandé
+  # depuis cette durée ne reçoit plus les notifications.
+  # Format : "720h" = 30 jours, "2160h" = 90 jours, "8760h" = 1 an
+  inactivity_threshold: "2160h"  # 90 jours (3 mois) par défaut

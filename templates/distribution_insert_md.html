@@ -1,0 +1,60 @@
+{{define "content"}}
+<div class="col-md-8">
+  <div class="article">
+    <h2 style="font-style:italic;"><b>Créer une distribution générale</b></h2>
+    <form method="POST" style="margin-top:20px;">
+      <table class="table" style="max-width:700px;">
+        <tbody>
+          <tr>
+            <td style="text-align:right;font-weight:bold;width:240px;padding:12px 16px;">Date de distribution</td>
+            <td style="padding:12px 16px;">
+              <input type="date" name="date" class="form-control" value="{{.DefaultDate}}" required />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:right;font-weight:bold;padding:12px 16px;">Heure de début</td>
+            <td style="padding:12px 16px;">
+              <input type="time" name="startHour" class="form-control" value="{{.DefaultStart}}" required />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:right;font-weight:bold;padding:12px 16px;">Heure de fin</td>
+            <td style="padding:12px 16px;">
+              <input type="time" name="endHour" class="form-control" value="{{.DefaultEnd}}" required />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:right;font-weight:bold;padding:12px 16px;">Date d'ouverture des commandes</td>
+            <td style="padding:12px 16px;">
+              <input type="datetime-local" name="orderStartDate" class="form-control" value="{{.DefaultOrdOpen}}" />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:right;font-weight:bold;padding:12px 16px;">Date de clôture des commandes</td>
+            <td style="padding:12px 16px;">
+              <input type="datetime-local" name="orderEndDate" class="form-control" value="{{.DefaultOrdClose}}" />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:right;font-weight:bold;padding:12px 16px;">Lieu *</td>
+            <td style="padding:12px 16px;">
+              <select name="placeId" class="form-control" required>
+                {{range .Places}}
+                <option value="{{.ID}}">{{.Name}}</option>
+                {{end}}
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <td></td>
+            <td style="padding:12px 16px;">
+              <button type="submit" class="btn btn-success">OK</button>
+              <a href="/distribution" class="btn btn-default">Annuler</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </form>
+  </div>
+</div>
+{{end}}

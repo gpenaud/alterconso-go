@@ -1,0 +1,26 @@
+{{define "amapadmin_nav"}}
+<div class="col-md-3">
+  <div class="article" style="padding:0;">
+    <ul class="nav nav-pills nav-stacked" style="margin:0;">
+      <li {{if eq .AmapAdminTab "rights"}}class="active"{{end}}>
+        <a href="/amapadmin/rights">DROITS D'ADMINISTRATION</a>
+      </li>
+      <li {{if eq .AmapAdminTab "vatRates"}}class="active"{{end}}>
+        <a href="/amapadmin/vatRates">TAUX DE TVA</a>
+      </li>
+      <li {{if eq .AmapAdminTab "volunteers"}}class="active"{{end}}>
+        <a href="/amapadmin/volunteers"><i class="icon icon-users"></i> PERMANENCES</a>
+      </li>
+      <li {{if eq .AmapAdminTab "membership"}}class="active"{{end}}>
+        <a href="/amapadmin/membership"><i class="icon icon-users"></i> ADHÉSIONS</a>
+      </li>
+      <li {{if eq .AmapAdminTab "currency"}}class="active"{{end}}>
+        <a href="/amapadmin/currency"><i class="icon icon-wallet"></i> MONNAIE</a>
+      </li>
+      <li {{if eq .AmapAdminTab "documents"}}class="active"{{end}}>
+        <a href="/amapadmin/documents"><i class="icon icon-file"></i> DOCUMENTS</a>
+      </li>
+    </ul>
+  </div>
+</div>
+{{end}}

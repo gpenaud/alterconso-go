@@ -1,0 +1,75 @@
+{{define "content"}}
+<div class="col-md-3">
+  {{if .Group}}
+  <div class="article">
+    <h3 style="font-style:italic;">{{.Group.Name}}</h3>
+    {{if .IsGroupManager}}
+    <a href="/amapadmin" class="btn btn-default btn-sm"><i class="icon icon-edit"></i> Modifier</a>
+    {{end}}
+  </div>
+  {{end}}
+  {{if .Contact}}
+  <div class="article" style="margin-top:12px;font-size:0.9em;">
+    <b>Contact principal :</b>
+    <p style="margin-top:8px;margin-bottom:0;">
+      <i class="icon icon-user"></i> <b>{{.Contact.FirstName}} {{.Contact.LastName}}</b><br/>
+      {{if .Contact.Email}}<i class="icon icon-mail"></i> <a href="mailto:{{.Contact.Email}}" style="color:#5a8a00;">{{.Contact.Email}}</a><br/>{{end}}
+      {{if .Contact.Phone}}<i class="icon icon-phone"></i> {{deref .Contact.Phone}}{{end}}
+    </p>
+  </div>
+  {{end}}
+</div>
+
+<div class="col-md-9">
+  {{if .AmapVendors}}
+  {{range .AmapVendors}}
+  <div class="article" style="margin-bottom:12px;padding:16px;">
+    <div style="display:flex;gap:20px;align-items:flex-start;">
+
+      <!-- Colonne gauche : avatar + nom + ville -->
+      <div style="width:120px;flex-shrink:0;text-align:center;">
+        <div style="width:100px;height:100px;background:#e8e0cc;border:1px solid #d0c8b0;border-radius:4px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;">
+          <i class="icon icon-farmer" style="font-size:3em;color:#b5913a;"></i>
+        </div>
+        <div style="font-weight:bold;font-size:0.95em;">{{.Name}}</div>
+        {{if .City}}<div style="color:#888;font-size:0.85em;">{{.City}}{{if .ZipCode}} ({{.ZipCode}}){{end}}</div>{{end}}
+      </div>
+
+      <!-- Colonne centrale : catalogues + vignettes produits -->
+      <div style="flex:1;min-width:0;">
+        {{range .Catalogs}}
+        <div style="margin-bottom:16px;">
+          <a href="/contract/view/{{.ID}}" style="color:#5a8a00;font-style:italic;font-weight:bold;font-size:1.05em;">{{.Name}}</a>
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+            {{range .ProductImages}}
+            <div title="{{.Name}}" style="width:64px;height:64px;border:1px solid #ddd;border-radius:4px;overflow:hidden;background:#f5f0e8;flex-shrink:0;">
+              <img src="{{.URL}}" style="width:100%;height:100%;object-fit:cover;" />
+            </div>
+            {{end}}
+          </div>
+        </div>
+        {{end}}
+      </div>
+
+      <!-- Colonne droite : coordinateur par catalogue -->
+      <div style="width:200px;flex-shrink:0;font-size:0.9em;">
+        {{range .Catalogs}}
+        {{if .Coordinator}}
+        <div style="margin-bottom:12px;">
+          <b>Coordinateur :</b><br/>
+          <p style="margin:4px 0 2px;"><i class="icon icon-user"></i> {{.Coordinator.FirstName}} {{.Coordinator.LastName}}</p>
+          {{if .Coordinator.Email}}<p style="margin:0 0 2px;"><i class="icon icon-mail"></i> <a href="mailto:{{.Coordinator.Email}}" style="color:#5a8a00;">{{.Coordinator.Email}}</a></p>{{end}}
+          {{if .Coordinator.Phone}}<p style="margin:0;"><i class="icon icon-phone"></i> {{deref .Coordinator.Phone}}</p>{{end}}
+        </div>
+        {{end}}
+        {{end}}
+      </div>
+
+    </div>
+  </div>
+  {{end}}
+  {{else}}
+  <p class="text-muted">Aucun producteur associé à ce groupe.</p>
+  {{end}}
+</div>
+{{end}}

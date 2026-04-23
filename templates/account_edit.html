@@ -1,0 +1,43 @@
+{{define "content"}}
+<div class="col-md-6">
+  <h2>Modifier mon compte</h2>
+  <div class="article">
+    <form method="POST" action="/account/update">
+
+      <div class="form-group">
+        <label>Prénom *</label>
+        <input type="text" name="firstName" class="form-control" value="{{if .User}}{{.User.FirstName}}{{end}}" required />
+      </div>
+
+      <div class="form-group">
+        <label>Nom *</label>
+        <input type="text" name="lastName" class="form-control" value="{{if .User}}{{.User.LastName}}{{end}}" required />
+      </div>
+
+      <div class="form-group">
+        <label>Téléphone</label>
+        <input type="text" name="phone" class="form-control" value="{{if .User}}{{if .User.Phone}}{{deref .User.Phone}}{{end}}{{end}}" />
+      </div>
+
+      <div class="form-group">
+        <label>Adresse</label>
+        <input type="text" name="address1" class="form-control" value="{{if .User}}{{if .User.Address1}}{{deref .User.Address1}}{{end}}{{end}}" />
+      </div>
+
+      <div class="form-group">
+        <label>Code postal</label>
+        <input type="text" name="zipCode" class="form-control" value="{{if .User}}{{if .User.ZipCode}}{{deref .User.ZipCode}}{{end}}{{end}}" />
+      </div>
+
+      <div class="form-group">
+        <label>Ville</label>
+        <input type="text" name="city" class="form-control" value="{{if .User}}{{if .User.City}}{{deref .User.City}}{{end}}{{end}}" />
+      </div>
+
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+      <a href="/account" class="btn btn-default" style="margin-left:8px;">Annuler</a>
+
+    </form>
+  </div>
+</div>
+{{end}}

@@ -1,0 +1,40 @@
+{{define "contractadmin_nav"}}
+<div class="row">
+  <div class="col-md-12"><h2>{{.Catalog.Name}} — {{.Catalog.Vendor.Name}}</h2></div>
+</div>
+<div class="row">
+  <div class="col-md-3">
+    <div class="article">
+      <ul class="nav nav-pills nav-stacked">
+        <li {{if eq .ActiveTab "view"}}class="active"{{end}}>
+          <a href="/contractAdmin/view/{{.Catalog.ID}}"><i class="icon icon-home"></i> Récapitulatif</a>
+        </li>
+        <li {{if eq .ActiveTab "edit"}}class="active"{{end}}>
+          <a href="/contractAdmin/edit/{{.Catalog.ID}}"><i class="icon icon-edit"></i> Modifier le catalogue</a>
+        </li>
+        <li {{if eq .ActiveTab "products"}}class="active"{{end}}>
+          <a href="/contractAdmin/products/{{.Catalog.ID}}"><i class="icon icon-products"></i> Produits</a>
+        </li>
+        <li {{if eq .ActiveTab "distributions"}}class="active"{{end}}>
+          <a href="/contractAdmin/distributions/{{.Catalog.ID}}"><i class="icon icon-calendar"></i> Distributions</a>
+        </li>
+        <li {{if eq .ActiveTab "orders"}}class="active"{{end}}>
+          <a href="/contractAdmin/distributions/{{.Catalog.ID}}"><i class="icon icon-basket"></i> Commandes</a>
+        </li>
+        {{if eq .Catalog.Type 1}}
+        <li {{if eq .ActiveTab "subscriptions"}}class="active"{{end}}>
+          <a href="/contractAdmin/subscriptions/{{.Catalog.ID}}"><i class="icon icon-calendar-check"></i> Souscriptions</a>
+        </li>
+        {{end}}
+      </ul>
+    </div>
+  </div>
+  <div class="col-md-9">
+    <div class="article">
+{{end}}
+
+{{define "contractadmin_close"}}
+    </div>
+  </div>
+</div>
+{{end}}

@@ -1,0 +1,45 @@
+{{define "content"}}
+{{template "contractadmin_nav" .}}
+
+<h3>Commandes — {{.DistribDate}} — {{.DistribPlace}}</h3>
+<div style="margin-bottom:12px;">
+  <a href="/distribution/list/{{.Distrib.MultiDistribID}}" class="btn btn-default btn-sm" target="_blank">
+    <i class="icon icon-print"></i> Feuille de distribution
+  </a>
+</div>
+
+{{if .Orders}}
+<table class="table table-bordered table-condensed">
+  {{range .Orders}}
+  <tr class="darkhead">
+    <td colspan="7">
+      <a href="/member/view/{{.UserID}}" target="_blank">{{.UserName}}</a>
+    </td>
+  </tr>
+  <tr class="greyhead">
+    <th>Qté</th><th>Produit</th><th>P.U.</th><th>Sous-total</th><th>Frais</th><th>Total</th><th>Payé</th>
+  </tr>
+  {{range .Lines}}
+  <tr>
+    <td>{{.SmartQty}}</td>
+    <td>{{.ProductName}}</td>
+    <td>{{printf "%.2f" .ProductPrice}} €</td>
+    <td>{{printf "%.2f" .SubTotal}} €</td>
+    <td>{{printf "%.2f" .Fees}} €</td>
+    <td>{{printf "%.2f" .Total}} €</td>
+    <td>{{if .Paid}}<i class="icon icon-check"></i>{{else}}<i class="icon icon-delete"></i>{{end}}</td>
+  </tr>
+  {{end}}
+  <tr style="background:#ddd;">
+    <td colspan="5" class="text-right">Total</td>
+    <td><b>{{printf "%.2f" .Total}} €</b></td>
+    <td></td>
+  </tr>
+  {{end}}
+</table>
+{{else}}
+<p class="text-muted">Aucune commande pour cette distribution.</p>
+{{end}}
+
+{{template "contractadmin_close" .}}
+{{end}}

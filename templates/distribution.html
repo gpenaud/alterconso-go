@@ -1,0 +1,165 @@
+{{define "content"}}
+<div class="col-md-12">
+  <h2 style="font-style:italic;"><b>Distributions</b></h2>
+
+  <div style="display:flex;align-items:center;margin-bottom:20px;gap:8px;flex-wrap:wrap;">
+    <a href="/distribution?offset=-1" class="btn btn-default btn-sm"><i class="icon icon-chevron-left"></i></a>
+    <span class="btn btn-default btn-sm" style="pointer-events:none;">{{.PeriodLabel}}</span>
+    <a href="/distribution?offset=1" class="btn btn-default btn-sm"><i class="icon icon-chevron-right"></i></a>
+    <div style="flex:1;"></div>
+    <a href="/distribution/insertMd" class="btn btn-default btn-sm"><i class="icon icon-plus"></i> Distribution ponctuelle</a>
+    <a href="/distribution/insertMdCycle" class="btn btn-default btn-sm"><i class="icon icon-plus"></i> Cycle de distributions</a>
+    <a href="/distribution/volunteersParticipation" class="btn btn-default btn-sm"><i class="icon icon-chevron-down"></i> Permanences</a>
+  </div>
+
+  {{if .AllDistribs}}
+  {{range .AllDistribs}}
+  <div class="distrib">
+
+    <!-- Date box -->
+    <div class="dateBoxOffset">
+      {{if .IsToday}}
+      <div style="width:90px;height:90px;background:#4CAF50;border-radius:8px;box-shadow:4px 4px 0px #292929;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;">
+        <img src="/img/go.png" style="width:48px;height:48px;object-fit:contain;margin-bottom:2px;" />
+        <div style="font-size:13px;font-weight:bold;line-height:1.2;">CET<br/>APRÈS-MIDI</div>
+      </div>
+      {{else}}
+      <div class="dateBox">
+        <div class="box">
+          <div style="font-size:11px;line-height:1.4;padding:2px 6px 0;text-transform:capitalize;">{{.DayOfWeek}}</div>
+          <div style="font-size:26px;color:#990000;line-height:1;padding:0 6px;font-weight:bold;">{{.Day}}</div>
+          <div style="font-size:11px;line-height:1.4;padding:0 6px 2px;text-transform:capitalize;">{{.Month}}</div>
+        </div>
+      </div>
+      {{end}}
+    </div>
+
+    <!-- Header bar -->
+    <div class="header" style="display:flex;align-items:flex-start;gap:16px;padding:10px 14px 10px 100px;min-height:72px;">
+      <!-- Horaires + commandes -->
+      <div style="flex:1;line-height:1.9;">
+        <div class="info"><i class="icon icon-clock"></i> Distribution de {{.StartHour}} à {{.EndHour}}</div>
+        {{if .OrderStartDate}}<div class="info"><i class="icon icon-calendar"></i> Ouverture des commandes : {{.OrderStartDate}}</div>{{end}}
+        {{if .OrderEndDate}}<div class="info"><i class="icon icon-calendar"></i> Clôture des commandes : {{.OrderEndDate}}</div>{{end}}
+      </div>
+      <!-- Lieu -->
+      <div style="flex:1;line-height:1.9;">
+        <div class="info"><i class="icon icon-map-marker"></i> <b>{{.Place}}</b></div>
+        {{if .PlaceAddress}}<div class="address">{{.PlaceAddress}}</div>{{end}}
+      </div>
+      <!-- Actions -->
+      <div style="flex-shrink:0;display:flex;gap:4px;align-items:flex-start;">
+        <a href="/distribution/editMd/{{.ID}}" class="btn btn-default btn-xs"><i class="icon icon-edit"></i> Modifier</a>
+        <a href="/distribution/deleteMd/{{.ID}}" class="btn btn-danger btn-xs" onclick="return confirm('Supprimer cette distribution ?')"><i class="icon icon-delete"></i> Suppr.</a>
+      </div>
+    </div>
+
+    <!-- 4 cards -->
+    <div class="content" style="display:flex;gap:12px;padding:12px;background:#fff;">
+
+      <!-- Card 1: État commande -->
+      <div style="flex:1;padding:16px 10px;border:2px solid #ddd;border-radius:6px;text-align:center;display:flex;align-items:center;justify-content:center;min-height:140px;">
+        {{if .IsOrderOpen}}
+        <div>
+          <div><i class="icon icon-basket" style="font-size:2.4em;color:#333;"></i></div>
+          <div style="margin-top:10px;font-size:1.05em;">Commande en cours</div>
+        </div>
+        {{else if .IsFuture}}
+        <div>
+          <div><i class="icon icon-clock" style="font-size:2.4em;color:#ccc;"></i></div>
+          <div style="margin-top:10px;color:#aaa;font-size:0.95em;">Commande pas encore ouverte</div>
+        </div>
+        {{else if and .Validated .IsPast}}
+        <div style="color:#555;font-size:1.05em;">Distribution faite</div>
+        {{else}}
+        <div>
+          <div><i class="icon icon-basket" style="font-size:2.4em;color:#bbb;"></i></div>
+          <div style="margin-top:10px;color:#999;font-size:1.05em;">Commande close</div>
+        </div>
+        {{end}}
+      </div>
+
+      <!-- Card 2: Producteurs -->
+      <div style="flex:1;padding:16px 10px;border:2px solid #ddd;border-radius:6px;text-align:center;">
+        <div style="color:#aaa;margin-bottom:6px;font-size:0.9em;"><i class="icon icon-farmer"></i> Producteurs</div>
+        <div style="font-size:2.8em;font-weight:300;color:#333;line-height:1.1;">{{len .Catalogs}}</div>
+        <div style="margin-top:14px;">
+          <button type="button" class="btn btn-default btn-xs" onclick="toggleFarmers({{.ID}})"><i class="icon icon-chevron-down"></i> Producteurs participants</button>
+        </div>
+      </div>
+
+      <!-- Card 3: Permanences -->
+      <div style="flex:1;padding:16px 10px;border:2px solid #ddd;border-radius:6px;text-align:center;">
+        <div style="color:#aaa;margin-bottom:6px;font-size:0.9em;"><i class="icon icon-info"></i> Permanences</div>
+        <div style="font-size:2.8em;font-weight:300;color:#333;line-height:1.1;">{{.NbVolunteers}} / {{.NbVolunteersRequired}}</div>
+        <div style="color:#aaa;font-size:0.88em;margin-bottom:14px;">bénévoles inscrit(s)</div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center;">
+          <a href="/distribution/roles/{{.ID}}" class="btn btn-default btn-xs" style="width:160px;"><i class="icon icon-users"></i> Rôles de bénévoles</a>
+          <a href="/distribution/volunteersSummary/{{.ID}}" class="btn btn-default btn-xs" style="width:160px;"><i class="icon icon-users"></i> Bénévoles inscrits</a>
+        </div>
+      </div>
+
+      <!-- Card 4: Commandes -->
+      <div style="flex:1;padding:16px 10px;border:2px solid #ddd;border-radius:6px;text-align:center;">
+        <div style="color:#aaa;margin-bottom:6px;font-size:0.9em;"><i class="icon icon-basket"></i> Commandes</div>
+        <div style="font-size:2.8em;font-weight:300;color:#333;line-height:1.1;">{{.NbOrders}}</div>
+        <div style="color:#aaa;font-size:0.88em;margin-bottom:14px;">Commande(s)<br/>pour un total de <b style="color:#555;">{{printf "%.2f" .TotalAmount}} €</b></div>
+        <a href="/contractAdmin/ordersByDate/{{.DateISO}}/{{$.Group.ID}}" class="btn btn-default btn-xs" style="width:120px;">
+          <i class="icon icon-basket"></i> Commandes
+        </a>
+      </div>
+
+    </div>
+
+    <!-- Farmers panel (hidden by default) -->
+    <div id="farmers-{{.ID}}" style="display:none;border:1px solid #ddd;border-top:none;border-radius:0 0 6px 6px;overflow:hidden;">
+      <div style="padding:10px 14px;background:#f9f9f9;">
+        <a href="/distribution/inviteFarmers/{{.ID}}" class="btn btn-success btn-sm">
+          <i class="icon icon-plus"></i> Ajouter / supprimer des producteurs
+        </a>
+      </div>
+      {{if .DistribLinks}}
+      <table class="table table-bordered" style="margin-bottom:0;">
+        <tbody>
+          <tr><td colspan="3" style="background:#f5f5f5;font-weight:bold;padding:8px 14px;">Commandes variables</td></tr>
+          {{range .DistribLinks}}
+          <tr>
+            <td style="padding:8px 14px;"><a href="/contractAdmin/view/{{.CatalogID}}" style="color:#5cb85c;">{{.CatalogName}}</a></td>
+            <td style="padding:8px 14px;">{{.VendorName}}</td>
+            <td style="padding:8px 14px;white-space:nowrap;">
+              <div class="btn-group">
+                <button class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
+                  <i class="icon icon-chevron-down"></i> Dates
+                </button>
+                <ul class="dropdown-menu">
+                  <li><a href="/edit/{{.DistribID}}?from=distribSection"><i class="icon icon-calendar"></i> Personnaliser les dates</a></li>
+                  <li><a href="/distribution/shift/{{.DistribID}}?from=distribSection"><i class="icon icon-calendar"></i> Reporter la distribution</a></li>
+                </ul>
+              </div>
+              <a href="/distribution/notAttend/{{.DistribID}}" class="btn btn-default btn-xs"
+                 onclick="return confirm('Retirer ce producteur de la distribution ?')">
+                <i class="icon icon-delete"></i> Ne participe plus
+              </a>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+      {{end}}
+    </div>
+
+  </div>
+  {{end}}
+  {{else}}
+  <p class="text-muted">Aucune distribution planifiée.</p>
+  {{end}}
+
+</div>
+
+<script>
+function toggleFarmers(id) {
+  var el = document.getElementById('farmers-' + id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+</script>
+{{end}}

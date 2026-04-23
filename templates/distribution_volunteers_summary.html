@@ -1,0 +1,32 @@
+{{define "content"}}
+<div class="col-md-8 col-md-offset-2">
+  <div class="article">
+    <h3 style="font-style:italic;">Sélectionnez un(e) bénévole pour chaque rôle pour cette distribution</h3>
+    <form method="POST" class="form-horizontal" style="margin-top:16px;">
+      {{if .RoleRows}}
+      {{range .RoleRows}}
+      <div class="form-group">
+        <label class="col-sm-4 control-label">{{.RoleName}}</label>
+        <div class="col-sm-8">
+          <select name="role_{{.RoleID}}" class="form-control">
+            <option value="0">Pas de bénévole défini</option>
+            {{range .Members}}
+            <option value="{{.ID}}" {{if eq $.AssignedUID .ID}}selected{{end}}>{{.Name}}</option>
+            {{end}}
+          </select>
+        </div>
+      </div>
+      {{end}}
+      <div class="form-group">
+        <div class="col-sm-offset-4 col-sm-8">
+          <button type="submit" class="btn btn-success">OK</button>
+          <a href="/distribution" class="btn btn-default" style="margin-left:8px;">Annuler</a>
+        </div>
+      </div>
+      {{else}}
+      <p class="text-muted">Aucun rôle défini pour cette distribution. <a href="/distribution/roles/{{.MultiDistrib.ID}}">Configurer les rôles</a></p>
+      {{end}}
+    </form>
+  </div>
+</div>
+{{end}}

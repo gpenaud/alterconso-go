@@ -1,0 +1,58 @@
+{{define "content"}}
+<div class="row">
+  <div class="col-md-3">
+    <h2>Coordonnées</h2>
+    <div class="article">
+      <b>{{.Member.FirstName}} {{.Member.LastName}}</b><br/>
+      {{if .Member.Phone}}<p>Tél : {{deref .Member.Phone}}</p>{{end}}
+      <p>Email : <a href="mailto:{{.Member.Email}}">{{.Member.Email}}</a></p>
+    </div>
+  </div>
+
+  <div class="col-md-9">
+    <h2>Paiements</h2>
+    <div class="article">
+      <table class="table table-condensed">
+        <tr style="font-size:1.3em;">
+          <td colspan="3" class="text-right">Solde :</td>
+          <td style="color:{{if lt .Balance 0.0}}#C00{{else}}#0C0{{end}};font-weight:bold;">
+            {{printf "%.2f" .Balance}} €
+          </td>
+          <td>
+            <a href="/transaction/insertPayment/{{.Member.ID}}" class="btn btn-primary btn-sm">
+              <i class="icon icon-plus"></i> Saisir un paiement
+            </a>
+          </td>
+        </tr>
+        <tr class="greyhead">
+          <th>Date</th><th>Type</th><th>Description</th><th>Montant</th><th>Mode paiement</th>
+        </tr>
+        {{range .Ops}}
+        <tr>
+          <td>{{.Date}}</td>
+          <td>{{.Type}}</td>
+          <td>{{.Description}}</td>
+          <td>{{printf "%.2f" .Amount}} €</td>
+          <td>{{.PaymentType}}</td>
+        </tr>
+        {{else}}
+        <tr><td colspan="5" class="text-muted text-center">Aucune opération.</td></tr>
+        {{end}}
+        {{if gt .Pages 1}}
+        <tr>
+          <td colspan="5" class="text-center">
+            <ul class="pagination" style="margin:0;">
+              {{range paginateInts .Pages .Page 20}}
+              <li {{if eq . $.Page}}class="active"{{end}}>
+                <a href="?page={{.}}">{{.}}</a>
+              </li>
+              {{end}}
+            </ul>
+          </td>
+        </tr>
+        {{end}}
+      </table>
+    </div>
+  </div>
+</div>
+{{end}}

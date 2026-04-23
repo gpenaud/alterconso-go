@@ -1,0 +1,42 @@
+{{define "content"}}
+{{template "amapadmin_nav" .}}
+<div class="col-md-9">
+  <h2>Droits d'administration</h2>
+  <div class="article">
+    <a href="#" class="btn btn-default btn-sm" style="margin-bottom:12px;"><i class="icon icon-plus"></i> Ajouter un droit</a>
+
+    {{if .RightUsers}}
+    <table class="table table-bordered table-hover table-condensed">
+      <thead>
+        <tr>
+          <th>Nom</th>
+          <th>Droits</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .RightUsers}}
+        <tr>
+          <td>{{.Name}}</td>
+          <td>
+            <ul style="margin:0;padding-left:18px;">
+              {{range .Rights}}
+              <li>{{.}}</li>
+              {{end}}
+            </ul>
+          </td>
+          <td>
+            <a href="/member/edit/{{.UserID}}" class="btn btn-default btn-xs">
+              <i class="icon icon-edit"></i> Modifier
+            </a>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <p class="text-muted">Aucun administrateur défini.</p>
+    {{end}}
+  </div>
+</div>
+{{end}}

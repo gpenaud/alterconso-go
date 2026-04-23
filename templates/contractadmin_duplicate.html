@@ -1,0 +1,38 @@
+{{define "content"}}
+<div class="col-md-8 col-md-offset-2">
+  <div class="article">
+    <h2 style="font-style:italic;">Dupliquer le contrat '{{.Catalog.Name}}'</h2>
+    <form method="POST" class="form-horizontal" style="margin-top:24px;">
+
+      <div class="form-group">
+        <label class="col-sm-4 control-label" style="font-weight:bold;">Nom du nouveau catalogue</label>
+        <div class="col-sm-8">
+          <input type="text" name="name" class="form-control" value="{{.Catalog.Name}} - copie" required />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-4 control-label" style="font-weight:bold;">Copier les produits</label>
+        <div class="col-sm-8" style="padding-top:6px;">
+          <input type="checkbox" name="copy_products" value="1" checked />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-4 control-label" style="font-weight:bold;">Copier les distributions</label>
+        <div class="col-sm-8" style="padding-top:6px;">
+          <input type="checkbox" name="copy_distribs" value="1" checked />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="col-sm-offset-4 col-sm-8">
+          <button type="submit" class="btn btn-success">OK</button>
+          <a href="/contractAdmin" class="btn btn-default" style="margin-left:8px;">Annuler</a>
+        </div>
+      </div>
+
+    </form>
+  </div>
+</div>
+{{end}}

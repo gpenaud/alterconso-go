@@ -1,0 +1,35 @@
+{{define "content"}}
+<div class="col-md-6 col-md-offset-3">
+
+  <div style="text-align:center;padding:20px 0 10px;background:#fff;border:1px solid #ddd;border-radius:4px;margin-bottom:16px;">
+    <h2 style="font-style:italic;margin:0 0 6px;"><b>Liste d'émargement</b></h2>
+    <p style="margin:0;color:#555;">Distribution du {{.DayLabel}}</p>
+  </div>
+
+  <form method="GET" action="/distribution/listByDate/{{.DateISO}}/{{.Group.ID}}/print">
+    <div style="background:#fff;border:1px solid #ddd;border-radius:4px;padding:16px;margin-bottom:16px;">
+      <h4 style="margin-top:0;">Mode d'affichage</h4>
+      <div class="radio"><label><input type="radio" name="mode" value="all" checked> Tout à la suite</label></div>
+      <div class="radio"><label><input type="radio" name="mode" value="perpage"> Une personne par page</label></div>
+      <div class="radio"><label><input type="radio" name="mode" value="bycatalog"> Triée par catalogue</label></div>
+      <div class="radio"><label><input type="radio" name="mode" value="noprice"> Sans prix</label></div>
+    </div>
+
+    <div style="background:#fff;border:1px solid #ddd;border-radius:4px;padding:16px;margin-bottom:16px;">
+      <h4 style="margin-top:0;">Taille de police</h4>
+      <div class="radio-inline" style="margin-right:16px;"><label><input type="radio" name="fontSize" value="S"> S</label></div>
+      <div class="radio-inline" style="margin-right:16px;"><label><input type="radio" name="fontSize" value="M" checked> M</label></div>
+      <div class="radio-inline" style="margin-right:16px;"><label><input type="radio" name="fontSize" value="L"> L</label></div>
+      <div class="radio-inline"><label><input type="radio" name="fontSize" value="XL"> XL</label></div>
+    </div>
+
+    <button type="submit" class="btn btn-success btn-block">
+      <i class="icon icon-print"></i> Générer la liste
+    </button>
+  </form>
+
+  <a href="javascript:history.back()" class="btn btn-default btn-sm" style="margin-top:12px;">
+    <i class="icon icon-chevron-left"></i> Retour
+  </a>
+</div>
+{{end}}

@@ -1,0 +1,50 @@
+{{define "content"}}
+<div class="col-md-12">
+  <div class="article">
+    <h3>Liste d'attente</h3>
+
+    {{if .WaitingList}}
+    <table class="table table-bordered table-hover table-condensed">
+      <thead>
+        <tr class="greyhead">
+          <th>Nom</th>
+          <th>Email</th>
+          <th>Téléphone</th>
+          <th>Date</th>
+          <th>Message</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .WaitingList}}
+        <tr>
+          <td><b>{{.Name}}</b></td>
+          <td>{{.Email}}</td>
+          <td>{{.Phone}}</td>
+          <td>{{.Date}}</td>
+          <td>{{.Message}}</td>
+          <td>
+            <a href="/member/waiting?add={{.UserID}}" class="btn btn-success btn-xs"
+               onclick="return confirm('Accepter ce membre dans le groupe ?')">
+              <i class="icon icon-check"></i> Accepter
+            </a>
+            &nbsp;
+            <a href="/member/waiting?remove={{.UserID}}" class="btn btn-danger btn-xs"
+               onclick="return confirm('Refuser cette demande ?')">
+              <i class="icon icon-delete"></i> Refuser
+            </a>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <p class="text-muted">Aucune demande en attente.</p>
+    {{end}}
+
+    <a href="/member" class="btn btn-default btn-sm">
+      <i class="icon icon-chevron-left"></i> Retour
+    </a>
+  </div>
+</div>
+{{end}}

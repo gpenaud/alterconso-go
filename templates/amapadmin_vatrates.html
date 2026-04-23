@@ -1,0 +1,42 @@
+{{define "content"}}
+<div class="col-md-12">
+  <div class="article">
+    <h2>Editer les taux de TVA</h2>
+    <form method="POST" action="/amapadmin/vatRates">
+      <div class="form-group row">
+        <label class="col-sm-2 control-label">Nom 1</label>
+        <div class="col-sm-10"><input type="text" name="name1" class="form-control" value="{{index .VatNames 0}}" /></div>
+      </div>
+      <div class="form-group row">
+        <label class="col-sm-2 control-label">Taux 1</label>
+        <div class="col-sm-10"><input type="text" name="rate1" class="form-control" value="{{index .VatRates 0}}" /></div>
+      </div>
+      <div class="form-group row">
+        <label class="col-sm-2 control-label">Nom 2</label>
+        <div class="col-sm-10"><input type="text" name="name2" class="form-control" value="{{index .VatNames 1}}" /></div>
+      </div>
+      <div class="form-group row">
+        <label class="col-sm-2 control-label">Taux 2</label>
+        <div class="col-sm-10"><input type="text" name="rate2" class="form-control" value="{{index .VatRates 1}}" /></div>
+      </div>
+      <div class="form-group row">
+        <label class="col-sm-2 control-label">Nom 3</label>
+        <div class="col-sm-10"><input type="text" name="name3" class="form-control" value="{{index .VatNames 2}}" /></div>
+      </div>
+      <div class="form-group row">
+        <label class="col-sm-2 control-label">Taux 3</label>
+        <div class="col-sm-10"><input type="text" name="rate3" class="form-control" value="{{index .VatRates 2}}" /></div>
+      </div>
+      <div class="form-group row">
+        <label class="col-sm-2 control-label">Nom 4</label>
+        <div class="col-sm-10"><input type="text" name="name4" class="form-control" value="{{index .VatNames 3}}" /></div>
+      </div>
+      <div class="form-group row">
+        <label class="col-sm-2 control-label">Taux 4</label>
+        <div class="col-sm-10"><input type="text" name="rate4" class="form-control" value="{{index .VatRates 3}}" /></div>
+      </div>
+      <button type="submit" class="btn btn-primary" style="background:#6a9a2a;border-color:#5a8a1a;">OK</button>
+    </form>
+  </div>
+</div>
+{{end}}

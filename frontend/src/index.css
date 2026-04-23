@@ -1,0 +1,24 @@
+@import url("https://fonts.googleapis.com/css2?family=Cabin:ital,wght@0,400;0,700;1,400&display=swap");
+@import "tailwindcss";
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Cabin, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  color: #333;
+  -webkit-font-smoothing: antialiased;
+  background-color: #f5f5f5;
+}
+
+/* Couleurs Alterconso originales exposées en utilitaires Tailwind */
+@theme {
+  --color-ac-green:      #84BD55;
+  --color-ac-green-dark: #3c763d;
+  --color-ac-orange:     #e95216;
+  --color-ac-navbar:     #eeeeee;
+  --color-ac-border:     #e6e6e6;
+  --color-ac-text:       #333333;
+  --color-ac-muted:      #777777;
+}

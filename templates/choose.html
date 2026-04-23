@@ -1,0 +1,33 @@
+{{define "content"}}
+<div class="col-md-12">
+  <h2>Bonjour {{.User.FirstName}} !</h2>
+  <p>Vous êtes membre des <b>groupes</b> suivants :</p>
+</div>
+
+<div class="col-md-12">
+  <div class="row">
+    {{range .Groups}}
+    <div class="col-md-4">
+      <div class="blockIconBadge group">
+        <i class="icon icon-map-marker"></i>
+      </div>
+      <a class="clickable groupBlock" href="/user/choose?group={{.ID}}">
+        <h4>{{.Name}}</h4>
+      </a>
+    </div>
+    {{else}}
+    <div class="col-md-12">
+      <div class="article text-center">
+        <p>Vous n'appartenez à aucun groupe pour l'instant.</p>
+      </div>
+    </div>
+    {{end}}
+  </div>
+</div>
+
+<div class="col-md-12 text-center" style="margin-bottom:12px;">
+  <a class="btn btn-default btn-lg" href="/group/create/">
+    <i class="icon icon-plus"></i> Créer un groupe
+  </a>
+</div>
+{{end}}

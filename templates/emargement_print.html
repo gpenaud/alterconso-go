@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Liste d'émargement — {{.DayLabel}}</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #fff;
+  font-family: Arial, sans-serif;
+  font-size: {{if eq .FontSize "S"}}10px{{else if eq .FontSize "L"}}14px{{else if eq .FontSize "XL"}}17px{{else}}12px{{end}};
+  color: #222;
+  padding: 16px 24px;
+}
+h2 { font-size: 1.5em; text-align: center; margin-bottom: 2px; }
+h3 { font-size: 1.1em; text-align: center; font-style: italic; font-weight: normal; margin-bottom: 6px; }
+.place { text-align: center; font-size: 0.9em; color: #555; margin-bottom: 8px; }
+.benevoles { font-size: 0.95em; margin-bottom: 8px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+th, td {
+  border: 1px solid #bbb;
+  padding: 2px 5px;
+  vertical-align: middle;
+}
+thead th {
+  background: #ddd;
+  font-weight: bold;
+  text-align: center;
+  padding: 3px 5px;
+}
+td.member-name {
+  font-weight: bold;
+  background: #fff;
+}
+td.member-coords {
+  font-size: 0.85em;
+  color: #555;
+  word-break: break-all;
+  background: #fff;
+}
+tr.member-total td {
+  background: #fff;
+  font-weight: bold;
+  border-bottom: 2px dashed #aaa;
+}
+.grand-total {
+  text-align: right;
+  font-weight: bold;
+  padding: 6px 0;
+  border-top: 2px solid #333;
+  margin-top: 4px;
+}
+.actions {
+  margin-bottom: 10px;
+  display: flex;
+  gap: 8px;
+}
+.btn {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #f5f5f5;
+  cursor: pointer;
+  text-decoration: none;
+  color: #333;
+}
+.btn-success { background: #5cb85c; border-color: #4cae4c; color: #fff; }
+.print-footer {
+  text-align: center;
+  margin-top: 16px;
+  color: #888;
+  font-size: 0.9em;
+  font-style: italic;
+}
+@media print {
+  .actions { display: none; }
+  .print-footer { display: none; }
+  body { padding: 0; margin: 0; }
+  @page { margin: 4mm; }
+}
+</style>
+</head>
+<body>
+{{$noprice := eq .Mode "noprice"}}
+{{$perpage := eq .Mode "perpage"}}
+
+<div class="actions">
+  <a href="/distribution/listByDate/{{.DateISO}}/{{.Group.ID}}" class="btn">&#8592; Modifier les options</a>
+  <button onclick="window.print()" class="btn btn-success">&#128438; Imprimer</button>
+</div>
+
+<h2>{{.GroupName}}</h2>
+<h3>Livraison du {{.DayLabel}}</h3>
+{{if .Place}}<p class="place">{{.Place}}</p>{{end}}
+
+{{if .Benevoles}}
+<p class="benevoles"><b>Bénévoles :</b> {{range .Benevoles}}{{.}} &nbsp;{{end}}</p>
+{{end}}
+
+{{if .Members}}
+<table>
+  <colgroup>
+    <col style="width:14%">
+    <col style="width:12%">
+    <col style="width:7%">
+    <col style="width:{{if $noprice}}38%{{else}}28%{{end}}">
+    <col style="width:{{if $noprice}}29%{{else}}20%{{end}}">
+    {{if not $noprice}}
+    <col style="width:8%">
+    <col style="width:11%">
+    {{end}}
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Nom</th>
+      <th>Coordonnées</th>
+      <th>Qté</th>
+      <th>Produit</th>
+      <th>Producteur</th>
+      {{if not $noprice}}
+      <th>P.U.</th>
+      <th>Total</th>
+      {{end}}
+    </tr>
+  </thead>
+  <tbody>
+  {{range $mi, $m := .Members}}
+    {{range $li, $line := $m.Lines}}
+    <tr>
+      {{if eq $li 0}}
+      <td class="member-name" rowspan="{{len $m.Lines}}">N°{{$m.BasketNum}}<br>{{$m.UserName}}</td>
+      <td class="member-coords" rowspan="{{len $m.Lines}}">{{$m.Coords}}</td>
+      {{end}}
+      <td style="text-align:right;">{{$line.Qty}}</td>
+      <td>{{$line.ProductName}}</td>
+      <td style="color:#555;font-size:0.9em;">{{$line.CatalogName}}</td>
+      {{if not $noprice}}
+      <td style="text-align:right;">{{printf "%.2f" $line.UnitPrice}} €</td>
+      <td style="text-align:right;">{{printf "%.2f" $line.Total}} €</td>
+      {{end}}
+    </tr>
+    {{end}}
+    {{if not $noprice}}
+    <tr class="member-total">
+      <td colspan="6" style="text-align:right;font-size:0.9em;">Total {{$m.UserName}}</td>
+      <td style="text-align:right;">{{printf "%.2f" $m.MemberTotal}} €</td>
+    </tr>
+    {{end}}
+  {{end}}
+  </tbody>
+</table>
+
+<div class="grand-total">Total de toutes les commandes : {{printf "%.2f" .GrandTotal}} €</div>
+
+{{else}}
+<p style="color:#888;margin-top:12px;">Aucune commande pour cette distribution.</p>
+{{end}}
+
+<p class="print-footer">Appuyez sur "Control + P" pour imprimer cette page.</p>
+</body>
+</html>

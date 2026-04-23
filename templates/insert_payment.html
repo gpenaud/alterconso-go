@@ -1,0 +1,40 @@
+{{define "content"}}
+<div class="row">
+  <div class="col-md-6">
+    <div class="article">
+      <h3><i class="icon icon-payment-type"></i> Saisir un paiement</h3>
+      <p>
+        Membre : <b>{{.Member.FirstName}} {{.Member.LastName}}</b><br/>
+        Solde actuel :
+        <span style="font-weight:bold;color:{{if lt .Balance 0.0}}#C00{{else}}#080{{end}}">
+          {{printf "%.2f" .Balance}} €
+        </span>
+      </p>
+      <form method="POST">
+        <div class="form-group">
+          <label>Montant (€)</label>
+          <input type="number" step="0.01" name="amount" class="form-control" required />
+        </div>
+        <div class="form-group">
+          <label>Mode de paiement</label>
+          <select name="paymentType" class="form-control">
+            <option value="Chèque">Chèque</option>
+            <option value="Espèces">Espèces</option>
+            <option value="Virement">Virement</option>
+            <option value="CB">Carte bancaire</option>
+            <option value="Autre">Autre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Description (optionnel)</label>
+          <input type="text" name="description" class="form-control" />
+        </div>
+        <a href="/member/view/{{.Member.ID}}" class="btn btn-default">Annuler</a>
+        <button type="submit" class="btn btn-primary">
+          <i class="icon icon-check"></i> Enregistrer
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{{end}}

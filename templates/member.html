@@ -1,0 +1,62 @@
+{{define "content"}}
+<div class="col-md-9">
+  <h2>Membres</h2>
+  <div class="article" style="padding:0;">
+    {{if .Members}}
+    <table class="table table-condensed table-hover table-striped" style="margin-bottom:0;">
+      <tbody>
+        {{range .Members}}
+        <tr>
+          <td style="border-bottom:1px solid #eee;padding:10px 16px;">
+            <a href="/member/view/{{.ID}}" style="color:#5a8a00;font-weight:500;">{{.LastName}} {{.FirstName}}</a>
+          </td>
+          <td style="border-bottom:1px solid #eee;padding:10px 16px;color:#555;">{{.Address}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <p style="padding:16px;color:#999;">Aucun membre.</p>
+    {{end}}
+
+    {{if gt .TotalPages 1}}
+    <div style="padding:12px 16px;">
+      <ul class="pagination" style="margin:0;">
+        {{range seq 1 .TotalPages}}
+        <li {{if eq . $.CurrentPage}}class="active"{{end}}>
+          <a href="/member?page={{.}}">{{.}}</a>
+        </li>
+        {{end}}
+      </ul>
+    </div>
+    {{end}}
+  </div>
+
+  <div style="margin-top:16px;">
+    <a href="/member/insert" class="btn btn-default btn-sm"><i class="icon icon-plus"></i> Nouveau membre</a>
+  </div>
+</div>
+
+<div class="col-md-3">
+  <div style="margin-bottom:16px;">
+    <div class="input-group">
+      <input type="text" id="memberSearch" class="form-control" placeholder="" />
+      <span class="input-group-btn">
+        <button class="btn btn-default"><i class="icon icon-search"></i> Recherche</button>
+      </span>
+    </div>
+  </div>
+  <div>
+    <h3>Listes</h3>
+    <ul style="list-style:none;padding:0;margin:0;">
+      <li style="margin-bottom:4px;"><a href="/member" style="color:#5a8a00;">Membres du groupe ({{.TotalMembers}})</a></li>
+      <li style="margin-bottom:4px;"><a href="/member?filter=withOrder" style="color:#5a8a00;">Avec commande</a></li>
+      <li style="margin-bottom:4px;"><a href="/member?filter=noOrder" style="color:#5a8a00;">Sans commande</a></li>
+      <li style="margin-bottom:4px;"><a href="/member?filter=neverConnected" style="color:#5a8a00;">Ne s'est jamais connecté</a></li>
+      <li style="margin-bottom:4px;"><a href="/member?filter=renewMembership" style="color:#5a8a00;">Adhésion à renouveler</a></li>
+      <li style="margin-bottom:4px;"><a href="/member?filter=upToDate" style="color:#5a8a00;">Adhésion à jour (0)</a></li>
+      <li style="margin-bottom:4px;"><a href="/member/waiting" style="color:#5a8a00;">Liste d'attente ({{.WaitingListCount}})</a></li>
+    </ul>
+  </div>
+</div>
+{{end}}

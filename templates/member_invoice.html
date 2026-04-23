@@ -1,0 +1,65 @@
+{{define "member_invoice"}}<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Facture</title>
+  <link href="/css/print.css" rel="stylesheet"/>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; }
+    h2 { font-size: 16px; }
+    h3 { font-size: 13px; margin-top: 18px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+    th, td { border: 1px solid #ccc; padding: 4px 6px; }
+    th { background: #eee; }
+    tr.total td { background: #f5f5f5; font-weight: bold; }
+    .header-info { margin-bottom: 20px; }
+    .grand-total { font-size: 1.3em; font-weight: bold; margin-top: 12px; text-align: right; }
+  </style>
+</head>
+<body>
+  <div class="header-info">
+    <h2>{{.GroupName}}</h2>
+    <p>
+      <b>{{.MemberName}}</b><br/>
+      {{if .MemberAddr}}{{.MemberAddr}}<br/>{{end}}
+      {{.MemberEmail}}
+    </p>
+    <p>
+      <i>Distribution du</i> <b>{{.Date}}</b> — {{.Place}}
+    </p>
+  </div>
+
+  {{range .VendorBlocks}}
+  <h3>{{.VendorName}}</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Quantité</th>
+        <th>Produit</th>
+        <th class="text-right">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Lines}}
+      <tr>
+        <td>{{.SmartQty}}</td>
+        <td>{{.ProductName}}</td>
+        <td style="text-align:right;">{{printf "%.2f" .Total}} €</td>
+      </tr>
+      {{end}}
+      <tr class="total">
+        <td colspan="2" style="text-align:right;">Total {{.VendorName}}</td>
+        <td style="text-align:right;">{{printf "%.2f" .Total}} €</td>
+      </tr>
+    </tbody>
+  </table>
+  {{end}}
+
+  <div class="grand-total">
+    Total général : {{printf "%.2f" .GrandTotal}} €
+  </div>
+
+  <script>window.addEventListener("load", function(){ window.print(); });</script>
+</body>
+</html>
+{{end}}

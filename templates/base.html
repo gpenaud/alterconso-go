@@ -1,0 +1,57 @@
+{{define "base"}}<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html lang="fr" style="font-size:16px">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8" lang="fr" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{if .Title}}{{.Title}} — {{end}}Alterconso</title>
+
+  <link rel="stylesheet" href="/css/bootstrap.min.css" />
+  <link rel="stylesheet" type="text/css" href="/css/style.css"/>
+  <link rel="stylesheet" href="/font/icons.css" />
+
+  <script src="https://cdn.polyfill.io/v2/polyfill.min.js"></script>
+  <script type="text/javascript" src="/js/fetch.umd.js"></script>
+  <script type="text/javascript" src="/js/libs.prod.js"></script>
+  <script type="text/javascript" src="/js/app.js"></script>
+</head>
+
+<body class="{{if .Container}}{{.Container}}{{else}}container{{end}}">
+
+  <!-- Modal window -->
+  <div class="modal" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h2 class="modal-title" id="myModalLabel"></h2>
+        </div>
+        <div class="modal-body">...</div>
+        <div class="modal-footer" style="clear:both;">
+          <button type="button" class="btn btn-default" data-dismiss="modal">
+            <i class="icon icon-delete"></i> Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {{template "body" .}}
+
+  <script type="text/javascript">
+    document.addEventListener("DOMContentLoaded", function(event) {
+      _.lang = "fr";
+      {{if .User}}
+      _.userId = {{.User.ID}};
+      _.userName = "{{.User.FirstName}} {{.User.LastName}}";
+      _.userEmail = "{{.User.Email}}";
+      {{end}}
+      _.antiDoubleClick();
+      if (typeof NeolithicViewsGenerator !== "undefined") {
+        NeolithicViewsGenerator.setGraphUrl("");
+      }
+    });
+  </script>
+
+</body>
+</html>
+{{end}}

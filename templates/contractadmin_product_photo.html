@@ -1,0 +1,16 @@
+{{define "content"}}
+{{template "contractadmin_nav" .}}
+
+<h3 style="font-style:italic;">Photo du produit — {{.Product.Name}}</h3>
+
+<form method="POST" enctype="multipart/form-data" style="max-width:400px;">
+  <div class="form-group">
+    <label>Choisir une image</label>
+    <input type="file" name="photo" accept="image/*" class="form-control" required />
+  </div>
+  <button type="submit" class="btn btn-primary">Envoyer</button>
+  <a href="/contractAdmin/products/{{.Catalog.ID}}" class="btn btn-default" style="margin-left:8px;">Annuler</a>
+</form>
+
+{{template "contractadmin_close" .}}
+{{end}}

@@ -1,0 +1,172 @@
+{{define "content"}}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pikaday/css/pikaday.css">
+<style>
+  .pika-single { font-family: Cabin, Helvetica, Arial, sans-serif; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.25); border: none; overflow: hidden; }
+  .pika-title { background: #7B1FA2; padding: 12px 16px; }
+  .pika-label { color: #fff !important; font-size: 1em; font-weight: bold; background: transparent !important; }
+  .pika-label select { background: transparent; color: #fff; }
+  .pika-prev, .pika-next { color: #fff; filter: brightness(0) invert(1); opacity: 1; }
+  .pika-table th { color: #7B1FA2; font-size: 0.8em; }
+  .pika-button { border-radius: 50%; width: 36px; height: 36px; line-height: 36px; text-align: center; padding: 0; }
+  .is-selected .pika-button { background: #7B1FA2 !important; border-radius: 50%; box-shadow: none; }
+  .is-today .pika-button { color: #7B1FA2; font-weight: bold; }
+  .pika-footer { display: flex; justify-content: space-between; padding: 8px 16px 12px; border-top: 1px solid #eee; }
+  .pika-footer button { background: none; border: none; color: #7B1FA2; font-weight: bold; font-size: 0.95em; cursor: pointer; letter-spacing: 0.05em; }
+  .date-input-wrapper { display: inline-flex; flex-direction: column; }
+  .date-input-wrapper label { font-size: 0.75em; color: #999; margin-bottom: 2px; }
+  .date-input-display { border: none; border-bottom: 1px solid #999; outline: none; padding: 2px 4px; font-size: 1em; width: 180px; cursor: pointer; background: transparent; }
+</style>
+
+<div class="col-md-12">
+  <div class="article">
+    <h2 style="font-style:italic;"><b>Calendrier des permanences</b></h2>
+
+    <form method="GET" id="calendar-form" style="margin-bottom:16px;display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;">
+      <div class="date-input-wrapper">
+        <label>Du</label>
+        <input type="text" id="input-from-display" class="date-input-display" value="{{.FromLabel}}" readonly />
+        <input type="hidden" name="from" id="input-from" value="{{.From}}" />
+      </div>
+      <div class="date-input-wrapper">
+        <label>au</label>
+        <input type="text" id="input-to-display" class="date-input-display" value="{{.ToLabel}}" readonly />
+        <input type="hidden" name="to" id="input-to" value="{{.To}}" />
+      </div>
+      <button type="submit" class="btn btn-success">OK</button>
+    </form>
+
+    <div style="color:#5cb85c;margin-bottom:16px;">
+      <i class="icon icon-check"></i>
+      Votre participation aux permanences : <b>{{.Done}}</b> permanences faites ou prévues sur <b>{{.ToBeDone}}</b> permanences à faire.
+      ( du {{.PeriodStart}} au {{.PeriodEnd}} )
+    </div>
+
+    {{if .Columns}}
+    <div style="overflow-x:auto;">
+    <table class="table table-bordered" style="table-layout:auto;">
+      <thead>
+        <tr>
+          <th style="width:200px;vertical-align:middle;"><b>Rôle</b></th>
+          {{range .Columns}}
+          <th style="text-align:center;vertical-align:middle;{{if .NeedsHelp}}background:#fdecea;color:#c0392b;{{end}}">
+            <b>{{.DateLabel}}</b><br/>
+            {{.HourLabel}}<br/>
+            <span style="font-size:0.85em;">
+              <i class="icon icon-alert" style="color:#e67e22;"></i>
+              {{.Registered}} inscrit(s) sur <b>{{.Required}}</b> requis
+            </span>
+          </th>
+          {{end}}
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Roles}}
+        <tr>
+          <td>{{.Name}}</td>
+          {{range .Cells}}
+          <td style="text-align:center;vertical-align:middle;">
+            {{if .CanJoin}}
+            <form method="POST" action="/distribution/volunteersCalendar/join" style="display:inline;">
+              <input type="hidden" name="multiDistribId" value="{{.MultiDistribID}}" />
+              <input type="hidden" name="role" value="{{.RoleName}}" />
+              <input type="hidden" name="from" value="{{$.From}}" />
+              <input type="hidden" name="to" value="{{$.To}}" />
+              <button type="submit" class="btn btn-success btn-sm">Rejoindre</button>
+            </form>
+            {{else if .IsCurrentUser}}
+            <span style="color:#5cb85c;">{{.VolunteerName}}</span><br/>
+            <form method="POST" action="/distribution/volunteersCalendar/leave" style="display:inline;">
+              <input type="hidden" name="volunteerId" value="{{.VolunteerID}}" />
+              <input type="hidden" name="from" value="{{$.From}}" />
+              <input type="hidden" name="to" value="{{$.To}}" />
+              <button type="submit" class="btn btn-default btn-xs" style="margin-top:4px;">Quitter</button>
+            </form>
+            {{else if .VolunteerName}}
+            <span>{{.VolunteerName}}</span>
+            {{end}}
+          </td>
+          {{end}}
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    </div>
+    {{else}}
+    <p class="text-muted">Aucune distribution dans cette période.</p>
+    {{end}}
+
+    <a href="/distribution" class="btn btn-default" style="margin-top:8px;">
+      <i class="icon icon-chevron-left"></i> Retour
+    </a>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pikaday/pikaday.js"></script>
+<script>
+  var i18n = {
+    previousMonth: 'Mois précédent',
+    nextMonth: 'Mois suivant',
+    months: ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'],
+    weekdays: ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'],
+    weekdaysShort: ['di','lu','ma','me','je','ve','sa']
+  };
+
+  function frenchDate(d) {
+    var days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+    var months = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    return days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+  }
+
+  function isoDate(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
+  function addFooter(picker, inputHidden, displayInput) {
+    var el = picker.el;
+    var footer = document.createElement('div');
+    footer.className = 'pika-footer';
+    footer.innerHTML = '<button type="button" id="btn-clear-'+inputHidden.id+'">EFFACER</button><span><button type="button" id="btn-cancel-'+inputHidden.id+'">ANNULER</button> <button type="button" id="btn-ok-'+inputHidden.id+'">OK</button></span>';
+    el.appendChild(footer);
+
+    document.getElementById('btn-clear-'+inputHidden.id).onclick = function() {
+      picker.setDate(null);
+      inputHidden.value = '';
+      displayInput.value = '';
+    };
+    document.getElementById('btn-cancel-'+inputHidden.id).onclick = function() {
+      picker.hide();
+    };
+    document.getElementById('btn-ok-'+inputHidden.id).onclick = function() {
+      if (picker.getDate()) {
+        inputHidden.value = isoDate(picker.getDate());
+        displayInput.value = frenchDate(picker.getDate());
+        document.getElementById('calendar-form').submit();
+      }
+      picker.hide();
+    };
+  }
+
+  var pickerFrom = new Pikaday({
+    field: document.getElementById('input-from-display'),
+    i18n: i18n,
+    firstDay: 1,
+    onSelect: function(d) {
+      document.getElementById('input-from').value = isoDate(d);
+      document.getElementById('input-from-display').value = frenchDate(d);
+    }
+  });
+  addFooter(pickerFrom, document.getElementById('input-from'), document.getElementById('input-from-display'));
+
+  var pickerTo = new Pikaday({
+    field: document.getElementById('input-to-display'),
+    i18n: i18n,
+    firstDay: 1,
+    onSelect: function(d) {
+      document.getElementById('input-to').value = isoDate(d);
+      document.getElementById('input-to-display').value = frenchDate(d);
+    }
+  });
+  addFooter(pickerTo, document.getElementById('input-to'), document.getElementById('input-to-display'));
+</script>
+{{end}}

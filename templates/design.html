@@ -1,0 +1,147 @@
+{{define "body"}}
+
+  {{if .Redirect}}
+  <script>
+  document.addEventListener("DOMContentLoaded", function(event) {
+    _.loginBox('{{.Redirect}}');
+  });
+  </script>
+  {{end}}
+
+  <div class="row header" style="margin-top:10px;">
+    <div class="col-md-8">
+      {{if .Group}}
+        <h1>{{.Group.Name}}</h1>
+      {{else}}
+        <div style="margin-bottom:22px;">
+          <a href="https://alterconso.leportail.org" target="_blank">
+            <img src="/img/logo3.png" alt="Alterconso" />
+          </a>
+        </div>
+      {{end}}
+    </div>
+
+    <div class="col-md-4 accountBlock">
+      {{if .User}}
+      <div style="text-align:right;">
+        <a href="#" style="color:#888;font-size:0.9em;margin-right:12px;"><i class="icon icon-info"></i> Aide</a>
+        <div class="dropdown" style="display:inline-block;">
+          <a href="#" class="userName dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+            {{.User.FirstName}} {{.User.LastName}} <span class="caret"></span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-right">
+            {{if .IsGroupManager}}
+            <li><a href="/amapadmin"><i class="icon icon-cog"></i> Admin</a></li>
+            <li><a href="/amapadmin"><i class="icon icon-cog"></i> Base de données</a></li>
+            <li role="separator" class="divider"></li>
+            {{end}}
+            <li><a href="/user/logout"><i class="icon icon-delete"></i> Déconnexion</a></li>
+          </ul>
+        </div>
+        <div style="margin-top:4px;">
+          <a href="/user/choose" style="color:#888;font-size:0.9em;"><i class="icon icon-chevron-left"></i> Accueil</a>
+        </div>
+      </div>
+      {{else}}
+      <a href="/user/login" class="btn btn-default"><i class="icon icon-user"></i> Se connecter</a>
+      {{end}}
+    </div>
+  </div>
+
+  {{if .User}}{{if not .HideNav}}
+  <nav class="navbar navbar-default">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#cagette-navbar">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <div class="collapse navbar-collapse" id="cagette-navbar">
+      <ul class="nav navbar-nav navbar-left">
+        <li {{if eq .Category "home"}}class="active"{{end}}>
+          <a href="/home"><i class="icon icon-basket"></i> Commandes</a>
+        </li>
+        <li {{if eq .Category "account"}}class="active"{{end}}>
+          <a href="/account"><i class="icon icon-user"></i> Mon compte</a>
+        </li>
+        <li {{if eq .Category "amap"}}class="active"{{end}}>
+          <a href="/amap"><i class="icon icon-farmer"></i> Producteurs</a>
+        </li>
+      </ul>
+      {{if .IsGroupManager}}
+      <ul class="nav navbar-nav navbar-right admin">
+        <li {{if eq .Category "member"}}class="active"{{end}}>
+          <a href="/member"><i class="icon icon-users"></i> Membres</a>
+        </li>
+        <li {{if eq .Category "distribution"}}class="active"{{end}}>
+          <a href="/distribution"><i class="icon icon-calendar"></i> Distributions</a>
+        </li>
+        <li {{if eq .Category "contract"}}class="active"{{end}}>
+          <a href="/contractAdmin"><i class="icon icon-book"></i> Catalogues</a>
+        </li>
+        <li {{if eq .Category "messages"}}class="active"{{end}}>
+          <a href="/messages"><i class="icon icon-mail"></i> Messagerie</a>
+        </li>
+        <li {{if eq .Category "amapadmin"}}class="active"{{end}}>
+          <a href="/amapadmin"><i class="icon icon-cog"></i> Paramètres</a>
+        </li>
+      </ul>
+      {{end}}
+    </div>
+  </nav>
+  {{end}}{{end}}
+
+  <!-- Breadcrumb -->
+  <div class="row">
+    <div class="col-md-12">
+      <ol class="breadcrumb" style="margin-bottom:0;">
+        {{if .Group}}<li><a href="/user/choose">Groupe : {{.Group.Name}}</a></li>{{end}}
+        {{range .Breadcrumb}}
+        <li><a href="{{.Link}}">{{.Name}}</a></li>
+        {{end}}
+      </ol>
+    </div>
+  </div>
+
+  {{if .Flash}}
+  <div class="row">
+    <div class="col-md-12">
+      <div class="alert {{if .FlashError}}alert-danger{{else}}alert-success{{end}}">
+        {{if .FlashError}}<i class="icon icon-alert"></i>{{else}}<i class="icon icon-check"></i>{{end}}
+        {{.Flash}}
+      </div>
+    </div>
+  </div>
+  {{end}}
+
+  <div class="row">
+    {{template "content" .}}
+  </div>
+
+  <!-- Footer -->
+  <footer style="background:#6a9a2a;color:#fff;margin-top:40px;padding:24px 0 16px;">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-2">
+          <img src="/img/logo3.png" alt="Alterconso" style="max-width:80px;opacity:0.9;" />
+        </div>
+        <div class="col-md-3">
+          <b>AIDE</b><br/>
+          <a href="#" style="color:#dff0a8;">Documentation</a><br/>
+          <a href="#" style="color:#dff0a8;">Contacter l'administrateur du site</a>
+        </div>
+        <div class="col-md-3">
+          <b>SUIVEZ-NOUS</b><br/>
+          {{if .Group}}<a href="#" style="color:#dff0a8;">{{.Group.Name}}</a>{{end}}
+        </div>
+        <div class="col-md-4">
+          <b>INFORMATION</b><br/>
+          <span style="font-size:0.9em;">Ce site est réalisé sur la base d'une version libre de l'application cagette développée par la <a href="https://www.alilo.fr" style="color:#dff0a8;">SCOP Alilo</a></span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+{{end}}

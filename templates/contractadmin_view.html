@@ -1,0 +1,70 @@
+{{define "content"}}
+{{template "contractadmin_nav" .}}
+
+<h3 style="font-style:italic;">Récapitulatif</h3>
+
+<table class="table table-bordered" style="max-width:560px;">
+  <tr>
+    <td style="width:160px;">Type de contrat</td>
+    <td>
+      {{if eq .Catalog.Type 0}}
+        <span style="display:inline-flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:#ddd;border-radius:4px;">
+            <i class="icon icon-basket"></i>
+          </span>
+          Catalogue standard (commande variable)
+        </span>
+      {{else}}
+        <span style="display:inline-flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:#ddd;border-radius:4px;">
+            <i class="icon icon-calendar-check"></i>
+          </span>
+          Contrat AMAP (commande fixe)
+        </span>
+      {{end}}
+    </td>
+  </tr>
+  <tr>
+    <td>Date de début</td>
+    <td>{{if .Catalog.StartDate}}{{frenchDate .Catalog.StartDate}}{{else}}—{{end}}</td>
+  </tr>
+  <tr>
+    <td>Date de fin</td>
+    <td>{{if .Catalog.EndDate}}{{frenchDate .Catalog.EndDate}}{{else}}—{{end}}</td>
+  </tr>
+</table>
+
+<p>
+  <a href="/contractAdmin/edit/{{.Catalog.ID}}" class="btn btn-default"><i class="icon icon-edit"></i> Modifier</a>
+  <a href="/contractAdmin/duplicate/{{.Catalog.ID}}" class="btn btn-default"><i class="icon icon-copy"></i> Dupliquer</a>
+</p>
+
+<h3 style="font-style:italic;margin-top:24px;">Producteur</h3>
+<table class="table table-bordered" style="max-width:560px;">
+  <tr><td style="width:160px;">Nom</td><td><b>{{.Catalog.Vendor.Name}}</b></td></tr>
+  <tr><td>Email</td><td>{{.Catalog.Vendor.Email}}</td></tr>
+  {{if .Catalog.Vendor.Phone}}<tr><td>Téléphone</td><td>{{deref .Catalog.Vendor.Phone}}</td></tr>{{end}}
+</table>
+
+
+{{if .Products}}
+<h3 style="font-style:italic;color:#84BD55;margin-top:24px;">Produits</h3>
+<table class="table table-bordered" style="max-width:560px;">
+  {{range .Products}}
+  <tr>
+    <td style="width:56px;text-align:center;padding:6px;">
+      {{if .Image}}
+        <img src="/file/{{.Image.ID}}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;" />
+      {{else}}
+        <img src="/img/taxo/grey/fruits-legumes.png" style="width:40px;height:40px;object-fit:cover;opacity:0.5;" />
+      {{end}}
+    </td>
+    <td>{{.Name}}</td>
+    <td style="width:80px;text-align:right;">{{printf "%.2f" .Price}} €</td>
+  </tr>
+  {{end}}
+</table>
+{{end}}
+
+{{template "contractadmin_close" .}}
+{{end}}

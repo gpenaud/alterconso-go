@@ -1,0 +1,141 @@
+{{define "content"}}
+  <div id="content" class="col-md-8" style="padding-top:24px;">
+
+    {{if .MultiDistribs}}
+    {{range .MultiDistribs}}
+    <div class="distrib">
+
+      <!-- Header bar -->
+      <div class="header {{if .Active}}active{{end}}" style="padding-top:10px;padding-bottom:10px;font-size:17px;line-height:1.7;{{if .CanOrder}}background-color:#84BD55;color:#fff;{{end}}">
+        <div class="dateBoxOffset">
+          <div class="dateBox">
+            <div class="box">
+              <div style="font-size:14px;line-height:1.2;padding:4px 8px 0;">{{.DayOfWeek}}</div>
+              <div style="font-size:32px;color:#990000;line-height:1;padding:0 8px;">{{.Day}}</div>
+              <div style="font-size:14px;line-height:1.2;padding:0 8px 4px;">{{.Month}}</div>
+            </div>
+          </div>
+        </div>
+        <div class="info">
+          <i class="icon icon-clock"></i> Distribution de {{.StartHour}} à {{.EndHour}}
+        </div>
+        <div class="info">
+          <i class="icon icon-map-marker"></i> {{.Place}}
+        </div>
+        {{if .PlaceAddress}}
+        <div class="address">{{.PlaceAddress}}</div>
+        {{end}}
+      </div>
+
+      <!-- Product thumbnails -->
+      {{if .ProductImages}}
+      <div class="content" style="display:flex;gap:4px;flex-wrap:nowrap;overflow:hidden;padding:8px 12px;justify-content:center;">
+        {{range .ProductImages}}
+        <div title="{{.Name}}" style="width:76px;height:76px;border:1px solid #ddd;border-radius:8px;overflow:hidden;background:#fff;flex-shrink:0;cursor:default;">
+          <img src="{{.URL}}" style="width:100%;height:100%;object-fit:cover;" />
+        </div>
+        {{end}}
+      </div>
+      {{end}}
+
+      <!-- Order status -->
+      {{if .Distributions}}
+      <div class="content" style="text-align:center;padding:8px 12px;">
+        {{if .CanOrder}}
+        <a href="/shop/{{.ID}}" class="btn btn-lg btn-primary">
+          <i class="icon icon-chevron-right"></i> Commander
+        </a>
+        {{if .OrderEndDate}}
+        <div style="color:#888;font-size:1em;margin-top:12px;">
+          <i class="icon icon-clock"></i> La commande fermera le {{.OrderEndDate}}
+        </div>
+        {{end}}
+        {{else if .OrderNotYetOpen}}
+        <span style="color:#aaa;font-size:1.2em;display:block;padding:8px 0;">
+          <i class="icon icon-clock"></i> La commande ouvrira {{.OrderStartDate}}
+        </span>
+        {{else}}
+        <span style="color:#aaa;font-size:1.05em;">
+          <i class="icon icon-clock"></i> Commandes fermées
+        </span>
+        {{end}}
+      </div>
+      {{end}}
+
+      <!-- Volunteer alert -->
+      {{if gt .VolunteerNeeded 0}}
+      <div class="content">
+        <div style="background:#fdecea;border:1px solid #f5c6c6;border-radius:4px;padding:16px;text-align:center;">
+          <p style="margin-bottom:8px;">
+            <i class="icon icon-alert" style="color:#c0392b;"></i>
+            Nous avons besoin de <b>{{.VolunteerNeeded}}</b> bénévole(s) pour les rôles suivants :
+          </p>
+          <p style="color:#c0392b;font-weight:bold;margin-bottom:12px;">
+            {{range .VolunteerRoles}}{{.}},{{end}}
+          </p>
+          <a href="/distribution/volunteersCalendar" class="btn btn-danger btn-sm">
+            <i class="icon icon-chevron-right"></i> Inscription
+          </a>
+        </div>
+      </div>
+      {{end}}
+
+      <!-- AMAP user orders -->
+      {{if .UserOrders}}
+      <div class="content myorder">
+        Mes commandes AMAP :
+      </div>
+      <div class="content orders">
+        <div class="row">
+          {{range .UserOrders}}
+          <div class="col-xs-12 col-sm-6 col-lg-4">
+            <table><tr><td class="name"><b>{{.SmartQty}}</b> {{.ProductName}}</td></tr></table>
+          </div>
+          {{end}}
+        </div>
+      </div>
+      {{end}}
+
+      <!-- Footer -->
+      {{if and .Past .UserOrders}}
+      <div class="footer" style="padding:12px;">
+        <a href="/member/invoice/{{.ID}}" class="btn btn-default" target="_blank" style="padding:10px 20px;font-size:1em;">
+          <i class="icon icon-print"></i> Ma facture
+        </a>
+      </div>
+      {{end}}
+
+    </div>
+    {{end}}
+
+    {{else}}
+    <div style="padding:32px;text-align:center;color:#999;">
+      Il n'y a pas de distribution prévue pour le moment.
+    </div>
+    {{end}}
+
+    <!-- Period navigation (bottom) -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;margin-bottom:16px;">
+      <a href="/home?offset=-1" class="btn btn-default btn-sm"><i class="icon icon-chevron-left"></i></a>
+      <span class="btn btn-default btn-sm" style="pointer-events:none;">{{.PeriodLabel}}</span>
+      <a href="/home?offset=1" class="btn btn-default btn-sm"><i class="icon icon-chevron-right"></i></a>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="col-md-4">
+    {{if .Group}}
+    <div class="article" style="margin-bottom:16px;">
+      {{if .Group.TxtHome}}<p>{{nl2br .Group.TxtHome}}</p>{{end}}
+    </div>
+    {{end}}
+    <hr style="margin: 12px 0;" />
+    <div>
+      <a href="/distribution/volunteersCalendar" class="btn btn-default btn-sm">
+        <i class="icon icon-calendar"></i> Calendrier des permanences
+      </a>
+    </div>
+  </div>
+
+{{end}}

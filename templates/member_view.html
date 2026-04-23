@@ -1,0 +1,98 @@
+{{define "content"}}
+<div class="row">
+  <div class="col-md-4">
+    <h2>Coordonnées</h2>
+    <div class="article">
+      <div style="font-weight:bold;font-size:120%;">{{.Member.FirstName}} {{.Member.LastName}}</div>
+      {{if .Member.Address1}}<p>{{deref .Member.Address1}}</p>{{end}}
+      {{if .Member.ZipCode}}{{deref .Member.ZipCode}}{{end}} {{if .Member.City}}{{deref .Member.City}}{{end}}
+      <br/>
+      {{if .Member.Phone}}<p><i class="icon icon-phone"></i> {{deref .Member.Phone}}</p>{{end}}
+      <p><i class="icon icon-mail"></i> <a href="mailto:{{.Member.Email}}">{{.Member.Email}}</a></p>
+      <hr/>
+      <p style="font-size:11px;">
+        Dernière connexion :
+        {{if .Member.LastLogin}}{{.Member.LastLogin.Format "02/01/2006 15:04"}}{{else}}<b>Jamais connecté</b>{{end}}<br/>
+        Inscrit le : {{.Member.CreatedAt.Format "02/01/2006"}}
+      </p>
+      <p>
+        <a href="/member/edit/{{.Member.ID}}" class="btn btn-default btn-sm"><i class="icon icon-edit"></i> Modifier</a>
+        <a href="/member/payments/{{.Member.ID}}" class="btn btn-default btn-sm"><i class="icon icon-payment-type"></i> Paiements</a>
+        <a href="/member/delete/{{.Member.ID}}" class="btn btn-danger btn-sm"
+          onclick="return confirm('Retirer ce membre du groupe ?')">
+          <i class="icon icon-delete"></i> Retirer
+        </a>
+      </p>
+      <p>
+        Solde :
+        {{if lt .MemberUG.Balance 0.0}}
+          <span style="color:#C00;font-weight:bold;">{{printf "%.2f" .MemberUG.Balance}} €</span>
+        {{else}}
+          <span style="color:#080;font-weight:bold;">{{printf "%.2f" .MemberUG.Balance}} €</span>
+        {{end}}
+        <a href="/transaction/insertPayment/{{.Member.ID}}" class="btn btn-default btn-xs" style="margin-left:8px;">
+          <i class="icon icon-plus"></i> Saisir paiement
+        </a>
+      </p>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    <h2>Commandes</h2>
+    <div class="article">
+
+      {{if .CatalogSubs}}
+      <h4><i class="icon icon-refresh"></i> Contrats AMAP</h4>
+      {{range .CatalogSubs}}
+      <h5>{{.CatalogName}}</h5>
+      <table class="table table-condensed table-bordered">
+        <tr class="greyhead">
+          <th>Période</th>
+          <th>Total</th>
+        </tr>
+        {{range .Subs}}
+        <tr>
+          <td>Du {{.StartDate}} au {{.EndDate}}</td>
+          <td>{{printf "%.2f" .Total}} €</td>
+        </tr>
+        {{end}}
+      </table>
+      {{end}}
+      <hr/>
+      {{end}}
+
+      {{if .DistribOrderSets}}
+      <h4><i class="icon icon-basket"></i> Commandes variables</h4>
+      {{range .DistribOrderSets}}
+      <h5>Distribution du {{.Date}}</h5>
+      <table class="table table-bordered table-condensed">
+        <tr class="greyhead">
+          <th>Qté</th><th>Produit</th><th>P.U.</th><th>Sous-total</th><th>Frais</th><th>Total</th><th>Catalogue</th><th>Payé</th>
+        </tr>
+        {{range .Orders}}
+        <tr>
+          <td>{{.SmartQty}}</td>
+          <td>{{.ProductName}}</td>
+          <td>{{printf "%.2f" .ProductPrice}} €</td>
+          <td>{{printf "%.2f" .SubTotal}} €</td>
+          <td>{{printf "%.2f" .Fees}} €</td>
+          <td>{{printf "%.2f" .Total}} €</td>
+          <td><a href="/contract/view/{{.CatalogID}}">{{.CatalogName}}</a></td>
+          <td>{{if .Paid}}<i class="icon icon-check"></i>{{else}}<i class="icon icon-delete"></i>{{end}}</td>
+        </tr>
+        {{end}}
+        <tr>
+          <td colspan="5"></td>
+          <td><b>{{printf "%.2f" .Total}} €</b></td>
+          <td colspan="2"></td>
+        </tr>
+      </table>
+      {{end}}
+      {{else}}
+      <p class="text-muted">Aucune commande variable.</p>
+      {{end}}
+
+    </div>
+  </div>
+</div>
+{{end}}

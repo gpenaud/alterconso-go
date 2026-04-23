@@ -1,0 +1,108 @@
+{{define "content"}}
+{{template "contractadmin_nav" .}}
+
+<h3 style="font-style:italic;">Modifier un produit</h3>
+
+<form method="POST" style="max-width:700px;">
+  <div style="display:flex;gap:24px;">
+    <div style="flex:1;">
+
+      <div class="form-group">
+        <label>Nom</label>
+        <input type="text" name="name" class="form-control" value="{{.Product.Name}}" required />
+      </div>
+
+      <div class="form-group">
+        <label>Référence</label>
+        <input type="text" name="ref" class="form-control" value="{{if .Product.Ref}}{{deref .Product.Ref}}{{end}}" />
+      </div>
+
+      <div class="form-group">
+        <label>Prix *</label>
+        <input type="number" name="price" step="0.01" class="form-control" value="{{printf "%.2f" .Product.Price}}" required />
+      </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <textarea name="description" class="form-control" rows="3">{{if .Product.Description}}{{deref .Product.Description}}{{end}}</textarea>
+      </div>
+
+    </div>
+
+    {{if .ImageURL}}
+    <div style="flex-shrink:0;">
+      <img src="{{.ImageURL}}" style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid #ddd;" />
+    </div>
+    {{end}}
+  </div>
+
+  <div class="form-group">
+    <label>Unité de base</label><br/>
+    {{$u := .Product.UnitType}}
+    <label style="font-weight:normal;"><input type="radio" name="unit_type" value="Unit"       {{if eq $u "Unit"}}checked{{end}} /> <b>Pièce</b></label><br/>
+    <label style="font-weight:normal;"><input type="radio" name="unit_type" value="Kilogram"   {{if eq $u "Kilogram"}}checked{{end}} /> <b>Kilogrammes</b></label><br/>
+    <label style="font-weight:normal;"><input type="radio" name="unit_type" value="Gram"       {{if eq $u "Gram"}}checked{{end}} /> <b>Grammes</b></label><br/>
+    <label style="font-weight:normal;"><input type="radio" name="unit_type" value="Litre"      {{if eq $u "Litre"}}checked{{end}} /> <b>Litres</b></label><br/>
+    <label style="font-weight:normal;"><input type="radio" name="unit_type" value="Centilitre" {{if eq $u "Centilitre"}}checked{{end}} /> <b>Centilitres</b></label><br/>
+    <label style="font-weight:normal;"><input type="radio" name="unit_type" value="Millilitre" {{if eq $u "Millilitre"}}checked{{end}} /> <b>Millilitres</b></label>
+  </div>
+
+  <div class="form-group">
+    <label>Quantité</label>
+    <input type="number" name="qt" step="0.001" class="form-control" style="max-width:200px;"
+      value="{{if .Product.Qt}}{{printf "%.3g" (derefFloat .Product.Qt)}}{{else}}1{{end}}" />
+  </div>
+
+  <div class="form-group">
+    <label style="font-weight:normal;">
+      <input type="checkbox" name="organic" value="1" {{if .Product.Organic}}checked{{end}} />
+      Agriculture biologique
+    </label>
+  </div>
+
+  <div class="form-group">
+    <label style="font-weight:normal;">
+      <input type="checkbox" name="variable_price" value="1" {{if .Product.VariablePrice}}checked{{end}} />
+      Prix variable selon pesée
+    </label>
+  </div>
+
+  <div class="form-group">
+    <label style="font-weight:normal;">
+      <input type="checkbox" name="multi_weight" value="1" {{if .Product.MultiWeight}}checked{{end}} />
+      Multi-pesée
+    </label>
+  </div>
+
+  <div class="form-group">
+    <label style="font-weight:normal;">
+      <input type="checkbox" name="has_float_qt" value="1" {{if .Product.HasFloatQt}}checked{{end}} />
+      Autoriser les quantités non entières
+    </label>
+  </div>
+
+  <div class="form-group">
+    <label style="font-weight:normal;">
+      <input type="checkbox" name="active" value="1" {{if .Product.Active}}checked{{end}} />
+      Disponible
+    </label>
+  </div>
+
+  <div class="form-group">
+    <label>TVA</label>
+    <select name="vat" class="form-control" style="max-width:200px;">
+      <option value="0"   {{if eq .Product.VAT 0.0}}selected{{end}}>0%</option>
+      <option value="2.1" {{if eq .Product.VAT 2.1}}selected{{end}}>2,1%</option>
+      <option value="5.5" {{if eq .Product.VAT 5.5}}selected{{end}}>5,5%</option>
+      <option value="10"  {{if eq .Product.VAT 10.0}}selected{{end}}>10%</option>
+      <option value="20"  {{if eq .Product.VAT 20.0}}selected{{end}}>20%</option>
+    </select>
+  </div>
+
+  <button type="submit" class="btn btn-primary">OK</button>
+  <a href="/contractAdmin/products/{{.Catalog.ID}}" class="btn btn-default" style="margin-left:8px;">Annuler</a>
+
+</form>
+
+{{template "contractadmin_close" .}}
+{{end}}

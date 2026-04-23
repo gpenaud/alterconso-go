@@ -1,0 +1,32 @@
+{{define "content"}}
+<div class="col-md-12">
+  <div class="article">
+    <h3>Producteurs participants — {{.Date}}</h3>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Catalogue</th>
+          <th>Producteur</th>
+          <th>Participation</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Catalogs}}
+        <tr>
+          <td><a href="/contractAdmin/view/{{.ID}}">{{.Name}}</a></td>
+          <td>{{.VendorName}}</td>
+          <td>
+            {{if .Active}}
+            <span class="label label-success">Participe</span>
+            {{else}}
+            <span class="label label-default">Non inscrit</span>
+            {{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    <a href="/distribution" class="btn btn-default btn-sm"><i class="icon icon-chevron-left"></i> Retour</a>
+  </div>
+</div>
+{{end}}

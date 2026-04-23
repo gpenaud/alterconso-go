@@ -1,0 +1,88 @@
+{{define "content"}}
+{{template "contractadmin_nav" .}}
+
+<h3 style="font-style:italic;">Produits</h3>
+
+<form method="POST" action="/contractAdmin/products/{{.Catalog.ID}}/bulkAction" id="productsForm">
+<input type="hidden" name="action" id="bulkActionInput" value="" />
+
+<div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;">
+  <a href="/contractAdmin/products/{{.Catalog.ID}}/new" class="btn btn-default btn-sm">
+    <i class="icon icon-plus"></i> Nouveau produit
+  </a>
+  <a href="/contractAdmin/products/{{.Catalog.ID}}/importcsv" class="btn btn-default btn-sm">
+    <i class="icon icon-file"></i> Import CSV
+  </a>
+  <button type="button" class="btn btn-default btn-sm" id="toggleCheckBtn" onclick="toggleAll()">Tout cocher</button>
+  <button type="button" class="btn btn-default btn-sm" onclick="submitBulk('activate')"><i class="icon icon-check"></i> Activer</button>
+  <button type="button" class="btn btn-default btn-sm" onclick="submitBulk('deactivate')"><i class="icon icon-delete"></i> Désactiver</button>
+</div>
+
+<table class="table" style="border-top:1px solid #ddd;">
+  <thead>
+    <tr style="background:#f5f5f5;">
+      <th style="width:32px;"></th>
+      <th style="width:80px;"></th>
+      <th style="width:160px;">Référence</th>
+      <th>Nom</th>
+      <th style="width:70px;">Prix</th>
+      <th style="width:70px;">Stock</th>
+      <th style="width:200px;"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .ProductViews}}
+    <tr style="border-top:1px solid #eee;{{if not .Active}}opacity:0.4;{{end}}">
+      <td style="vertical-align:middle;">
+        <input type="checkbox" class="product-check" name="product_ids[]" value="{{.ID}}" />
+      </td>
+      <td style="vertical-align:middle;padding:6px;">
+        <img src="{{.ImageURL}}" style="width:64px;height:64px;object-fit:cover;border-radius:4px;" />
+      </td>
+      <td style="vertical-align:middle;color:#aaa;font-size:0.88em;font-family:monospace;">{{.Ref}}</td>
+      <td style="vertical-align:middle;">
+        <b>{{.Name}}</b>
+        {{if .Organic}}<br/><img src="/img/AB.png" style="height:18px;margin-top:4px;" alt="Bio" />{{end}}
+      </td>
+      <td style="vertical-align:middle;white-space:nowrap;">{{printf "%.0f" .Price}} €</td>
+      <td style="vertical-align:middle;">
+        {{printf "%.0f" .Stock}}
+      </td>
+      <td style="vertical-align:middle;text-align:right;white-space:nowrap;">
+        <a href="/contractAdmin/products/{{$.Catalog.ID}}/edit/{{.ID}}" class="btn btn-default btn-sm">
+          <i class="icon icon-edit"></i> Modifier
+        </a>
+        <a href="/contractAdmin/products/{{$.Catalog.ID}}/photo/{{.ID}}" class="btn btn-default btn-sm">
+          <i class="icon icon-image"></i> Photo
+        </a>
+        <a href="/contractAdmin/products/{{$.Catalog.ID}}/delete/{{.ID}}"
+           class="btn btn-danger btn-sm"
+           onclick="return confirm('Supprimer ce produit ?')">
+          <i class="icon icon-delete"></i> Suppr.
+        </a>
+      </td>
+    </tr>
+    {{else}}
+    <tr><td colspan="7" class="text-muted" style="padding:16px;">Aucun produit pour ce catalogue.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+</form>
+
+<script>
+function toggleAll() {
+  var cbs = document.querySelectorAll('.product-check');
+  var allChecked = Array.from(cbs).every(cb => cb.checked);
+  cbs.forEach(cb => cb.checked = !allChecked);
+  document.getElementById('toggleCheckBtn').textContent = allChecked ? 'Tout cocher' : 'Tout décocher';
+}
+function submitBulk(action) {
+  var checked = document.querySelectorAll('.product-check:checked');
+  if (checked.length === 0) { alert('Sélectionnez au moins un produit.'); return; }
+  document.getElementById('bulkActionInput').value = action;
+  document.getElementById('productsForm').submit();
+}
+</script>
+
+{{template "contractadmin_close" .}}
+{{end}}

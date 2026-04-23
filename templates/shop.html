@@ -1,0 +1,10 @@
+{{define "content"}}
+<!-- React shop component mounts here -->
+<div id="shop" class="sticky"></div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    _.shop({{.MultiDistribID}});
+  });
+</script>
+{{end}}

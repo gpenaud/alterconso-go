@@ -1,0 +1,23 @@
+# Secrets et configuration locale
+config.yaml
+.env
+
+# Binaires
+alterconso
+alterconso-go
+
+# Go
+vendor/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Swagger générés
+docs/
+
+# Logs
+*.log
+
+# SQL import
+__import.sql

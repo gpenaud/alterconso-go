@@ -1,0 +1,193 @@
+{{define "content"}}
+<div class="row">
+  <div class="col-md-3">
+    <div class="article">
+      <ul class="nav nav-pills nav-stacked">
+        <li class="active"><a href="/amapadmin"><i class="icon icon-cog"></i> Paramètres</a></li>
+        <li><a href="/amapadmin/rights"><i class="icon icon-user"></i> Droits d'administration</a></li>
+        <li><a href="/distribution/volunteersParticipation"><i class="icon icon-users"></i> Participation bénévoles</a></li>
+        <li><a href="/member/waiting"><i class="icon icon-time"></i> Liste d'attente</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="col-md-9">
+    <div class="article">
+      <h3><i class="icon icon-cog"></i> Paramètres du groupe</h3>
+      {{if .Group}}
+      <form method="POST" action="/amapadmin/update" class="form-horizontal">
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Nom du groupe *</label>
+          <div class="col-sm-9">
+            <input type="text" name="name" class="form-control" value="{{.Group.Name}}" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Courte description</label>
+          <div class="col-sm-9">
+            <textarea name="txt_intro" class="form-control" rows="3">{{if .Group.TxtIntro}}{{deref .Group.TxtIntro}}{{end}}</textarea>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Texte sur la page d'accueil</label>
+          <div class="col-sm-9">
+            <textarea name="txt_home" class="form-control" rows="4">{{if .Group.TxtHome}}{{deref .Group.TxtHome}}{{end}}</textarea>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Texte listes d'émargement</label>
+          <div class="col-sm-9">
+            <textarea name="txt_distrib" class="form-control" rows="3">{{if .Group.TxtDistrib}}{{deref .Group.TxtDistrib}}{{end}}</textarea>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">URL du site</label>
+          <div class="col-sm-9">
+            <input type="text" name="ext_url" class="form-control" value="{{if .Group.ExtURL}}{{deref .Group.ExtURL}}{{end}}" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Options</label>
+          <div class="col-sm-9">
+            <label style="font-weight:normal;display:block;">
+              <input type="checkbox" name="flag_payments" value="1" {{if .Group.HasPayments}}checked{{end}} />
+              Gestion des paiements
+            </label>
+            <label style="font-weight:normal;display:block;">
+              <input type="checkbox" name="flag_network" value="1" {{if hasFlag .Group.Flags 8}}checked{{end}} />
+              Me lister dans l'annuaire des groupes Alterconso
+            </label>
+            <label style="font-weight:normal;display:block;">
+              <input type="checkbox" name="flag_custom_categories" value="1" {{if hasFlag .Group.Flags 16}}checked{{end}} />
+              Catégories personnalisées
+            </label>
+            <label style="font-weight:normal;display:block;">
+              <input type="checkbox" name="flag_hide_phone" value="1" {{if hasFlag .Group.Flags 32}}checked{{end}} />
+              Masquer le téléphone du responsable sur la page publique
+            </label>
+            <label style="font-weight:normal;display:block;">
+              <input type="checkbox" name="flag_phone_required" value="1" {{if hasFlag .Group.Flags 64}}checked{{end}} />
+              Saisie du numéro de téléphone obligatoire
+            </label>
+            <label style="font-weight:normal;display:block;">
+              <input type="checkbox" name="flag_address_required" value="1" {{if hasFlag .Group.Flags 128}}checked{{end}} />
+              Saisie de l'adresse obligatoire
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Mode de commande</label>
+          <div class="col-sm-9">
+            <label style="font-weight:normal;display:block;">
+              <input type="radio" name="flag_shop_mode" value="1" {{if .Group.HasShopMode}}checked{{end}} />
+              Mode Boutique
+            </label>
+            <label style="font-weight:normal;display:block;">
+              <input type="radio" name="flag_shop_mode" value="0" {{if not .Group.HasShopMode}}checked{{end}} />
+              Mode AMAP
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Nouvelles fonctionnalités</label>
+          <div class="col-sm-9">
+            <label style="font-weight:normal;display:block;">
+              <input type="checkbox" name="flag_new_shop" value="1" disabled checked />
+              Nouvelle boutique
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Type de groupe</label>
+          <div class="col-sm-9">
+            {{$gt := .Group.GroupType}}
+            <label style="font-weight:normal;display:block;"><input type="radio" name="group_type" value="Amap"           {{if eq $gt "Amap"}}checked{{end}} /> AMAP</label>
+            <label style="font-weight:normal;display:block;"><input type="radio" name="group_type" value="GroupedOrders"  {{if eq $gt "GroupedOrders"}}checked{{end}} /> Groupement d'achat</label>
+            <label style="font-weight:normal;display:block;"><input type="radio" name="group_type" value="ProducerDrive"  {{if eq $gt "ProducerDrive"}}checked{{end}} /> En direct d'un collectif de producteurs</label>
+            <label style="font-weight:normal;display:block;"><input type="radio" name="group_type" value="FarmShop"       {{if eq $gt "FarmShop"}}checked{{end}} /> En direct d'un producteur</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Réglage des inscriptions</label>
+          <div class="col-sm-9">
+            {{$ro := .Group.RegOption}}
+            <label style="font-weight:normal;display:block;"><input type="radio" name="reg_option" value="Closed"      {{if eq $ro "Closed"}}checked{{end}} /> Fermé : L'administrateur ajoute les nouveaux membres</label>
+            <label style="font-weight:normal;display:block;"><input type="radio" name="reg_option" value="WaitingList" {{if eq $ro "WaitingList"}}checked{{end}} /> Liste d'attente</label>
+            <label style="font-weight:normal;display:block;"><input type="radio" name="reg_option" value="Open"        {{if eq $ro "Open"}}checked{{end}} /> Ouvert : tout le monde peut s'inscrire</label>
+            <label style="font-weight:normal;display:block;"><input type="radio" name="reg_option" value="Full"        {{if eq $ro "Full"}}checked{{end}} /> Complet : Le groupe n'accepte plus de nouveaux membres</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Contact principal</label>
+          <div class="col-sm-9">
+            <select name="contact_id" class="form-control">
+              <option value="">— aucun —</option>
+              {{range .Admins}}
+              <option value="{{.ID}}" {{if $.Group.ContactID}}{{if eq (derefUint $.Group.ContactID) (printf "%d" .ID)}}selected{{end}}{{end}}>
+                {{.LastName}} {{.FirstName}}
+              </option>
+              {{end}}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Représentant légal</label>
+          <div class="col-sm-9">
+            <select name="legal_representative_id" class="form-control">
+              <option value="">— aucun —</option>
+              {{range .Admins}}
+              <option value="{{.ID}}" {{if $.Group.LegalRepresentativeID}}{{if eq (derefUint $.Group.LegalRepresentativeID) (printf "%d" .ID)}}selected{{end}}{{end}}>
+                {{.LastName}} {{.FirstName}}
+              </option>
+              {{end}}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="col-sm-offset-3 col-sm-9">
+            <button type="submit" class="btn btn-success">OK</button>
+          </div>
+        </div>
+
+      </form>
+      {{end}}
+    </div>
+
+    {{if .Places}}
+    <div class="article" style="margin-top:12px;">
+      <h4><i class="icon icon-home"></i> Lieux de distribution</h4>
+      <table class="table table-bordered table-condensed">
+        <thead>
+          <tr class="greyhead">
+            <th>Nom</th><th>Adresse</th><th>Ville</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Places}}
+          <tr>
+            <td><b>{{.Name}}</b></td>
+            <td>{{if .Address}}{{deref .Address}}{{end}}</td>
+            <td>{{if .City}}{{deref .City}}{{end}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{end}}
+
+  </div>
+</div>
+{{end}}

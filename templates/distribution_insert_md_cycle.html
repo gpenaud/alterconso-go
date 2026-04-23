@@ -1,0 +1,87 @@
+{{define "content"}}
+<div class="col-md-8">
+  <div class="article">
+    <h2 style="font-style:italic;"><b>Programmer un cycle de distribution</b></h2>
+    <form method="POST" style="margin-top:20px;">
+      <table class="table" style="max-width:700px;">
+        <tbody>
+          <tr>
+            <td style="text-align:right;font-weight:bold;width:280px;padding:12px 16px;">Fréquence</td>
+            <td style="padding:12px 16px;">
+              <label style="display:block;font-weight:normal;"><input type="radio" name="cycleType" value="Weekly" checked /> hebdomadaire</label>
+              <label style="display:block;font-weight:normal;"><input type="radio" name="cycleType" value="Monthly" /> mensuelle</label>
+              <label style="display:block;font-weight:normal;"><input type="radio" name="cycleType" value="BiWeekly" /> toutes les deux semaines</label>
+              <label style="display:block;font-weight:normal;"><input type="radio" name="cycleType" value="TriWeekly" /> toutes les 3 semaines</label>
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:right;font-weight:bold;padding:12px 16px;">Date de début de cycle</td>
+            <td style="padding:12px 16px;">
+              <input type="date" name="startDate" class="form-control" value="{{.DefaultStart}}" required />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:right;font-weight:bold;padding:12px 16px;">Date de fin de cycle</td>
+            <td style="padding:12px 16px;">
+              <input type="date" name="endDate" class="form-control" value="{{.DefaultEnd}}" required />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:right;font-weight:bold;padding:12px 16px;">Heure de début de distribution *</td>
+            <td style="padding:12px 16px;">
+              <input type="time" name="startHour" class="form-control" value="19:00" required />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:right;font-weight:bold;padding:12px 16px;">Heure de fin de distribution *</td>
+            <td style="padding:12px 16px;">
+              <input type="time" name="endHour" class="form-control" value="20:00" required />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:right;font-weight:bold;padding:12px 16px;">Ouverture de commande (nbre de jours avant distribution) *</td>
+            <td style="padding:12px 16px;">
+              <input type="number" name="daysBeforeOpen" class="form-control" value="10" min="0" required />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:right;font-weight:bold;padding:12px 16px;">Heure d'ouverture *</td>
+            <td style="padding:12px 16px;">
+              <input type="time" name="openingHour" class="form-control" value="08:00" required />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:right;font-weight:bold;padding:12px 16px;">Fermeture de commande (nbre de jours avant distribution) *</td>
+            <td style="padding:12px 16px;">
+              <input type="number" name="daysBeforeClose" class="form-control" value="2" min="0" required />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:right;font-weight:bold;padding:12px 16px;">Heure de fermeture *</td>
+            <td style="padding:12px 16px;">
+              <input type="time" name="closingHour" class="form-control" value="23:55" required />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:right;font-weight:bold;padding:12px 16px;">Lieu *</td>
+            <td style="padding:12px 16px;">
+              <select name="placeId" class="form-control" required>
+                {{range .Places}}
+                <option value="{{.ID}}">{{.Name}}</option>
+                {{end}}
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <td></td>
+            <td style="padding:12px 16px;">
+              <button type="submit" class="btn btn-success">OK</button>
+              <a href="/distribution" class="btn btn-default">Annuler</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </form>
+  </div>
+</div>
+{{end}}

@@ -1,0 +1,24 @@
+{{define "content"}}
+<div class="row">
+  <div class="col-md-9">
+    <div class="article">
+      <h2>{{.Vendor.Name}}</h2>
+      {{if .Vendor.Description}}<p>{{deref .Vendor.Description}}</p>{{end}}
+      {{if .Vendor.City}}<p><i class="icon icon-home"></i> {{deref .Vendor.City}}</p>{{end}}
+      {{if .Vendor.Phone}}<p><i class="icon icon-phone"></i> {{deref .Vendor.Phone}}</p>{{end}}
+      <p><i class="icon icon-mail"></i> <a href="mailto:{{.Vendor.Email}}">{{.Vendor.Email}}</a></p>
+      {{if .Vendor.Organic}}<span class="label label-success">Bio</span>{{end}}
+
+      {{if .Catalogs}}
+      <hr/>
+      <h4>Catalogues</h4>
+      <ul>
+        {{range .Catalogs}}
+        <li><a href="/contract/view/{{.ID}}">{{.Name}}</a></li>
+        {{end}}
+      </ul>
+      {{end}}
+    </div>
+  </div>
+</div>
+{{end}}

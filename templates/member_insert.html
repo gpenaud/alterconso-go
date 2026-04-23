@@ -1,0 +1,135 @@
+{{define "content"}}
+<div class="col-md-10 col-md-offset-1">
+  {{if .Error}}
+  <div class="alert alert-danger">{{.Error}}</div>
+  {{end}}
+  <form method="POST">
+
+    {{/* Helper macro: label + input row */}}
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;font-weight:bold;flex-shrink:0;">Prénom *</label>
+      <input type="text" name="firstName" class="form-control" required style="flex:1;" />
+    </div>
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;font-weight:bold;flex-shrink:0;">Nom *</label>
+      <input type="text" name="lastName" class="form-control" required style="flex:1;" />
+    </div>
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;font-weight:bold;flex-shrink:0;">Email *</label>
+      <input type="email" name="email" class="form-control" required style="flex:1;" />
+    </div>
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;flex-shrink:0;">Téléphone</label>
+      <input type="text" name="phone" class="form-control" style="flex:1;" />
+    </div>
+
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;flex-shrink:0;">Prénom conjoint</label>
+      <input type="text" name="firstName2" class="form-control" style="flex:1;" />
+    </div>
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;flex-shrink:0;">Nom conjoint</label>
+      <input type="text" name="lastName2" class="form-control" style="flex:1;" />
+    </div>
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;flex-shrink:0;">Email conjoint</label>
+      <input type="email" name="email2" class="form-control" style="flex:1;" />
+    </div>
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;flex-shrink:0;">Téléphone conjoint</label>
+      <input type="text" name="phone2" class="form-control" style="flex:1;" />
+    </div>
+
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;flex-shrink:0;">Adresse 1</label>
+      <input type="text" name="address1" class="form-control" style="flex:1;" />
+    </div>
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;flex-shrink:0;">Adresse 2</label>
+      <input type="text" name="address2" class="form-control" style="flex:1;" />
+    </div>
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;flex-shrink:0;">Code postal</label>
+      <input type="text" name="zipCode" class="form-control" style="flex:1;" />
+    </div>
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;flex-shrink:0;">Ville</label>
+      <input type="text" name="city" class="form-control" style="flex:1;" />
+    </div>
+
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;flex-shrink:0;">Date de naissance</label>
+      <input type="date" name="birthDate"
+        style="flex:1;border:none;border-bottom:1px solid #999;outline:none;padding:4px 2px;font-size:1em;" />
+    </div>
+
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;flex-shrink:0;">Nationalité</label>
+      <select name="nationality" class="form-control" style="flex:1;">
+        <option value="">-</option>
+        <option value="FR">France</option>
+        <option value="BE">Belgique</option>
+        <option value="CH">Suisse</option>
+        <option value="DE">Allemagne</option>
+        <option value="ES">Espagne</option>
+        <option value="IT">Italie</option>
+        <option value="GB">Royaume-Uni</option>
+        <option value="US">États-Unis</option>
+        <option value="CA">Canada</option>
+        <option value="MA">Maroc</option>
+        <option value="DZ">Algérie</option>
+        <option value="TN">Tunisie</option>
+        <option value="OTHER">Autre</option>
+      </select>
+    </div>
+
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;flex-shrink:0;">Pays de résidence</label>
+      <select name="countryOfResidence" class="form-control" style="flex:1;">
+        <option value="">-</option>
+        <option value="FR">France</option>
+        <option value="BE">Belgique</option>
+        <option value="CH">Suisse</option>
+        <option value="DE">Allemagne</option>
+        <option value="ES">Espagne</option>
+        <option value="IT">Italie</option>
+        <option value="GB">Royaume-Uni</option>
+        <option value="US">États-Unis</option>
+        <option value="CA">Canada</option>
+        <option value="MA">Maroc</option>
+        <option value="DZ">Algérie</option>
+        <option value="TN">Tunisie</option>
+        <option value="OTHER">Autre</option>
+      </select>
+    </div>
+
+    <div class="form-group row" style="display:flex;align-items:flex-start;margin-bottom:10px;">
+      <label style="width:220px;text-align:right;padding-right:16px;flex-shrink:0;padding-top:4px;">Options</label>
+      <div style="flex:1;">
+        <div><label style="font-weight:normal;">
+          <input type="checkbox" name="notif4h" value="1" />
+          Recevoir des notifications par email 4h avant les distributions
+        </label></div>
+        <div><label style="font-weight:normal;">
+          <input type="checkbox" name="notif24h" value="1" checked />
+          Recevoir des notifications par email 24h avant les distributions
+        </label></div>
+        <div><label style="font-weight:normal;">
+          <input type="checkbox" name="notifOpen" value="1" checked />
+          Recevoir des notifications par email pour l'ouverture des commandes
+        </label></div>
+      </div>
+    </div>
+
+    <div class="form-group row" style="display:flex;align-items:center;margin-bottom:20px;">
+      <label style="width:220px;text-align:right;padding-right:16px;flex-shrink:0;">Envoyer un mail au responsable du groupe</label>
+      <input type="checkbox" name="notifyManager" value="1" checked style="width:18px;height:18px;" />
+    </div>
+
+    <div style="display:flex;justify-content:flex-start;padding-left:220px;">
+      <button type="submit" class="btn btn-success">OK</button>
+    </div>
+
+  </form>
+</div>
+{{end}}

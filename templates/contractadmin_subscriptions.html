@@ -1,0 +1,30 @@
+{{define "content"}}
+{{template "contractadmin_nav" .}}
+
+<h3>Souscriptions AMAP</h3>
+{{if .Subscriptions}}
+<table class="table table-bordered table-hover">
+  <thead>
+    <tr class="greyhead">
+      <th>Membre</th><th>Période</th><th>Validée</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Subscriptions}}
+    <tr>
+      <td><a href="/member/view/{{.UserID}}">{{.UserName}}</a></td>
+      <td>Du {{.StartDate}} au {{.EndDate}}</td>
+      <td>{{if .Validated}}<i class="icon icon-check text-success"></i>{{else}}<i class="icon icon-alert text-danger"></i>{{end}}</td>
+      <td>
+        <a href="/member/view/{{.UserID}}" class="btn btn-xs btn-default">Voir membre</a>
+      </td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="text-muted">Aucune souscription.</p>
+{{end}}
+
+{{template "contractadmin_close" .}}
+{{end}}

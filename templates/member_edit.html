@@ -1,0 +1,119 @@
+{{define "content"}}
+<div class="row">
+  <div class="col-md-8 col-md-offset-2">
+    <div class="article">
+      <h3><i class="icon icon-edit"></i> Modifier le membre</h3>
+      <form method="POST" class="form-horizontal">
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Prénom *</label>
+          <div class="col-sm-9"><input type="text" name="firstName" class="form-control" value="{{.Member.FirstName}}" required /></div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Nom *</label>
+          <div class="col-sm-9"><input type="text" name="lastName" class="form-control" value="{{.Member.LastName}}" required /></div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Email</label>
+          <div class="col-sm-9"><input type="email" class="form-control" value="{{.Member.Email}}" readonly /></div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Téléphone</label>
+          <div class="col-sm-9"><input type="text" name="phone" class="form-control" value="{{if .Member.Phone}}{{deref .Member.Phone}}{{end}}" /></div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Prénom conjoint</label>
+          <div class="col-sm-9"><input type="text" name="firstName2" class="form-control" value="{{if .Member.FirstName2}}{{deref .Member.FirstName2}}{{end}}" /></div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Nom conjoint</label>
+          <div class="col-sm-9"><input type="text" name="lastName2" class="form-control" value="{{if .Member.LastName2}}{{deref .Member.LastName2}}{{end}}" /></div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Email conjoint</label>
+          <div class="col-sm-9"><input type="email" name="email2" class="form-control" value="{{if .Member.Email2}}{{deref .Member.Email2}}{{end}}" /></div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Téléphone conjoint</label>
+          <div class="col-sm-9"><input type="text" name="phone2" class="form-control" value="{{if .Member.Phone2}}{{deref .Member.Phone2}}{{end}}" /></div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Adresse 1</label>
+          <div class="col-sm-9"><input type="text" name="address1" class="form-control" value="{{if .Member.Address1}}{{deref .Member.Address1}}{{end}}" /></div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Adresse 2</label>
+          <div class="col-sm-9"><input type="text" name="address2" class="form-control" value="{{if .Member.Address2}}{{deref .Member.Address2}}{{end}}" /></div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Code postal</label>
+          <div class="col-sm-9"><input type="text" name="zipCode" class="form-control" value="{{if .Member.ZipCode}}{{deref .Member.ZipCode}}{{end}}" /></div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Ville</label>
+          <div class="col-sm-9"><input type="text" name="city" class="form-control" value="{{if .Member.City}}{{deref .Member.City}}{{end}}" /></div>
+        </div>
+
+        {{if .Member.BirthDate}}
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Date de naissance</label>
+          <div class="col-sm-9"><p class="form-control-static">{{frenchDate .Member.BirthDate}}</p></div>
+        </div>
+        {{end}}
+
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Nationalité</label>
+          <div class="col-sm-9">
+            <select name="nationality" class="form-control">
+              <option value="">—</option>
+              {{range .Nationalities}}
+              <option value="{{.Code}}" {{if $.Member.Nationality}}{{if eq (deref $.Member.Nationality) .Code}}selected{{end}}{{end}}>{{.Label}}</option>
+              {{end}}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Pays de résidence</label>
+          <div class="col-sm-9">
+            <select name="countryOfResidence" class="form-control">
+              <option value="">—</option>
+              {{range .Countries}}
+              <option value="{{.Code}}" {{if $.Member.CountryOfResidence}}{{if eq (deref $.Member.CountryOfResidence) .Code}}selected{{end}}{{end}}>{{.Label}}</option>
+              {{end}}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-3 control-label">Options</label>
+          <div class="col-sm-9">
+            <label style="font-weight:normal;display:block;">
+              <input type="checkbox" name="notif4h" value="1" {{if .Notif4h}}checked{{end}} />
+              Recevoir des notifications par email 4h avant les distributions
+            </label>
+            <label style="font-weight:normal;display:block;">
+              <input type="checkbox" name="notif24h" value="1" {{if .Notif24h}}checked{{end}} />
+              Recevoir des notifications par email 24h avant les distributions
+            </label>
+            <label style="font-weight:normal;display:block;">
+              <input type="checkbox" name="notifOpen" value="1" {{if .NotifOpen}}checked{{end}} />
+              Recevoir des notifications par email pour l'ouverture des commandes
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="col-sm-offset-3 col-sm-9">
+            <a href="/member/view/{{.Member.ID}}" class="btn btn-default">Annuler</a>
+            <button type="submit" class="btn btn-success">OK</button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
+{{end}}

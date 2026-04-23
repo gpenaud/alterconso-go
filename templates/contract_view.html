@@ -1,0 +1,184 @@
+{{define "content"}}
+{{$c := .Catalog}}
+  <div class="col-md-9">
+    <div class="article">
+      <h2 style="font-style:italic;">{{$c.Name}}</h2>
+
+      <div class="row" style="max-height:520px;overflow-y:auto;margin-bottom:8px;">
+        {{range .ProductViews}}
+        <div class="col-md-4" style="margin-bottom:16px;">
+          <div class="product-card" style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;"
+            data-id="{{.ID}}"
+            data-name="{{.Name}}"
+            data-price="{{printf "%.2f" .Price}}"
+            data-vat="{{printf "%.1f" .VAT}}"
+            data-qt="{{printf "%.0f" .Qt}}"
+            data-unit="{{.UnitType}}"
+            data-organic="{{if .Organic}}1{{else}}0{{end}}"
+            data-img="{{.ImageURL}}">
+            <div style="width:80px;height:80px;flex-shrink:0;border:1px solid #ddd;border-radius:4px;overflow:hidden;background:#f5f0e8;">
+              <img src="{{.ImageURL}}" style="width:100%;height:100%;object-fit:cover;" />
+            </div>
+            <div>
+              <a href="#" onclick="return false;" style="color:#5a8a00;font-style:italic;font-weight:bold;font-size:0.95em;">{{.Name}}</a>
+              <div style="font-size:1.05em;margin-top:4px;">{{printf "%.2f" .Price}} €</div>
+            </div>
+          </div>
+        </div>
+        {{else}}
+        <div class="col-md-12"><p class="text-muted">Aucun produit.</p></div>
+        {{end}}
+      </div>
+
+      <hr/>
+
+      <div class="row">
+        {{if .Vendor}}
+        <div class="col-md-5">
+          <h4 style="font-style:italic;"><i class="icon icon-farmer"></i> Producteur</h4>
+          <b>{{.Vendor.Name}}</b><br/>
+          {{if .Vendor.City}}<b>{{deref .Vendor.City}}</b>{{end}}
+          {{if .Vendor.ZipCode}} ({{deref .Vendor.ZipCode}}){{end}}
+          {{if .Vendor.Description}}<p style="font-size:13px;margin-top:6px;">{{deref .Vendor.Description}}</p>{{end}}
+        </div>
+        {{end}}
+        {{if .Contact}}
+        <div class="col-md-4">
+          <h4 style="font-style:italic;"><i class="icon icon-user"></i> Coordinateur</h4>
+          <p style="margin-bottom:4px;"><i class="icon icon-user"></i> {{.Contact.FirstName}} {{.Contact.LastName}}</p>
+          {{if .Contact.Email}}<p style="margin-bottom:4px;"><i class="icon icon-mail"></i> <a href="mailto:{{.Contact.Email}}" style="color:#5a8a00;">{{.Contact.Email}}</a></p>{{end}}
+          {{if .Contact.Phone}}<p style="margin-bottom:0;"><i class="icon icon-phone"></i> {{deref .Contact.Phone}}</p>{{end}}
+        </div>
+        {{end}}
+      </div>
+
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="article">
+      <h3 style="font-style:italic;">Prochaines distributions</h3>
+      {{if .Distribs}}
+      <ul style="padding-left:16px;">
+        {{range .Distribs}}
+        <li style="margin-bottom:6px;">
+          <b>{{.Date}}</b><br/>
+          <span style="color:#888;font-size:0.9em;">{{.Place}}</span>
+        </li>
+        {{end}}
+      </ul>
+      {{else}}
+      <p class="text-muted">Pas de distribution planifiée.</p>
+      {{end}}
+    </div>
+  </div>
+
+  <!-- Product detail modal -->
+  <div id="productModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:6px;max-width:600px;width:92%;padding:0;overflow:hidden;position:relative;box-shadow:0 8px 32px rgba(0,0,0,0.25);">
+      <!-- Close button -->
+      <button onclick="closeProductModal()" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:1.3em;color:#999;cursor:pointer;z-index:1;">&#x2715;</button>
+      <!-- Title -->
+      <div style="padding:18px 24px 12px;">
+        <h3 id="modal-name" style="margin:0;font-style:italic;font-size:1.3em;color:#222;padding-right:24px;"></h3>
+      </div>
+      <!-- Image + info row -->
+      <div style="display:flex;gap:0;padding:0 24px 16px;">
+        <!-- Image -->
+        <div style="width:180px;height:180px;flex-shrink:0;border:1px solid #ddd;border-radius:4px;overflow:hidden;background:#f5f0e8;margin-right:24px;">
+          <img id="modal-img" src="" style="width:100%;height:100%;object-fit:cover;display:block;" />
+        </div>
+        <!-- Info -->
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-start;">
+          <!-- Price + Qty side by side -->
+          <div style="display:flex;gap:32px;align-items:flex-start;margin-bottom:16px;">
+            <div>
+              <div id="modal-price" style="font-size:1.5em;font-weight:bold;color:#222;"></div>
+              <div id="modal-vat" style="font-size:0.85em;color:#999;margin-top:2px;"></div>
+            </div>
+            <div id="modal-qt-block" style="display:none;">
+              <div id="modal-qt" style="font-size:1.2em;font-weight:bold;color:#222;"></div>
+              <div id="modal-qt-unit" style="font-size:0.85em;color:#999;margin-top:2px;"></div>
+            </div>
+          </div>
+          <!-- Bio badge -->
+          <div id="modal-bio" style="display:none;">
+            <span style="color:#5a8a00;font-size:0.9em;"><i class="icon icon-leaf"></i> Agriculture biologique</span>
+          </div>
+        </div>
+      </div>
+      <!-- Vendor section -->
+      <div id="modal-vendor" style="display:none;padding:12px 24px;border-top:1px solid #eee;font-size:0.9em;">
+        <div id="modal-vendor-name" style="font-style:italic;color:#555;"></div>
+        <div id="modal-vendor-city" style="font-weight:bold;color:#333;margin-top:2px;"></div>
+      </div>
+      <!-- Footer -->
+      <div style="padding:10px 20px;text-align:right;border-top:1px solid #eee;">
+        <button onclick="closeProductModal()" class="btn btn-default"><i class="icon icon-cancel"></i> Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vendor data for modal -->
+  {{if .Vendor}}
+  <span id="vendor-name" style="display:none;">{{.Vendor.Name}}</span>
+  <span id="vendor-city" style="display:none;">{{if .Vendor.City}}{{deref .Vendor.City}}{{end}}{{if .Vendor.ZipCode}} ({{deref .Vendor.ZipCode}}){{end}}</span>
+  {{end}}
+
+  <script>
+  document.querySelectorAll('.product-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      var name    = card.dataset.name;
+      var price   = parseFloat(card.dataset.price);
+      var vat     = parseFloat(card.dataset.vat);
+      var qt      = parseFloat(card.dataset.qt);
+      var unit    = card.dataset.unit;
+      var organic = card.dataset.organic === '1';
+      var img     = card.dataset.img;
+
+      document.getElementById('modal-img').src = img;
+      document.getElementById('modal-name').textContent = name;
+      document.getElementById('modal-price').textContent = price.toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' € TTC';
+      document.getElementById('modal-vat').textContent = vat > 0 ? 'Dont ' + vat + '% de TVA' : '';
+
+      var qtBlock = document.getElementById('modal-qt-block');
+      if (qt > 0 && unit) {
+        var qtLabel = (qt >= 1000 && unit === 'g') ? (qt/1000).toLocaleString('fr-FR') + ' kg' : qt.toLocaleString('fr-FR') + ' ' + unit;
+        var perUnit = '';
+        if (unit === 'g' && qt > 0)  perUnit = (price / qt * 1000).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €/kg';
+        else if (unit === 'kg' && qt > 0) perUnit = (price / qt).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €/kg';
+        else if (unit === 'L'  && qt > 0) perUnit = (price / qt).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €/L';
+        document.getElementById('modal-qt').textContent = qtLabel;
+        document.getElementById('modal-qt-unit').textContent = perUnit;
+        qtBlock.style.display = '';
+      } else {
+        qtBlock.style.display = 'none';
+      }
+
+      document.getElementById('modal-bio').style.display = organic ? '' : 'none';
+
+      var vendorName = (document.getElementById('vendor-name') || {}).textContent || '';
+      var vendorCity = (document.getElementById('vendor-city') || {}).textContent || '';
+      var vendorDiv  = document.getElementById('modal-vendor');
+      if (vendorName) {
+        document.getElementById('modal-vendor-name').textContent = vendorName;
+        document.getElementById('modal-vendor-city').textContent = vendorCity;
+        vendorDiv.style.display = '';
+      } else {
+        vendorDiv.style.display = 'none';
+      }
+
+      var modal = document.getElementById('productModal');
+      modal.style.display = 'flex';
+    });
+  });
+
+  function closeProductModal() {
+    document.getElementById('productModal').style.display = 'none';
+  }
+
+  document.getElementById('productModal').addEventListener('click', function(e) {
+    if (e.target === this) closeProductModal();
+  });
+  </script>
+{{end}}

@@ -1,0 +1,59 @@
+{{define "content"}}
+<div class="col-md-12">
+  <div class="article" style="padding:0 0 8px 0;">
+    <h2 style="font-style:italic;padding:16px 20px 8px;"><b>Catalogues</b></h2>
+
+    {{if .AdminCatalogs}}
+    {{range .AdminCatalogs}}
+    <div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid #eee;{{if not .Active}}opacity:0.55;{{end}}">
+
+      <!-- Icons -->
+      <div style="display:flex;gap:6px;margin-right:14px;flex-shrink:0;">
+        <div style="width:44px;height:44px;background:#c8a97a;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+          <i class="icon icon-basket" style="color:#fff;font-size:1.4em;"></i>
+        </div>
+        <div style="width:44px;height:44px;background:#fff;border:2px solid #c8a97a;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+          <i class="icon icon-farmer" style="color:#c8a97a;font-size:1.4em;"></i>
+        </div>
+      </div>
+
+      <!-- Vendor name -->
+      <div style="width:180px;flex-shrink:0;color:{{if .Active}}#555{{else}}#aaa{{end}};font-size:0.95em;">
+        {{.VendorName}}
+      </div>
+
+      <!-- Catalog name -->
+      <div style="flex:1;font-weight:bold;color:{{if .Active}}#333{{else}}#aaa{{end}};">
+        {{.Name}}
+      </div>
+
+      <!-- Date range -->
+      <div style="width:220px;flex-shrink:0;font-size:0.9em;color:{{if .Active}}#555{{else}}#aaa{{end}};line-height:1.6;">
+        {{if .StartDate}}{{.StartDate}}<br/>{{end}}
+        {{if .EndDate}}{{.EndDate}}{{end}}
+      </div>
+
+      <!-- Actions -->
+      <div class="btn-group" style="flex-shrink:0;">
+        <a href="/contractAdmin/view/{{.ID}}" class="btn btn-default btn-sm">
+          <i class="icon icon-edit"></i> Gérer
+        </a>
+        <a href="/contractAdmin/duplicate/{{.ID}}" class="btn btn-default btn-sm">
+          <i class="icon icon-refresh"></i> Dupliquer
+        </a>
+        <a href="#" class="btn btn-default btn-sm" onclick="return confirm('Supprimer ce catalogue ?')">
+          <i class="icon icon-delete"></i> Suppr.
+        </a>
+      </div>
+
+    </div>
+    {{end}}
+    {{else}}
+    <div style="padding:32px;text-align:center;color:#999;">
+      Aucun catalogue pour ce groupe.
+    </div>
+    {{end}}
+
+  </div>
+</div>
+{{end}}

@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: alterconso-notifications
+  namespace: alterconso
+spec:
+  schedule: "*/15 * * * *"   # toutes les 15 minutes
+  concurrencyPolicy: Forbid   # pas de run concurrent si le précédent tourne encore
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2         # 2 retry en cas d'échec
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: alterconso-cron
+              image: ghcr.io/gpenaud/alterconso-go:latest  # à adapter
+              args: ["cron"]
+              envFrom:
+                - secretRef:
+                    name: alterconso-secrets   # même secret que le déploiement principal
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
