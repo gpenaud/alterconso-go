@@ -4,37 +4,48 @@
 <h3 style="font-style:italic;">Participation aux distributions</h3>
 
 <div style="display:flex;gap:8px;margin-bottom:16px;">
-  {{if .AllJoined}}
-  <form method="POST">
-    <input type="hidden" name="action" value="leaveAll" />
-    <button type="submit" class="btn btn-default btn-sm"><i class="icon icon-delete"></i> Ne plus participer à toutes les distributions</button>
+  <form method="POST" style="display:inline;">
+    <input type="hidden" name="action" value="{{if .AllJoined}}leaveAll{{else}}joinAll{{end}}" />
+    <button type="submit" class="btn btn-default btn-sm">
+      <i class="icon icon-{{if .AllJoined}}delete{{else}}check{{end}}"></i>
+      {{if .AllJoined}}Ne plus participer à toutes{{else}}Participer à toutes les distributions{{end}}
+    </button>
   </form>
-  {{else}}
-  <form method="POST">
-    <input type="hidden" name="action" value="joinAll" />
-    <button type="submit" class="btn btn-default btn-sm"><i class="icon icon-check"></i> Participer à toutes les distributions</button>
-  </form>
-  {{end}}
   {{if .ShowOld}}
-  <a href="/contractAdmin/distributions/{{.Catalog.ID}}" class="btn btn-default btn-sm"><i class="icon icon-calendar"></i> Distributions à venir</a>
+  <a href="/contractAdmin/distributions/{{.Catalog.ID}}" class="btn btn-default btn-sm">
+    <i class="icon icon-calendar"></i> Distributions à venir
+  </a>
   {{else}}
-  <a href="/contractAdmin/distributions/{{.Catalog.ID}}?old=1" class="btn btn-default btn-sm"><i class="icon icon-archive"></i> Anciennes distributions</a>
+  <a href="/contractAdmin/distributions/{{.Catalog.ID}}?old=1" class="btn btn-default btn-sm">
+    <i class="icon icon-archive"></i> Anciennes distributions
+  </a>
   {{end}}
 </div>
 
 {{if .CatalogDistribs}}
 <div style="border-top:1px solid #eee;">
   {{range .CatalogDistribs}}
-  <div style="display:flex;align-items:center;padding:12px 0;border-bottom:1px solid #eee;{{if .IsPast}}opacity:0.5;{{end}}">
-    <div style="flex:1;color:{{if .Participating}}#333{{else}}#aaa{{end}};">
-      {{if .Participating}}
-      Participe à la distribution du {{.DateLabel}}
-      {{else}}
-      Ne participe pas à la distribution<br/>du {{.DateLabel}}
-      {{end}}
+  <div style="display:flex;align-items:center;padding:12px 0;border-bottom:1px solid #eee;gap:12px;{{if .IsPast}}opacity:0.5;{{end}}">
+
+    <div style="flex:1;min-width:0;">
+      <div style="font-weight:bold;">{{.DateLabel}}</div>
+      <div style="color:#888;font-size:0.9em;">de {{.StartHour}} à {{.EndHour}}</div>
     </div>
-    <div style="flex-shrink:0;">
+
+    <div style="flex:1;color:#555;">{{.Place}}</div>
+
+    <div style="flex-shrink:0;display:flex;gap:4px;">
       {{if .Participating}}
+      <a href="/contractAdmin/ordersByDate/{{.Date}}/{{$.Group.ID}}"
+         class="btn btn-default btn-sm">
+        <i class="icon icon-basket"></i> Commandes
+        {{if .NbOrders}}<span class="badge" style="margin-left:4px;">{{.NbOrders}}</span>{{end}}
+      </a>
+      {{if $.IsGroupManager}}
+      <a href="/distribution/shift/{{.DistribID}}" class="btn btn-default btn-sm">
+        <i class="icon icon-calendar"></i> Dates
+      </a>
+      {{end}}
       <form method="POST" style="display:inline;">
         <input type="hidden" name="action" value="leave" />
         <input type="hidden" name="distrib_id" value="{{.DistribID}}" />
@@ -47,12 +58,13 @@
       <form method="POST" style="display:inline;">
         <input type="hidden" name="action" value="join" />
         <input type="hidden" name="multi_distrib_id" value="{{.MultiDistribID}}" />
-        <button type="submit" class="btn btn-default btn-sm">
+        <button type="submit" class="btn btn-success btn-sm">
           <i class="icon icon-plus"></i> Participer
         </button>
       </form>
       {{end}}
     </div>
+
   </div>
   {{end}}
 </div>

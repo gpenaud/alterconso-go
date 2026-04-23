@@ -3,85 +3,103 @@
 
 <h3 style="font-style:italic;">Modifier le catalogue "{{.Catalog.Name}}"</h3>
 
-<form method="POST" action="/contractAdmin/edit/{{.Catalog.ID}}" style="max-width:640px;">
+<form method="POST" action="/contractAdmin/edit/{{.Catalog.ID}}" class="form-horizontal" style="max-width:720px;">
 
   <div class="form-group">
-    <label>Nom du catalogue *</label>
-    <input type="text" name="name" class="form-control" value="{{.Catalog.Name}}" required />
+    <label class="col-sm-3 control-label">Nom du catalogue *</label>
+    <div class="col-sm-9">
+      <input type="text" name="name" class="form-control" value="{{.Catalog.Name}}" required />
+    </div>
   </div>
 
   <div class="form-group">
-    <label>Date de début</label>
-    <input type="text" name="start_date" class="form-control"
-      value="{{if .Catalog.StartDate}}{{.Catalog.StartDate.Format "2006-01-02"}}{{end}}"
-      placeholder="AAAA-MM-JJ" />
-    {{if .Catalog.StartDate}}<p class="help-block">{{frenchDate .Catalog.StartDate}}</p>{{end}}
+    <label class="col-sm-3 control-label">Date de début</label>
+    <div class="col-sm-9">
+      <input type="date" name="start_date" class="form-control"
+        value="{{if .Catalog.StartDate}}{{.Catalog.StartDate.Format "2006-01-02"}}{{end}}" />
+    </div>
   </div>
 
   <div class="form-group">
-    <label>Date de fin</label>
-    <input type="text" name="end_date" class="form-control"
-      value="{{if .Catalog.EndDate}}{{.Catalog.EndDate.Format "2006-01-02"}}{{end}}"
-      placeholder="AAAA-MM-JJ" />
-    {{if .Catalog.EndDate}}<p class="help-block">{{frenchDate .Catalog.EndDate}}</p>{{end}}
+    <label class="col-sm-3 control-label">Date de fin</label>
+    <div class="col-sm-9">
+      <input type="date" name="end_date" class="form-control"
+        value="{{if .Catalog.EndDate}}{{.Catalog.EndDate.Format "2006-01-02"}}{{end}}" />
+    </div>
   </div>
 
   <div class="form-group">
-    <label>Description</label>
-    <textarea name="description" class="form-control" rows="3"></textarea>
+    <label class="col-sm-3 control-label">Description</label>
+    <div class="col-sm-9">
+      <textarea name="description" class="form-control" rows="3"></textarea>
+    </div>
   </div>
 
   <div class="form-group">
-    <label>Options</label><br/>
-    <label style="font-weight:normal;">
-      <input type="checkbox" name="users_can_order" value="1" {{if hasFlag .Catalog.Flags 1}}checked{{end}} />
-      Les membres peuvent saisir leur commande en ligne
-    </label><br/>
-    <label style="font-weight:normal;">
-      <input type="checkbox" name="stock_management" value="1" {{if hasFlag .Catalog.Flags 2}}checked{{end}} />
-      Gestion des stocks
-    </label><br/>
-    <label style="font-weight:normal;">
-      <input type="checkbox" name="percentage_fees" value="1" {{if hasFlag .Catalog.Flags 8}}checked{{end}} />
-      Ajouter des frais au pourcentage de la commande
-    </label>
+    <label class="col-sm-3 control-label">Options</label>
+    <div class="col-sm-9">
+      <label style="font-weight:normal;">
+        <input type="checkbox" name="users_can_order" value="1" {{if hasFlag .Catalog.Flags 1}}checked{{end}} />
+        Les membres peuvent saisir leur commande en ligne
+      </label><br/>
+      <label style="font-weight:normal;">
+        <input type="checkbox" name="stock_management" value="1" {{if hasFlag .Catalog.Flags 2}}checked{{end}} />
+        Gestion des stocks
+      </label><br/>
+      <label style="font-weight:normal;">
+        <input type="checkbox" name="percentage_fees" value="1" {{if hasFlag .Catalog.Flags 8}}checked{{end}} />
+        Ajouter des frais au pourcentage de la commande
+      </label>
+    </div>
   </div>
 
   <div class="form-group">
-    <label>Pourcentage des frais</label>
-    <input type="text" name="percentage_fees_value" class="form-control"
-      value="{{if .Catalog.PercentageFees}}{{derefFloat .Catalog.PercentageFees}}{{end}}" />
+    <label class="col-sm-3 control-label">Pourcentage des frais</label>
+    <div class="col-sm-9">
+      <input type="text" name="percentage_fees_value" class="form-control"
+        value="{{if .Catalog.PercentageFees}}{{derefFloat .Catalog.PercentageFees}}{{end}}" />
+    </div>
   </div>
 
   <div class="form-group">
-    <label>Libellé pour ces frais</label>
-    <input type="text" name="percentage_name" class="form-control"
-      value="{{if .Catalog.PercentageName}}{{deref .Catalog.PercentageName}}{{end}}" />
+    <label class="col-sm-3 control-label">Libellé pour ces frais</label>
+    <div class="col-sm-9">
+      <input type="text" name="percentage_name" class="form-control"
+        value="{{if .Catalog.PercentageName}}{{deref .Catalog.PercentageName}}{{end}}" />
+    </div>
   </div>
 
   <div class="form-group">
-    <label>Contact *</label>
-    <select name="contact_id" class="form-control">
-      <option value="">— aucun —</option>
-      {{range .Members}}
-      <option value="{{.ID}}" {{if $.Catalog.ContactID}}{{if eq (derefUint $.Catalog.ContactID) (printf "%d" .ID)}}selected{{end}}{{end}}>
-        {{.LastName}} {{.FirstName}}
-      </option>
-      {{end}}
-    </select>
+    <label class="col-sm-3 control-label">Contact</label>
+    <div class="col-sm-9">
+      <select name="contact_id" class="form-control">
+        <option value="">— aucun —</option>
+        {{range .Members}}
+        <option value="{{.ID}}" {{if $.Catalog.ContactID}}{{if eq (derefUint $.Catalog.ContactID) (printf "%d" .ID)}}selected{{end}}{{end}}>
+          {{.LastName}} {{.FirstName}}
+        </option>
+        {{end}}
+      </select>
+    </div>
   </div>
 
   <div class="form-group">
-    <label>Producteur *</label>
-    <select name="vendor_id" class="form-control" required>
-      {{range .Vendors}}
-      <option value="{{.ID}}" {{if eq $.Catalog.VendorID .ID}}selected{{end}}>{{.Name}}</option>
-      {{end}}
-    </select>
+    <label class="col-sm-3 control-label">Producteur *</label>
+    <div class="col-sm-9">
+      <select name="vendor_id" class="form-control" required>
+        {{range .Vendors}}
+        <option value="{{.ID}}" {{if eq $.Catalog.VendorID .ID}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+    </div>
   </div>
 
-  <button type="submit" class="btn btn-primary">OK</button>
-  <a href="/contractAdmin/view/{{.Catalog.ID}}" class="btn btn-default" style="margin-left:8px;">Annuler</a>
+  <div class="form-group">
+    <div class="col-sm-offset-3 col-sm-9">
+      <button type="submit" class="btn btn-primary">OK</button>
+      <a href="/contractAdmin/view/{{.Catalog.ID}}" class="btn btn-default" style="margin-left:8px;">Annuler</a>
+    </div>
+  </div>
 
 </form>
 

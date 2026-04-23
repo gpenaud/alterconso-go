@@ -41,10 +41,11 @@
       </td>
       <td style="vertical-align:middle;color:#aaa;font-size:0.88em;font-family:monospace;">{{.Ref}}</td>
       <td style="vertical-align:middle;">
-        <b>{{.Name}}</b>
-        {{if .Organic}}<br/><img src="/img/AB.png" style="height:18px;margin-top:4px;" alt="Bio" />{{end}}
+        <b>{{.Name}}</b> <span style="color:#888;font-size:0.9em;">{{.QtLabel}}</span>
+        {{if .Organic}}<br/><img src="/img/AB.png" style="height:16px;margin-top:2px;" alt="Bio" />{{end}}
+        {{if .VariablePrice}}<br/><span style="color:#888;font-size:0.85em;">prix variable</span>{{end}}
       </td>
-      <td style="vertical-align:middle;white-space:nowrap;">{{printf "%.0f" .Price}} €</td>
+      <td style="vertical-align:middle;white-space:nowrap;">{{.PriceLabel}}</td>
       <td style="vertical-align:middle;">
         {{printf "%.0f" .Stock}}
       </td>

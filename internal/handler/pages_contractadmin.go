@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"encoding/csv"
 	"fmt"
+	"io"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,21 +14,58 @@ import (
 	"github.com/gpenaud/alterconso/internal/model"
 )
 
+// floatToFractionStr convertit un float en chaîne fractionnaire lisible.
+func floatToFractionStr(v float64) string {
+	if v == math.Trunc(v) {
+		return fmt.Sprintf("%g", v)
+	}
+	for _, d := range []int{2, 3, 4, 8, 16} {
+		n := v * float64(d)
+		r := math.Round(n)
+		if math.Abs(n-r) < 0.0001 {
+			num := int(r)
+			g := gcdInt(num, d)
+			return fmt.Sprintf("%d/%d", num/g, d/g)
+		}
+	}
+	return fmt.Sprintf("%g", v)
+}
+
+// parseFraction parse "1/4", "1/2", "0.5", "1" etc. en float64.
+func parseFraction(s string) (float64, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, fmt.Errorf("empty")
+	}
+	if parts := strings.SplitN(s, "/", 2); len(parts) == 2 {
+		num, err1 := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+		den, err2 := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+		if err1 != nil || err2 != nil || den == 0 {
+			return 0, fmt.Errorf("invalid fraction")
+		}
+		return num / den, nil
+	}
+	return strconv.ParseFloat(s, 64)
+}
+
 // ---- Common contractAdmin data ----
 
 type ProductView struct {
-	ID           uint
-	Name         string
-	Ref          string
-	UnitType     string
-	Price        float64
-	VAT          float64
-	Qt           float64 // 0 means not set
-	Organic      bool
-	Active       bool
-	Stock        float64
-	StockTracked bool
-	ImageURL     string
+	ID            uint
+	Name          string
+	Ref           string
+	UnitType      string
+	QtLabel       string // ex: "1 pièce", "500 g"
+	Price         float64
+	PriceLabel    string // ex: "2,20 €"
+	VAT           float64
+	Qt            float64
+	Organic       bool
+	VariablePrice bool
+	Active        bool
+	Stock         float64
+	StockTracked  bool
+	ImageURL      string
 }
 
 type CatalogAdminData struct {
@@ -207,6 +247,7 @@ func (h *PagesHandler) CatalogAdminProductsPage(c *gin.Context) {
 
 	unitLabels := map[model.UnitType]string{
 		model.UnitTypePiece:      "pièce",
+		"Unit":                   "pièce", // alias legacy
 		model.UnitTypeKilogram:   "kg",
 		model.UnitTypeGram:       "g",
 		model.UnitTypeLitre:      "L",
@@ -226,17 +267,30 @@ func (h *PagesHandler) CatalogAdminProductsPage(c *gin.Context) {
 		if p.Stock != nil {
 			stock = *p.Stock
 		}
+		unit := unitLabels[p.UnitType]
+		if unit == "" {
+			unit = "pièce"
+		}
+		qt := 1.0
+		if p.Qt != nil && *p.Qt != 0 {
+			qt = *p.Qt
+		}
+		qtLabel := fmt.Sprintf("%s %s", floatToFractionStr(qt), unit)
+		priceLabel := fmt.Sprintf("%.2f €", p.Price)
 		data.ProductViews = append(data.ProductViews, ProductView{
-			ID:           p.ID,
-			Name:         p.Name,
-			Ref:          ref,
-			UnitType:     unitLabels[p.UnitType],
-			Price:        p.Price,
-			Organic:      p.Organic,
-			Active:       p.Active,
-			Stock:        stock,
-			StockTracked: p.StockTracked,
-			ImageURL:     imgURL,
+			ID:            p.ID,
+			Name:          p.Name,
+			Ref:           ref,
+			UnitType:      unit,
+			QtLabel:       qtLabel,
+			Price:         p.Price,
+			PriceLabel:    priceLabel,
+			Organic:       p.Organic,
+			VariablePrice: p.VariablePrice,
+			Active:        p.Active,
+			Stock:         stock,
+			StockTracked:  p.StockTracked,
+			ImageURL:      imgURL,
 		})
 	}
 
@@ -292,7 +346,7 @@ func (h *PagesHandler) CatalogAdminProductEditPage(c *gin.Context) {
 		if v, err := strconv.ParseFloat(c.PostForm("vat"), 64); err == nil {
 			product.VAT = v
 		}
-		if qt, err := strconv.ParseFloat(c.PostForm("qt"), 64); err == nil {
+		if qt, err := parseFraction(c.PostForm("qt")); err == nil {
 			product.Qt = &qt
 		} else {
 			product.Qt = nil
@@ -354,34 +408,47 @@ func (h *PagesHandler) CatalogAdminProductPhotoPage(c *gin.Context) {
 		return
 	}
 
+	imgURL := ""
+	if product.Image != nil {
+		imgURL = FileURL(product.Image.ID, h.cfg.Key, product.Image.Name)
+	}
+
 	if c.Request.Method == "POST" {
 		file, err := c.FormFile("photo")
 		if err != nil {
-			c.String(http.StatusBadRequest, "fichier manquant")
+			c.String(http.StatusBadRequest, "fichier manquant: %v", err)
 			return
 		}
 		f, err := file.Open()
 		if err != nil {
-			c.String(http.StatusInternalServerError, "erreur lecture fichier")
+			c.String(http.StatusInternalServerError, "erreur ouverture fichier: %v", err)
 			return
 		}
 		defer f.Close()
-		buf := make([]byte, file.Size)
-		f.Read(buf)
+		buf, err := io.ReadAll(f)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "erreur lecture fichier: %v", err)
+			return
+		}
 
 		dbFile := model.File{Name: file.Filename, Data: buf}
-		h.db.Create(&dbFile)
+		if err := h.db.Create(&dbFile).Error; err != nil {
+			c.String(http.StatusInternalServerError, "erreur sauvegarde fichier: %v", err)
+			return
+		}
 
-		// Supprimer l'ancienne image si elle existe
 		if product.ImageID != nil {
 			h.db.Delete(&model.File{}, *product.ImageID)
 		}
-		h.db.Model(&model.Product{}).Where("id = ?", product.ID).Update("imageId", dbFile.ID)
+		if err := h.db.Model(&model.Product{}).Where("id = ?", product.ID).Update("imageId", dbFile.ID).Error; err != nil {
+			c.String(http.StatusInternalServerError, "erreur mise à jour produit: %v", err)
+			return
+		}
 		c.Redirect(http.StatusFound, fmt.Sprintf("/contractAdmin/products/%d", data.Catalog.ID))
 		return
 	}
 
-	editData := ProductEditData{CatalogAdminData: data, Product: product}
+	editData := ProductEditData{CatalogAdminData: data, Product: product, ImageURL: imgURL}
 	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_product_photo.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -515,8 +582,8 @@ func (h *PagesHandler) CatalogAdminDistributionsPage(c *gin.Context) {
 		isPast := md.DistribStartDate.Before(now)
 		dateLabel := frDays[md.DistribStartDate.Weekday()] + " " +
 			strconv.Itoa(md.DistribStartDate.Day()) + " " +
-			frMonths[md.DistribStartDate.Month()] + " à " +
-			md.DistribStartDate.Format("15:04")
+			frMonths[md.DistribStartDate.Month()] + " " +
+			strconv.Itoa(md.DistribStartDate.Year())
 
 		var nb int64
 		if participating {
@@ -526,7 +593,7 @@ func (h *PagesHandler) CatalogAdminDistributionsPage(c *gin.Context) {
 		entry := CatalogDistribEntry{
 			MultiDistribID: md.ID,
 			DateLabel:      dateLabel,
-			Date:           md.DistribStartDate.Format("02/01/2006"),
+			Date:           md.DistribStartDate.Format("2006-01-02"),
 			StartHour:      md.DistribStartDate.Format("15:04"),
 			EndHour:        md.DistribEndDate.Format("15:04"),
 			Place:          md.Place.Name,
@@ -688,8 +755,8 @@ func (h *PagesHandler) CatalogAdminSubscriptionsPage(c *gin.Context) {
 
 func (h *PagesHandler) loadCatalogAdmin(c *gin.Context, tab string) (CatalogAdminData, bool) {
 	pd := h.buildPageData(c)
-	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
-		c.String(http.StatusForbidden, "accès refusé")
+	if pd.User == nil || pd.Group == nil || (!pd.IsGroupManager && !pd.HasCatalogAdmin) {
+		c.Redirect(http.StatusFound, "/home")
 		return CatalogAdminData{}, false
 	}
 
@@ -705,8 +772,8 @@ func (h *PagesHandler) loadCatalogAdmin(c *gin.Context, tab string) (CatalogAdmi
 		return CatalogAdminData{}, false
 	}
 
-	if catalog.GroupID != pd.Group.ID {
-		c.String(http.StatusForbidden, "accès refusé")
+	if catalog.GroupID != pd.Group.ID || !pd.CanManageCatalog(catalog.ID) {
+		c.Redirect(http.StatusFound, "/contractAdmin")
 		return CatalogAdminData{}, false
 	}
 
@@ -1372,6 +1439,141 @@ func (h *PagesHandler) CatalogAdminDuplicatePage(c *gin.Context) {
 		return
 	}
 	if err := t.ExecuteTemplate(c.Writer, "base", dp); err != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err)
+	}
+}
+
+// ---- GET+POST /contractAdmin/products/:id/importcsv ----
+
+type ImportCSVData struct {
+	CatalogAdminData
+	Errors  []string
+	Imported int
+}
+
+func (h *PagesHandler) CatalogAdminProductsImportCSV(c *gin.Context) {
+	data, ok := h.loadCatalogAdmin(c, "products")
+	if !ok {
+		return
+	}
+
+	d := ImportCSVData{CatalogAdminData: data}
+	d.Title = "Import CSV — " + data.Catalog.Name
+
+	if c.Request.Method == http.MethodPost {
+		file, err := c.FormFile("csv")
+		if err != nil {
+			d.Errors = append(d.Errors, "Fichier manquant.")
+			renderImportCSV(c, d)
+			return
+		}
+		f, err := file.Open()
+		if err != nil {
+			d.Errors = append(d.Errors, "Impossible d'ouvrir le fichier.")
+			renderImportCSV(c, d)
+			return
+		}
+		defer f.Close()
+
+		r := csv.NewReader(f)
+		r.Comma = ';'
+		r.TrimLeadingSpace = true
+
+		records, err := r.ReadAll()
+		if err != nil {
+			d.Errors = append(d.Errors, "Erreur de lecture CSV : "+err.Error())
+			renderImportCSV(c, d)
+			return
+		}
+
+		// Ignorer la ligne d'en-tête si présente
+		start := 0
+		if len(records) > 0 {
+			if strings.ToLower(strings.TrimSpace(records[0][0])) == "nom" {
+				start = 1
+			}
+		}
+
+		unitMap := map[string]model.UnitType{
+			"piece": model.UnitTypePiece, "pièce": model.UnitTypePiece, "Piece": model.UnitTypePiece,
+			"kg": model.UnitTypeKilogram, "kilogram": model.UnitTypeKilogram,
+			"g": model.UnitTypeGram, "gram": model.UnitTypeGram,
+			"l": model.UnitTypeLitre, "litre": model.UnitTypeLitre,
+			"cl": model.UnitTypeCentilitre, "centilitre": model.UnitTypeCentilitre,
+			"ml": model.UnitTypeMillilitre, "millilitre": model.UnitTypeMillilitre,
+		}
+
+		for i, row := range records[start:] {
+			line := start + i + 1
+			if len(row) < 2 {
+				d.Errors = append(d.Errors, fmt.Sprintf("Ligne %d ignorée (trop peu de colonnes)", line))
+				continue
+			}
+			name := strings.TrimSpace(row[0])
+			if name == "" {
+				continue
+			}
+			price, err := strconv.ParseFloat(strings.ReplaceAll(strings.TrimSpace(row[1]), ",", "."), 64)
+			if err != nil {
+				d.Errors = append(d.Errors, fmt.Sprintf("Ligne %d : prix invalide (%s)", line, row[1]))
+				continue
+			}
+
+			p := model.Product{
+				Name:      name,
+				Price:     price,
+				CatalogID: data.Catalog.ID,
+				Active:    true,
+				UnitType:  model.UnitTypePiece,
+			}
+
+			col := func(idx int) string {
+				if idx < len(row) {
+					return strings.TrimSpace(row[idx])
+				}
+				return ""
+			}
+
+			if ref := col(2); ref != "" {
+				p.Ref = &ref
+			}
+			if qt, err := parseFraction(col(3)); err == nil && qt != 0 {
+				p.Qt = &qt
+			}
+			if u, ok := unitMap[strings.ToLower(col(4))]; ok {
+				p.UnitType = u
+			}
+			if desc := col(5); desc != "" {
+				p.Description = &desc
+			}
+			p.Organic = col(6) == "1" || strings.ToLower(col(6)) == "oui"
+			if vat, err := strconv.ParseFloat(strings.ReplaceAll(col(7), ",", "."), 64); err == nil {
+				p.VAT = vat
+			}
+
+			if err := h.db.Create(&p).Error; err != nil {
+				d.Errors = append(d.Errors, fmt.Sprintf("Ligne %d : erreur DB : %v", line, err))
+				continue
+			}
+			d.Imported++
+		}
+
+		if d.Imported > 0 && len(d.Errors) == 0 {
+			c.Redirect(http.StatusFound, fmt.Sprintf("/contractAdmin/products/%d", data.Catalog.ID))
+			return
+		}
+	}
+
+	renderImportCSV(c, d)
+}
+
+func renderImportCSV(c *gin.Context, data ImportCSVData) {
+	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_products_importcsv.html")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err)
+		return
+	}
+	if err := t.ExecuteTemplate(c.Writer, "base", data); err != nil {
 		c.String(http.StatusInternalServerError, "render error: %v", err)
 	}
 }

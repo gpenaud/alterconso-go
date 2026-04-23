@@ -5,7 +5,7 @@ import "time"
 // File : fichier binaire stocké en base (images produits, vendeurs, etc.)
 type File struct {
 	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	CreatedAt time.Time `json:"cdate"`
+	CreatedAt time.Time `gorm:"column:cdate;autoCreateTime" json:"cdate"`
 	Name      string    `gorm:"size:255" json:"name"`
 	Data      []byte    `gorm:"type:mediumblob" json:"-"`
 }

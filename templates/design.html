@@ -68,23 +68,33 @@
           <a href="/amap"><i class="icon icon-farmer"></i> Producteurs</a>
         </li>
       </ul>
-      {{if .IsGroupManager}}
+      {{if or .IsGroupManager .HasMembership .HasMessages .HasCatalogAdmin}}
       <ul class="nav navbar-nav navbar-right admin">
+        {{if or .IsGroupManager .HasMembership}}
         <li {{if eq .Category "member"}}class="active"{{end}}>
           <a href="/member"><i class="icon icon-users"></i> Membres</a>
         </li>
+        {{end}}
+        {{if .IsGroupManager}}
         <li {{if eq .Category "distribution"}}class="active"{{end}}>
           <a href="/distribution"><i class="icon icon-calendar"></i> Distributions</a>
         </li>
+        {{end}}
+        {{if or .IsGroupManager .HasCatalogAdmin}}
         <li {{if eq .Category "contract"}}class="active"{{end}}>
           <a href="/contractAdmin"><i class="icon icon-book"></i> Catalogues</a>
         </li>
+        {{end}}
+        {{if or .IsGroupManager .HasMessages}}
         <li {{if eq .Category "messages"}}class="active"{{end}}>
           <a href="/messages"><i class="icon icon-mail"></i> Messagerie</a>
         </li>
+        {{end}}
+        {{if .IsGroupManager}}
         <li {{if eq .Category "amapadmin"}}class="active"{{end}}>
           <a href="/amapadmin"><i class="icon icon-cog"></i> Paramètres</a>
         </li>
+        {{end}}
       </ul>
       {{end}}
     </div>

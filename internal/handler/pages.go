@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"html/template"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -60,6 +61,25 @@ var funcMap = template.FuncMap{
 		days := [...]string{"Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"}
 		return fmt.Sprintf("%s %d %s %d", days[t.Weekday()], t.Day(), months[t.Month()], t.Year())
 	},
+	"qtDisplay": func(f *float64) string {
+		if f == nil {
+			return ""
+		}
+		v := *f
+		if v == math.Trunc(v) {
+			return fmt.Sprintf("%g", v)
+		}
+		for _, d := range []int{2, 3, 4, 8, 16} {
+			n := v * float64(d)
+			r := math.Round(n)
+			if math.Abs(n-r) < 0.0001 {
+				num := int(r)
+				g := gcdInt(num, d)
+				return fmt.Sprintf("%d/%d", num/g, d/g)
+			}
+		}
+		return fmt.Sprintf("%g", v)
+	},
 	"paginateInts": paginateInts,
 	"seq": func(start, end int) []int {
 		s := make([]int, 0, end-start+1)
@@ -89,7 +109,11 @@ type PageData struct {
 	Title          string
 	User           *model.User
 	Group          *model.Group
-	IsGroupManager bool
+	IsGroupManager    bool
+	HasMembership     bool
+	HasMessages       bool
+	HasCatalogAdmin   bool
+	AllowedCatalogIDs []uint // nil = tous (GroupManager ou CatalogAdmin global)
 	Category       string
 	Breadcrumb     []BreadcrumbItem
 	Flash          string
@@ -133,6 +157,25 @@ type PageData struct {
 	TotalPages       int
 	CurrentPage      int
 	WaitingListCount int
+}
+
+// CanManageCatalog retourne true si l'utilisateur peut gérer le catalogue donné.
+func (pd *PageData) CanManageCatalog(catalogID uint) bool {
+	if pd.IsGroupManager {
+		return true
+	}
+	if !pd.HasCatalogAdmin {
+		return false
+	}
+	if pd.AllowedCatalogIDs == nil {
+		return true // droit global sur tous les catalogues
+	}
+	for _, id := range pd.AllowedCatalogIDs {
+		if id == catalogID {
+			return true
+		}
+	}
+	return false
 }
 
 type MultiDistribView struct {
@@ -272,6 +315,25 @@ func (h *PagesHandler) buildPageData(c *gin.Context) PageData {
 		if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, claims.GroupID).
 			First(&ug).Error; err == nil {
 			pd.IsGroupManager = ug.IsGroupManager()
+			pd.HasMembership = ug.HasRight(model.RightMembership)
+			pd.HasMessages = ug.HasRight(model.RightMessages)
+			pd.HasCatalogAdmin = ug.HasRight(model.RightCatalogAdmin)
+			if pd.HasCatalogAdmin && !pd.IsGroupManager {
+				for _, r := range ug.GetRights() {
+					if r.Right == model.RightCatalogAdmin {
+						if len(r.Params) == 0 {
+							// droit global sur tous les catalogues
+							pd.AllowedCatalogIDs = nil
+						} else {
+							for _, p := range r.Params {
+								if id, err := strconv.ParseUint(p, 10, 64); err == nil {
+									pd.AllowedCatalogIDs = append(pd.AllowedCatalogIDs, uint(id))
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 	return pd
@@ -827,8 +889,8 @@ func (h *PagesHandler) MemberPage(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
-	if !pd.IsGroupManager {
-		c.String(http.StatusForbidden, "accès refusé")
+	if !pd.IsGroupManager && !pd.HasMembership {
+		c.Redirect(http.StatusFound, "/home")
 		return
 	}
 
@@ -1153,8 +1215,8 @@ func (h *PagesHandler) ContractAdminPage(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
-	if !pd.IsGroupManager {
-		c.String(http.StatusForbidden, "accès refusé")
+	if !pd.IsGroupManager && !pd.HasCatalogAdmin {
+		c.Redirect(http.StatusFound, "/home")
 		return
 	}
 
@@ -1178,6 +1240,9 @@ func (h *PagesHandler) ContractAdminPage(c *gin.Context) {
 		Find(&catalogs)
 
 	for _, cat := range catalogs {
+		if !pd.CanManageCatalog(cat.ID) {
+			continue
+		}
 		startStr := ""
 		endStr := ""
 		if cat.StartDate != nil {

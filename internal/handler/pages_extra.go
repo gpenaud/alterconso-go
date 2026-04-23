@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -498,6 +499,33 @@ type RightUserView struct {
 	Rights []string
 }
 
+func formatRightLabels(rights []model.UserRight, catalogMap map[string]string) []string {
+	var labels []string
+	for _, r := range rights {
+		switch r.Right {
+		case model.RightGroupAdmin:
+			labels = append(labels, "Administrateur de groupe")
+		case model.RightMembership:
+			labels = append(labels, "Gestion des membres")
+		case model.RightMessages:
+			labels = append(labels, "Messages")
+		case model.RightCatalogAdmin:
+			if len(r.Params) == 0 {
+				labels = append(labels, "Gestion des catalogues : tous")
+			} else {
+				for _, p := range r.Params {
+					name, ok := catalogMap[p]
+					if !ok {
+						name = "Catalogue #" + p
+					}
+					labels = append(labels, "Catalogue : "+name)
+				}
+			}
+		}
+	}
+	return labels
+}
+
 func (h *PagesHandler) AmapAdminRightsPage(c *gin.Context) {
 	base, ok := h.buildAmapAdminData(c, "rights")
 	if !ok {
@@ -506,6 +534,13 @@ func (h *PagesHandler) AmapAdminRightsPage(c *gin.Context) {
 
 	var ugs []model.UserGroup
 	h.db.Where("group_id = ?", base.Group.ID).Preload("User").Find(&ugs)
+
+	var catalogs []model.Catalog
+	h.db.Where("group_id = ?", base.Group.ID).Find(&catalogs)
+	catalogMap := make(map[string]string, len(catalogs))
+	for _, cat := range catalogs {
+		catalogMap[strconv.FormatUint(uint64(cat.ID), 10)] = cat.Name
+	}
 
 	data := AmapAdminRightsData{AmapAdminPageData: base}
 	data.Title = "Droits d'administration"
@@ -518,9 +553,7 @@ func (h *PagesHandler) AmapAdminRightsPage(c *gin.Context) {
 		rv := RightUserView{
 			UserID: ug.UserID,
 			Name:   ug.User.FirstName + " " + ug.User.LastName,
-		}
-		for _, r := range rights {
-			rv.Rights = append(rv.Rights, string(r.Right))
+			Rights: formatRightLabels(rights, catalogMap),
 		}
 		data.RightUsers = append(data.RightUsers, rv)
 	}
@@ -591,6 +624,225 @@ func (h *PagesHandler) GroupCreatePage(c *gin.Context) {
 	}
 }
 
+// ---- GET+POST /amapadmin/rights/add ----
+
+type AmapAdminRightsAddData struct {
+	AmapAdminPageData
+	Members  []model.UserGroup
+	Catalogs []model.Catalog
+	Error    string
+	Success  string
+}
+
+func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
+	base, ok := h.buildAmapAdminData(c, "rights")
+	if !ok {
+		return
+	}
+
+	data := AmapAdminRightsAddData{AmapAdminPageData: base}
+	data.Title = "Ajouter un droit"
+
+	h.db.Where("group_id = ?", base.Group.ID).Preload("User").Find(&data.Members)
+	h.db.Where("group_id = ?", base.Group.ID).Find(&data.Catalogs)
+
+	if c.Request.Method == http.MethodPost {
+		userIDStr := c.PostForm("user_id")
+		userID, err := strconv.ParseUint(userIDStr, 10, 64)
+		if err != nil || userID == 0 {
+			data.Error = "Veuillez sélectionner un membre."
+			renderRightsAdd(c, data)
+			return
+		}
+
+		var ug model.UserGroup
+		if err := h.db.Where("user_id = ? AND group_id = ?", userID, base.Group.ID).First(&ug).Error; err != nil {
+			data.Error = "Membre introuvable."
+			renderRightsAdd(c, data)
+			return
+		}
+
+		rights := ug.GetRights()
+
+		addRight := func(r model.Right, params ...string) {
+			for _, existing := range rights {
+				if existing.Right == r {
+					if len(params) == 0 {
+						return
+					}
+					for _, p := range existing.Params {
+						for _, want := range params {
+							if p == want {
+								return
+							}
+						}
+					}
+					// ajouter le param à l'entrée existante
+					for i, existing2 := range rights {
+						if existing2.Right == r {
+							rights[i].Params = append(rights[i].Params, params...)
+							return
+						}
+					}
+				}
+			}
+			rights = append(rights, model.UserRight{Right: r, Params: func() []string {
+				if len(params) == 0 {
+					return nil
+				}
+				return params
+			}()})
+		}
+
+		if c.PostForm("right_group_admin") != "" {
+			addRight(model.RightGroupAdmin)
+		}
+		if c.PostForm("right_membership") != "" {
+			addRight(model.RightMembership)
+		}
+		if c.PostForm("right_messages") != "" {
+			addRight(model.RightMessages)
+		}
+		if c.PostForm("catalog_all") != "" {
+			addRight(model.RightCatalogAdmin)
+		} else {
+			for _, cat := range data.Catalogs {
+				if c.PostForm(fmt.Sprintf("catalog_%d", cat.ID)) != "" {
+					addRight(model.RightCatalogAdmin, strconv.FormatUint(uint64(cat.ID), 10))
+				}
+			}
+		}
+
+		import_json, _ := json.Marshal(rights)
+		ug.Rights = string(import_json)
+		h.db.Save(&ug)
+		c.Redirect(http.StatusFound, "/amapadmin/rights")
+		return
+	}
+
+	renderRightsAdd(c, data)
+}
+
+func renderRightsAdd(c *gin.Context, data AmapAdminRightsAddData) {
+	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin_rights_add.html")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err)
+		return
+	}
+	if err := t.ExecuteTemplate(c.Writer, "base", data); err != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err)
+	}
+}
+
+// ---- GET+POST /amapadmin/rights/edit/:userId ----
+
+type AmapAdminRightsEditData struct {
+	AmapAdminPageData
+	Member         model.UserGroup
+	Catalogs       []model.Catalog
+	HasGroupAdmin  bool
+	HasMembership  bool
+	HasMessages    bool
+	HasAllCatalogs bool
+	CatalogRights  map[string]bool
+	Error          string
+}
+
+func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
+	base, ok := h.buildAmapAdminData(c, "rights")
+	if !ok {
+		return
+	}
+
+	userID, err := strconv.ParseUint(c.Param("userId"), 10, 64)
+	if err != nil {
+		c.String(http.StatusBadRequest, "id invalide")
+		return
+	}
+
+	var ug model.UserGroup
+	if err := h.db.Where("user_id = ? AND group_id = ?", userID, base.Group.ID).Preload("User").First(&ug).Error; err != nil {
+		c.String(http.StatusNotFound, "membre introuvable")
+		return
+	}
+
+	var catalogs []model.Catalog
+	h.db.Where("group_id = ?", base.Group.ID).Find(&catalogs)
+
+	data := AmapAdminRightsEditData{
+		AmapAdminPageData: base,
+		Member:            ug,
+		Catalogs:          catalogs,
+		CatalogRights:     make(map[string]bool),
+	}
+	data.Title = "Modifier les droits"
+
+	fillRightsState := func(rights []model.UserRight) {
+		for _, r := range rights {
+			switch r.Right {
+			case model.RightGroupAdmin:
+				data.HasGroupAdmin = true
+			case model.RightMembership:
+				data.HasMembership = true
+			case model.RightMessages:
+				data.HasMessages = true
+			case model.RightCatalogAdmin:
+				if len(r.Params) == 0 {
+					data.HasAllCatalogs = true
+				} else {
+					for _, p := range r.Params {
+						data.CatalogRights[p] = true
+					}
+				}
+			}
+		}
+	}
+
+	if c.Request.Method == http.MethodPost {
+		var rights []model.UserRight
+		if c.PostForm("right_group_admin") != "" {
+			rights = append(rights, model.UserRight{Right: model.RightGroupAdmin})
+		}
+		if c.PostForm("right_membership") != "" {
+			rights = append(rights, model.UserRight{Right: model.RightMembership})
+		}
+		if c.PostForm("right_messages") != "" {
+			rights = append(rights, model.UserRight{Right: model.RightMessages})
+		}
+		if c.PostForm("catalog_all") != "" {
+			rights = append(rights, model.UserRight{Right: model.RightCatalogAdmin})
+		} else {
+			var catParams []string
+			for _, cat := range catalogs {
+				key := strconv.FormatUint(uint64(cat.ID), 10)
+				if c.PostForm("catalog_"+key) != "" {
+					catParams = append(catParams, key)
+				}
+			}
+			if len(catParams) > 0 {
+				rights = append(rights, model.UserRight{Right: model.RightCatalogAdmin, Params: catParams})
+			}
+		}
+
+		encoded, _ := json.Marshal(rights)
+		ug.Rights = string(encoded)
+		h.db.Save(&ug)
+		c.Redirect(http.StatusFound, "/amapadmin/rights")
+		return
+	}
+
+	fillRightsState(ug.GetRights())
+
+	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin_rights_edit.html")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err)
+		return
+	}
+	if err := t.ExecuteTemplate(c.Writer, "base", data); err != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err)
+	}
+}
+
 // ---- AmapAdmin shared page data ----
 
 type AmapAdminPageData struct {
@@ -601,7 +853,7 @@ type AmapAdminPageData struct {
 func (h *PagesHandler) buildAmapAdminData(c *gin.Context, tab string) (AmapAdminPageData, bool) {
 	pd := h.buildPageData(c)
 	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
-		c.String(http.StatusForbidden, "accès refusé")
+		c.Redirect(http.StatusFound, "/home")
 		return AmapAdminPageData{}, false
 	}
 	pd.Category = "amapadmin"

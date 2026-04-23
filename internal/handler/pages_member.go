@@ -68,8 +68,8 @@ type MemberBalanceEntry struct {
 
 func (h *PagesHandler) MemberViewPage(c *gin.Context) {
 	pd := h.buildPageData(c)
-	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
-		c.String(http.StatusForbidden, "accès refusé")
+	if pd.User == nil || pd.Group == nil || (!pd.IsGroupManager && !pd.HasMembership) {
+		c.Redirect(http.StatusFound, "/home")
 		return
 	}
 
@@ -204,8 +204,8 @@ type OperationView struct {
 
 func (h *PagesHandler) MemberPaymentsPage(c *gin.Context) {
 	pd := h.buildPageData(c)
-	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
-		c.String(http.StatusForbidden, "accès refusé")
+	if pd.User == nil || pd.Group == nil || (!pd.IsGroupManager && !pd.HasMembership) {
+		c.Redirect(http.StatusFound, "/home")
 		return
 	}
 
@@ -289,8 +289,8 @@ func (h *PagesHandler) MemberPaymentsPage(c *gin.Context) {
 
 func (h *PagesHandler) MemberBalancePage(c *gin.Context) {
 	pd := h.buildPageData(c)
-	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
-		c.String(http.StatusForbidden, "accès refusé")
+	if pd.User == nil || pd.Group == nil || (!pd.IsGroupManager && !pd.HasMembership) {
+		c.Redirect(http.StatusFound, "/home")
 		return
 	}
 
@@ -328,8 +328,8 @@ func (h *PagesHandler) MemberBalancePage(c *gin.Context) {
 
 func (h *PagesHandler) MemberInsertPage(c *gin.Context) {
 	pd := h.buildPageData(c)
-	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
-		c.String(http.StatusForbidden, "accès refusé")
+	if pd.User == nil || pd.Group == nil || (!pd.IsGroupManager && !pd.HasMembership) {
+		c.Redirect(http.StatusFound, "/home")
 		return
 	}
 
@@ -463,8 +463,8 @@ var countries = []CountryOption{
 
 func (h *PagesHandler) MemberEditPage(c *gin.Context) {
 	pd := h.buildPageData(c)
-	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
-		c.String(http.StatusForbidden, "accès refusé")
+	if pd.User == nil || pd.Group == nil || (!pd.IsGroupManager && !pd.HasMembership) {
+		c.Redirect(http.StatusFound, "/home")
 		return
 	}
 
@@ -545,8 +545,8 @@ func (h *PagesHandler) MemberEditPage(c *gin.Context) {
 
 func (h *PagesHandler) MemberDelete(c *gin.Context) {
 	pd := h.buildPageData(c)
-	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
-		c.String(http.StatusForbidden, "accès refusé")
+	if pd.User == nil || pd.Group == nil || (!pd.IsGroupManager && !pd.HasMembership) {
+		c.Redirect(http.StatusFound, "/home")
 		return
 	}
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -568,8 +568,8 @@ type InsertPaymentData struct {
 
 func (h *PagesHandler) InsertPaymentPage(c *gin.Context) {
 	pd := h.buildPageData(c)
-	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
-		c.String(http.StatusForbidden, "accès refusé")
+	if pd.User == nil || pd.Group == nil || (!pd.IsGroupManager && !pd.HasMembership) {
+		c.Redirect(http.StatusFound, "/home")
 		return
 	}
 
@@ -886,6 +886,13 @@ func (h *PagesHandler) VendorViewPage(c *gin.Context) {
 }
 
 // ---- helpers ----
+
+func gcdInt(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return a
+}
 
 func paginateInts(total, page, perPage int) (pages []int) {
 	n := total / perPage

@@ -1,0 +1,50 @@
+{{define "content"}}
+{{template "amapadmin_nav" .}}
+<div class="col-md-9">
+  <h2>Modifier les droits — {{.Member.User.FirstName}} {{.Member.User.LastName}}</h2>
+  <div class="article">
+    {{if .Error}}<div class="alert alert-danger">{{.Error}}</div>{{end}}
+
+    <form method="POST" action="/amapadmin/rights/edit/{{.Member.UserID}}">
+      <div class="form-group">
+        <label>Droits</label><br>
+        <label style="font-weight:normal;">
+          <input type="checkbox" name="right_group_admin" {{if .HasGroupAdmin}}checked{{end}}> Administrateur de groupe
+        </label><br>
+        <label style="font-weight:normal;">
+          <input type="checkbox" name="right_membership" {{if .HasMembership}}checked{{end}}> Gestion des membres
+        </label><br>
+        <label style="font-weight:normal;">
+          <input type="checkbox" name="right_messages" {{if .HasMessages}}checked{{end}}> Messages
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label>Gestion des catalogues</label><br>
+        <label style="font-weight:normal;">
+          <input type="checkbox" name="catalog_all" id="catalog_all" {{if .HasAllCatalogs}}checked{{end}} onclick="toggleCatalogs(this)"> Tous les catalogues
+        </label><br>
+        {{range .Catalogs}}
+        {{$id := printf "%d" .ID}}
+        <label style="font-weight:normal;" class="catalog-item">
+          <input type="checkbox" name="catalog_{{.ID}}" {{if index $.CatalogRights $id}}checked{{end}} {{if $.HasAllCatalogs}}disabled{{end}}> {{.Name}}
+        </label><br>
+        {{end}}
+      </div>
+
+      <hr>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+      <a href="/amapadmin/rights" class="btn btn-default" style="margin-left:8px;">Annuler</a>
+    </form>
+  </div>
+</div>
+
+<script>
+function toggleCatalogs(cb) {
+  document.querySelectorAll('.catalog-item input').forEach(function(el) {
+    el.disabled = cb.checked;
+    if (cb.checked) el.checked = false;
+  });
+}
+</script>
+{{end}}

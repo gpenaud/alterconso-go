@@ -65,7 +65,7 @@ func (h *MemberHandler) Add(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "not a member"})
 		return
 	}
-	if !ug.IsGroupManager() {
+	if !ug.IsGroupManager() && !ug.HasRight(model.RightMembership) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "only group admins can add members"})
 		return
 	}
@@ -146,7 +146,7 @@ func (h *MemberHandler) Remove(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "not a member"})
 		return
 	}
-	if !ug.IsGroupManager() {
+	if !ug.IsGroupManager() && !ug.HasRight(model.RightMembership) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "only group admins can remove members"})
 		return
 	}
