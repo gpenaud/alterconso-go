@@ -36,7 +36,7 @@
 
     <div style="flex-shrink:0;display:flex;gap:4px;">
       {{if .Participating}}
-      <a href="/contractAdmin/ordersByDate/{{.Date}}/{{$.Group.ID}}"
+      <a href="/contractAdmin/ordersByDate/{{.Date}}/{{$.Group.ID}}?catalog={{$.Catalog.ID}}"
          class="btn btn-default btn-sm">
         <i class="icon icon-basket"></i> Commandes
         {{if .NbOrders}}<span class="badge" style="margin-left:4px;">{{.NbOrders}}</span>{{end}}

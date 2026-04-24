@@ -104,6 +104,12 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/contractAdmin/distributions/:id", pageAuth, pagesH.CatalogAdminDistributionsPage)
 	r.POST("/contractAdmin/distributions/:id", pageAuth, pagesH.CatalogAdminDistributionsPage)
 	r.GET("/contractAdmin/orders/:id", pageAuth, pagesH.CatalogAdminOrdersPage)
+	r.GET("/contractAdmin/selectDistrib/:id", pageAuth, pagesH.CatalogAdminSelectDistribPage)
+	r.GET("/contractAdmin/memberOrder/:multiDistribId/:userId", pageAuth, pagesH.MemberOrderPage)
+	r.POST("/contractAdmin/memberOrder/:multiDistribId/:userId", pageAuth, pagesH.MemberOrderPage)
+	r.POST("/contractAdmin/updateOrders/:multiDistribId/:userId", pageAuth, pagesH.UpdateMemberOrders)
+	r.POST("/contractAdmin/addProduct/:multiDistribId/:userId", pageAuth, pagesH.AddMemberProduct)
+	r.POST("/contractAdmin/deleteOrder/:multiDistribId/:userId/:orderId", pageAuth, pagesH.DeleteMemberOrder)
 	r.GET("/contractAdmin/subscriptions/:id", pageAuth, pagesH.CatalogAdminSubscriptionsPage)
 
 	// Distribution admin

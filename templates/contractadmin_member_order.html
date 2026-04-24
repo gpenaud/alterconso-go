@@ -1,0 +1,67 @@
+{{define "content"}}
+<style>
+.product-card {
+  width:100%;text-align:left;background:#fff;
+  border:1px solid #e0e0e0;border-radius:8px;
+  padding:12px;display:flex;align-items:center;gap:12px;
+  cursor:pointer;transition:box-shadow 0.15s;
+}
+.product-card:hover { box-shadow:0 2px 8px rgba(0,0,0,0.12); }
+.product-card.has-order { box-shadow:0 0 0 2px #7aaa3a; }
+.product-card.has-order:hover { box-shadow:0 0 0 2px #7aaa3a, 0 2px 8px rgba(0,0,0,0.12); }
+.product-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:28px; }
+.product-img-placeholder {
+  width:72px;height:72px;background:#f0f0f0;border-radius:6px;
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;
+}
+</style>
+
+<div class="row"><div class="col-md-10 col-md-offset-1">
+
+<div style="padding:24px 0 8px;">
+  <h3 style="font-style:italic;margin:0 0 16px;">Choisissez le produit à ajouter</h3>
+  <a href="javascript:history.back()" class="btn btn-default btn-sm" style="margin-bottom:16px;">
+    <i class="icon icon-chevron-left"></i> RETOUR
+  </a>
+</div>
+
+<hr style="margin:0 0 20px;" />
+
+{{range .Catalogs}}
+<h5 style="color:#888;text-transform:uppercase;letter-spacing:0.08em;font-size:0.85em;margin:0 0 12px;">{{.CatalogName}}</h5>
+<div class="product-grid">
+  {{range .Products}}
+  <form method="POST" action="/contractAdmin/memberOrder/{{$.MultiDistribID}}/{{$.MemberID}}?back={{$.BackURL}}">
+    <input type="hidden" name="qty_{{.DistribID}}_{{.ProductID}}"
+      value="{{if .HasOrder}}{{printf "%g" .Quantity}}{{else}}1{{end}}" />
+    <button type="submit" class="product-card{{if .HasOrder}} has-order{{end}}">
+      {{if .ImageURL}}
+      <img src="{{.ImageURL}}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;flex-shrink:0;" />
+      {{else}}
+      <div class="product-img-placeholder">
+        <i class="icon icon-products" style="color:#ccc;font-size:1.6em;"></i>
+      </div>
+      {{end}}
+      <div style="min-width:0;">
+        <div style="font-size:1em;{{if not .HasOrder}}color:#888;{{end}}">
+          {{.Name}} <b>{{.QtLabel}}</b>
+        </div>
+        <div style="font-size:0.95em;color:#888;margin-top:3px;">{{printf "%.1f" .Price}} €</div>
+        {{if .HasOrder}}
+        <div style="font-size:0.82em;color:#7aaa3a;margin-top:3px;">
+          <i class="icon icon-check"></i> {{printf "%g" .Quantity}} en commande
+        </div>
+        {{end}}
+      </div>
+    </button>
+  </form>
+  {{end}}
+</div>
+{{end}}
+
+{{if not .Catalogs}}
+<p class="text-muted">Aucun produit disponible pour cette distribution.</p>
+{{end}}
+
+</div></div>
+{{end}}

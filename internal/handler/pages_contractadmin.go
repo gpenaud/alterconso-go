@@ -1125,15 +1125,40 @@ var _ = time.Now
 
 // ---- /contractAdmin/ordersByDate/:date/:groupId ----
 
+type AvailableProduct struct {
+	DistribID uint
+	ProductID uint
+	Name      string
+	QtLabel   string
+	Price     float64
+	ImageURL  string
+}
+
+type AvailableCatalog struct {
+	CatalogName string
+	Products    []AvailableProduct
+}
+
 type OrdersByDateData struct {
 	PageData
-	Date         string
-	DayLabel     string
-	Place        string
-	MultiDistribID uint
-	DateISO      string
-	Members      []OrdersByDateMember
-	GrandTotal   float64
+	Catalog           model.Catalog
+	ActiveTab         string
+	Date              string
+	DayLabel          string
+	StartHour         string
+	Place             string
+	MultiDistribID    uint
+	DateISO           string
+	BackURL           string
+	Members           []OrdersByDateMember
+	GrandTotal        float64
+	GroupMembers      []MemberSelectItem
+	AvailableCatalogs []AvailableCatalog
+}
+
+type MemberSelectItem struct {
+	UserID   uint
+	FullName string
 }
 
 type OrdersByDateMember struct {
@@ -1145,15 +1170,22 @@ type OrdersByDateMember struct {
 }
 
 type OrdersByDateLine struct {
+	OrderID     uint
 	CatalogName string
 	CatalogID   uint
+	DistribID   uint
+	ProductID   uint
 	Qty         string
+	Quantity    float64
 	Ref         string
 	ProductName string
+	UnitLabel   string
 	UnitPrice   float64
 	SubTotal    float64
 	Fees        float64
 	Total       float64
+	Paid        bool
+	ImageURL    string
 }
 
 var frDays = [7]string{"Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"}
@@ -1185,6 +1217,7 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 		pd.Group.ID, dayStart, dayEnd).
 		Preload("Place").
 		Preload("Distributions.Catalog.Vendor").
+		Preload("Distributions.Catalog.Products.Image").
 		First(&md).Error; err != nil {
 		c.String(http.StatusNotFound, "aucune distribution ce jour")
 		return
@@ -1203,7 +1236,7 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 		var orders []model.UserOrder
 		h.db.Where("distribution_id = ?", distrib.ID).
 			Preload("User").
-			Preload("Product").
+			Preload("Product.Image").
 			Order("user_id").
 			Find(&orders)
 
@@ -1219,16 +1252,27 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 			if o.Product.Ref != nil {
 				ref = *o.Product.Ref
 			}
+			imgURL := ""
+			if o.Product.Image != nil {
+				imgURL = FileURL(o.Product.Image.ID, h.cfg.Key, o.Product.Image.Name)
+			}
 			line := OrdersByDateLine{
+				OrderID:     o.ID,
 				CatalogName: distrib.Catalog.Name,
 				CatalogID:   distrib.CatalogID,
+				DistribID:   distrib.ID,
+				ProductID:   o.ProductID,
 				Qty:         formatQty(o.Quantity, o.Product.UnitType),
+				Quantity:    o.Quantity,
 				Ref:         ref,
 				ProductName: o.Product.Name,
+				UnitLabel:   unitLabelFor(o.Product.UnitType),
 				UnitPrice:   o.ProductPrice,
 				SubTotal:    o.Quantity * o.ProductPrice,
 				Fees:        fees,
 				Total:       o.TotalPrice(),
+				Paid:        o.Paid,
+				ImageURL:    imgURL,
 			}
 			userMap[o.UserID].lines = append(userMap[o.UserID].lines, line)
 			userMap[o.UserID].total += o.TotalPrice()
@@ -1237,13 +1281,24 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 
 	data := OrdersByDateData{
 		PageData:       pd,
+		ActiveTab:      "orders",
 		Date:           date.Format("02/01/2006"),
 		DayLabel:       frDayLabel(date),
+		StartHour:      md.DistribStartDate.Format("15:04"),
 		DateISO:        dateStr,
 		MultiDistribID: md.ID,
+		BackURL:        c.Request.URL.RequestURI(),
 	}
 	if md.Place.ID != 0 {
 		data.Place = md.Place.Name
+	}
+	if catalogIDStr := c.Query("catalog"); catalogIDStr != "" {
+		if cid, err := strconv.ParseUint(catalogIDStr, 10, 64); err == nil {
+			var cat model.Catalog
+			if h.db.Preload("Vendor").First(&cat, cid).Error == nil {
+				data.Catalog = cat
+			}
+		}
 	}
 	data.Title = "Distribution du " + data.DayLabel
 	data.Category = "distribution"
@@ -1261,7 +1316,44 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 		data.GrandTotal += u.total
 	}
 
-	t, err2 := loadTemplates("base.html", "design.html", "contractadmin_orders_by_date.html")
+	for _, distrib := range md.Distributions {
+		ac := AvailableCatalog{CatalogName: distrib.Catalog.Name}
+		for _, p := range distrib.Catalog.Products {
+			if !p.Active {
+				continue
+			}
+			imgURL := ""
+			if p.Image != nil {
+				imgURL = FileURL(p.Image.ID, h.cfg.Key, p.Image.Name)
+			}
+			qt := 1.0
+			if p.Qt != nil {
+				qt = *p.Qt
+			}
+			ac.Products = append(ac.Products, AvailableProduct{
+				DistribID: distrib.ID,
+				ProductID: p.ID,
+				Name:      p.Name,
+				QtLabel:   floatToFractionStr(qt) + " " + unitLabelFor(p.UnitType),
+				Price:     p.Price,
+				ImageURL:  imgURL,
+			})
+		}
+		if len(ac.Products) > 0 {
+			data.AvailableCatalogs = append(data.AvailableCatalogs, ac)
+		}
+	}
+
+	var ugs []model.UserGroup
+	h.db.Where("group_id = ?", pd.Group.ID).Preload("User").Find(&ugs)
+	for _, ug := range ugs {
+		data.GroupMembers = append(data.GroupMembers, MemberSelectItem{
+			UserID:   ug.UserID,
+			FullName: ug.User.LastName + " " + ug.User.FirstName,
+		})
+	}
+
+	t, err2 := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_orders_by_date.html")
 	if err2 != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err2)
 		return
@@ -1565,6 +1657,490 @@ func (h *PagesHandler) CatalogAdminProductsImportCSV(c *gin.Context) {
 	}
 
 	renderImportCSV(c, d)
+}
+
+// ---- /contractAdmin/selectDistrib/:id ----
+
+type SelectDistribEntry struct {
+	MultiDistribID uint
+	DateLabel      string
+	DateISO        string
+	Place          string
+	NbOrders       int
+}
+
+type SelectDistribData struct {
+	CatalogAdminData
+	Distribs []SelectDistribEntry
+}
+
+func (h *PagesHandler) CatalogAdminSelectDistribPage(c *gin.Context) {
+	data, ok := h.loadCatalogAdmin(c, "orders")
+	if !ok {
+		return
+	}
+
+	var mds []model.MultiDistrib
+	h.db.Joins("JOIN distributions ON distributions.multi_distrib_id = multi_distribs.id").
+		Where("distributions.catalog_id = ? AND multi_distribs.group_id = ? AND multi_distribs.distrib_start_date >= ?",
+			data.Catalog.ID, data.Group.ID, time.Now()).
+		Preload("Place").
+		Order("distrib_start_date ASC").
+		Find(&mds)
+
+	sd := SelectDistribData{CatalogAdminData: data}
+	for _, md := range mds {
+		var distrib model.Distribution
+		h.db.Where("multi_distrib_id = ? AND catalog_id = ?", md.ID, data.Catalog.ID).First(&distrib)
+
+		var nbOrders int64
+		h.db.Model(&model.UserOrder{}).Where("distribution_id = ?", distrib.ID).Count(&nbOrders)
+
+		place := ""
+		if md.Place.ID != 0 {
+			place = md.Place.Name
+		}
+		sd.Distribs = append(sd.Distribs, SelectDistribEntry{
+			MultiDistribID: md.ID,
+			DateLabel:      frDayLabel(md.DistribStartDate) + " à " + md.DistribStartDate.Format("15:04"),
+			DateISO:        md.DistribStartDate.Format("2006-01-02"),
+			Place:          place,
+			NbOrders:       int(nbOrders),
+		})
+	}
+
+	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_select_distrib.html")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err)
+		return
+	}
+	if err := t.ExecuteTemplate(c.Writer, "base", sd); err != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err)
+	}
+}
+
+func unitLabelFor(u model.UnitType) string {
+	switch u {
+	case model.UnitTypeKilogram:
+		return "kg"
+	case model.UnitTypeGram:
+		return "g"
+	case model.UnitTypeLitre:
+		return "L"
+	case model.UnitTypeCentilitre:
+		return "cl"
+	case model.UnitTypeMillilitre:
+		return "ml"
+	default:
+		return "pièce"
+	}
+}
+
+// ---- /contractAdmin/memberOrder/:multiDistribId/:userId ----
+
+type MemberOrderProduct struct {
+	DistribID   uint
+	ProductID   uint
+	Name        string
+	Ref         string
+	UnitLabel   string
+	QtLabel     string
+	Price       float64
+	OrderID     uint
+	Quantity    float64
+	ImageURL    string
+	HasOrder    bool
+}
+
+type MemberOrderCatalog struct {
+	CatalogID   uint
+	CatalogName string
+	Products    []MemberOrderProduct
+}
+
+type MemberOrderData struct {
+	PageData
+	MemberName     string
+	MemberID       uint
+	MultiDistribID uint
+	DateLabel      string
+	BackURL        string
+	Catalogs       []MemberOrderCatalog
+	Saved          bool
+}
+
+func (h *PagesHandler) MemberOrderPage(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil {
+		c.Redirect(http.StatusFound, "/user/choose")
+		return
+	}
+
+	mdIDStr := c.Param("multiDistribId")
+	mdID, err := strconv.ParseUint(mdIDStr, 10, 64)
+	if err != nil {
+		c.String(http.StatusBadRequest, "id invalide")
+		return
+	}
+
+	userIDStr := c.Param("userId")
+	targetUID, err := strconv.ParseUint(userIDStr, 10, 64)
+	if err != nil {
+		c.String(http.StatusBadRequest, "userId invalide")
+		return
+	}
+
+	var md model.MultiDistrib
+	if err := h.db.Preload("Place").
+		Preload("Distributions.Catalog.Vendor").
+		Preload("Distributions.Catalog.Products.Image").
+		First(&md, mdID).Error; err != nil {
+		c.String(http.StatusNotFound, "distribution introuvable")
+		return
+	}
+
+	var targetUser model.User
+	if err := h.db.First(&targetUser, targetUID).Error; err != nil {
+		c.String(http.StatusNotFound, "membre introuvable")
+		return
+	}
+
+	if c.Request.Method == "POST" {
+		c.Request.ParseForm()
+		for _, distrib := range md.Distributions {
+			for _, p := range distrib.Catalog.Products {
+				key := fmt.Sprintf("qty_%d_%d", distrib.ID, p.ID)
+				valStr := c.PostForm(key)
+				qty, _ := strconv.ParseFloat(strings.TrimSpace(valStr), 64)
+
+				var existing model.UserOrder
+				found := h.db.Where("distribution_id = ? AND user_id = ? AND product_id = ?",
+					distrib.ID, targetUID, p.ID).First(&existing).Error == nil
+
+				if qty > 0 {
+					feesRate := 0.0
+					if distrib.Catalog.PercentageFees != nil {
+						feesRate = *distrib.Catalog.PercentageFees
+					}
+					if found {
+						h.db.Model(&existing).Updates(map[string]interface{}{
+							"quantity":     qty,
+							"product_price": p.Price,
+							"fees_rate":    feesRate,
+						})
+					} else {
+						h.db.Create(&model.UserOrder{
+							UserID:         uint(targetUID),
+							ProductID:      p.ID,
+							DistributionID: &distrib.ID,
+							Quantity:       qty,
+							ProductPrice:   p.Price,
+							FeesRate:       feesRate,
+						})
+					}
+				} else if found {
+					h.db.Delete(&existing)
+				}
+			}
+		}
+		back := c.Query("back")
+		if back == "" {
+			back = fmt.Sprintf("/contractAdmin/memberOrder/%d/%d", mdID, targetUID)
+		}
+		c.Redirect(http.StatusFound, back)
+		return
+	}
+
+	// Load existing orders for this user on this multi-distrib
+	orderMap := make(map[string]model.UserOrder)
+	for _, distrib := range md.Distributions {
+		var orders []model.UserOrder
+		h.db.Where("distribution_id = ? AND user_id = ?", distrib.ID, targetUID).Find(&orders)
+		for _, o := range orders {
+			key := fmt.Sprintf("%d_%d", distrib.ID, o.ProductID)
+			orderMap[key] = o
+		}
+	}
+
+	data := MemberOrderData{
+		PageData:       pd,
+		MemberID:       uint(targetUID),
+		MemberName:     targetUser.FirstName + " " + targetUser.LastName,
+		MultiDistribID: uint(mdID),
+		DateLabel:      frDayLabel(md.DistribStartDate) + " à " + md.DistribStartDate.Format("15:04"),
+		BackURL:        c.Query("back"),
+		Saved:          c.Query("saved") == "1",
+	}
+	data.Title = "Commande de " + data.MemberName
+	data.Category = "distribution"
+
+	for _, distrib := range md.Distributions {
+		cat := MemberOrderCatalog{
+			CatalogID:   distrib.CatalogID,
+			CatalogName: distrib.Catalog.Name,
+		}
+		for _, p := range distrib.Catalog.Products {
+			if !p.Active {
+				continue
+			}
+			key := fmt.Sprintf("%d_%d", distrib.ID, p.ID)
+			o := orderMap[key]
+			ref := ""
+			if p.Ref != nil {
+				ref = *p.Ref
+			}
+			imgURL := ""
+			if p.Image != nil {
+				imgURL = FileURL(p.Image.ID, h.cfg.Key, p.Image.Name)
+			}
+			qt := 1.0
+			if p.Qt != nil {
+				qt = *p.Qt
+			}
+			cat.Products = append(cat.Products, MemberOrderProduct{
+				DistribID: distrib.ID,
+				ProductID: p.ID,
+				Name:      p.Name,
+				Ref:       ref,
+				UnitLabel: unitLabelFor(p.UnitType),
+				QtLabel:   floatToFractionStr(qt) + " " + unitLabelFor(p.UnitType),
+				Price:     p.Price,
+				OrderID:   o.ID,
+				Quantity:  o.Quantity,
+				ImageURL:  imgURL,
+				HasOrder:  o.ID != 0,
+			})
+		}
+		if len(cat.Products) > 0 {
+			data.Catalogs = append(data.Catalogs, cat)
+		}
+	}
+
+	t, err2 := loadTemplates("base.html", "design.html", "contractadmin_member_order.html")
+	if err2 != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err2)
+		return
+	}
+	if err2 := t.ExecuteTemplate(c.Writer, "base", data); err2 != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err2)
+	}
+}
+
+// ---- POST /contractAdmin/updateOrders/:multiDistribId/:userId ----
+
+func (h *PagesHandler) UpdateMemberOrders(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "non autorisé"})
+		return
+	}
+	mdIDStr := c.Param("multiDistribId")
+	userIDStr := c.Param("userId")
+	mdID, _ := strconv.ParseUint(mdIDStr, 10, 64)
+	targetUID, _ := strconv.ParseUint(userIDStr, 10, 64)
+
+	c.Request.ParseForm()
+	for key, vals := range c.Request.PostForm {
+		if !strings.HasPrefix(key, "qty_") {
+			continue
+		}
+		orderIDStr := strings.TrimPrefix(key, "qty_")
+		orderID, err := strconv.ParseUint(orderIDStr, 10, 64)
+		if err != nil {
+			continue
+		}
+		qty, _ := strconv.ParseFloat(strings.TrimSpace(vals[0]), 64)
+		paid := c.PostForm("paid_"+orderIDStr) == "1"
+
+		var o model.UserOrder
+		if h.db.First(&o, orderID).Error != nil {
+			continue
+		}
+		if qty <= 0 {
+			h.db.Delete(&o)
+		} else {
+			h.db.Model(&o).Updates(map[string]interface{}{
+				"quantity": qty,
+				"paid":     paid,
+			})
+		}
+	}
+
+	redirectURL := c.Query("back")
+	if redirectURL == "" {
+		redirectURL = fmt.Sprintf("/contractAdmin/memberOrder/%d/%d", mdID, targetUID)
+	}
+	c.Redirect(http.StatusFound, redirectURL)
+}
+
+// ---- POST /contractAdmin/addProduct/:multiDistribId/:userId ----
+// AJAX endpoint : ajoute (ou incrémente) une ligne de commande et retourne JSON.
+
+type addProductReq struct {
+	DistribID uint    `json:"distribId"`
+	ProductID uint    `json:"productId"`
+	Qty       float64 `json:"qty"`
+}
+
+type addProductResp struct {
+	OrderID     uint    `json:"orderId"`
+	ProductID   uint    `json:"productId"`
+	DistribID   uint    `json:"distribId"`
+	ProductName string  `json:"productName"`
+	Ref         string  `json:"ref"`
+	ImageURL    string  `json:"imageUrl"`
+	UnitPrice   float64 `json:"unitPrice"`
+	Quantity    float64 `json:"quantity"`
+	QuantityStr string  `json:"quantityStr"`
+	SubTotal    float64 `json:"subTotal"`
+	Total       float64 `json:"total"`
+	MemberTotal float64 `json:"memberTotal"`
+	Created     bool    `json:"created"`
+}
+
+func (h *PagesHandler) AddMemberProduct(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "non autorisé"})
+		return
+	}
+
+	mdID, _ := strconv.ParseUint(c.Param("multiDistribId"), 10, 64)
+	userID, _ := strconv.ParseUint(c.Param("userId"), 10, 64)
+
+	var req addProductReq
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if req.Qty <= 0 {
+		req.Qty = 1
+	}
+
+	var distrib model.Distribution
+	if err := h.db.Preload("Catalog").
+		Where("id = ? AND multi_distrib_id = ?", req.DistribID, mdID).
+		First(&distrib).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "distribution introuvable"})
+		return
+	}
+
+	var prod model.Product
+	if err := h.db.Preload("Image").
+		Where("id = ? AND catalog_id = ?", req.ProductID, distrib.CatalogID).
+		First(&prod).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "produit introuvable"})
+		return
+	}
+
+	feesRate := 0.0
+	if distrib.Catalog.PercentageFees != nil {
+		feesRate = *distrib.Catalog.PercentageFees
+	}
+
+	var existing model.UserOrder
+	created := false
+	err := h.db.Where("distribution_id = ? AND user_id = ? AND product_id = ?",
+		distrib.ID, userID, req.ProductID).First(&existing).Error
+	if err != nil {
+		existing = model.UserOrder{
+			UserID:         uint(userID),
+			ProductID:      req.ProductID,
+			DistributionID: &distrib.ID,
+			Quantity:       req.Qty,
+			ProductPrice:   prod.Price,
+			FeesRate:       feesRate,
+		}
+		if err := h.db.Create(&existing).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		created = true
+	} else {
+		existing.Quantity += req.Qty
+		if err := h.db.Model(&existing).Update("quantity", existing.Quantity).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	// Member total sur toute la multi-distrib
+	var allOrders []model.UserOrder
+	h.db.Joins("JOIN distributions ON distributions.id = user_orders.distribution_id").
+		Where("distributions.multi_distrib_id = ? AND user_orders.user_id = ?", mdID, userID).
+		Find(&allOrders)
+	memberTotal := 0.0
+	for _, o := range allOrders {
+		memberTotal += o.TotalPrice()
+	}
+
+	imageURL := ""
+	if prod.Image != nil {
+		imageURL = FileURL(prod.Image.ID, h.cfg.Key, prod.Image.Name)
+	}
+	ref := ""
+	if prod.Ref != nil {
+		ref = *prod.Ref
+	}
+
+	subTotal := existing.Quantity * prod.Price
+	total := subTotal * (1 + feesRate/100)
+
+	c.JSON(http.StatusOK, addProductResp{
+		OrderID:     existing.ID,
+		ProductID:   prod.ID,
+		DistribID:   distrib.ID,
+		ProductName: prod.Name,
+		Ref:         ref,
+		ImageURL:    imageURL,
+		UnitPrice:   prod.Price,
+		Quantity:    existing.Quantity,
+		QuantityStr: strconv.FormatFloat(existing.Quantity, 'f', -1, 64),
+		SubTotal:    subTotal,
+		Total:       total,
+		MemberTotal: memberTotal,
+		Created:     created,
+	})
+}
+
+// ---- POST /contractAdmin/deleteOrder/:multiDistribId/:userId/:orderId ----
+// AJAX endpoint : supprime une ligne de commande, retourne JSON { memberTotal }.
+
+func (h *PagesHandler) DeleteMemberOrder(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "non autorisé"})
+		return
+	}
+
+	mdID, _ := strconv.ParseUint(c.Param("multiDistribId"), 10, 64)
+	userID, _ := strconv.ParseUint(c.Param("userId"), 10, 64)
+	orderID, _ := strconv.ParseUint(c.Param("orderId"), 10, 64)
+
+	var o model.UserOrder
+	if err := h.db.First(&o, orderID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "commande introuvable"})
+		return
+	}
+	if o.UserID != uint(userID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "commande d'un autre membre"})
+		return
+	}
+	if err := h.db.Delete(&o).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var allOrders []model.UserOrder
+	h.db.Joins("JOIN distributions ON distributions.id = user_orders.distribution_id").
+		Where("distributions.multi_distrib_id = ? AND user_orders.user_id = ?", mdID, userID).
+		Find(&allOrders)
+	memberTotal := 0.0
+	for _, x := range allOrders {
+		memberTotal += x.TotalPrice()
+	}
+
+	c.JSON(http.StatusOK, gin.H{"memberTotal": memberTotal})
 }
 
 func renderImportCSV(c *gin.Context, data ImportCSVData) {

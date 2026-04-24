@@ -1,88 +1,425 @@
 {{define "content"}}
-<div class="col-md-12">
+{{if .Catalog.ID}}
+{{template "contractadmin_nav" .}}
+{{else}}
+<div class="row"><div class="col-md-12"><div class="article">
+{{end}}
 
-  <div style="text-align:center;padding:20px 0 10px;background:#fff;border:1px solid #ddd;border-radius:4px;margin-bottom:16px;">
-    <h2 style="font-style:italic;margin:0 0 6px;"><b>Distribution du {{.DayLabel}}</b></h2>
-    {{if .Place}}<p style="margin:0;color:#555;"><i class="icon icon-map-marker"></i> {{.Place}}</p>{{end}}
-  </div>
+<h3 style="font-style:italic;">Commandes — Distribution du <b>{{.DayLabel}}</b>{{if .Place}} — {{.Place}}{{end}}</h3>
 
-  <div style="background:#fff;border:1px solid #ddd;border-radius:4px;padding:16px;margin-bottom:20px;display:flex;gap:8px;flex-wrap:wrap;">
-    <a href="#" class="btn btn-default btn-sm"><i class="icon icon-plus"></i> Nouvelle commande</a>
-    <a href="/contractAdmin/ordersByDate/{{.DateISO}}/{{.Group.ID}}/csv" class="btn btn-default btn-sm"><i class="icon icon-list"></i> Export CSV</a>
-    <a href="/distribution/listByDate/{{.DateISO}}/{{.Group.ID}}" class="btn btn-default btn-sm"><i class="icon icon-print"></i> Liste d'émargement</a>
-    <a href="#" class="btn btn-default btn-sm">Sous-totaux par catalogue</a>
-    <a href="/contractAdmin/vendorsByDate/{{.DateISO}}/{{.Group.ID}}" class="btn btn-default btn-sm">Totaux par producteur</a>
-  </div>
-
-  {{if .Members}}
-  {{range .Members}}
-  <div style="margin-bottom:24px;background:#fff;border:1px solid #ddd;border-radius:4px;overflow:hidden;">
-    <div style="background:#555;color:#fff;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;">
-      <span>
-        <span style="background:#333;padding:2px 8px;border-radius:3px;margin-right:8px;font-size:0.9em;font-weight:bold;">N°{{.BasketNum}}</span>
-        <b>{{.UserName}}</b>
-      </span>
-      <a href="#" class="btn btn-default btn-xs"><i class="icon icon-edit"></i> Modifier</a>
-    </div>
-    <table class="table table-bordered table-condensed" style="margin-bottom:0;background:#fff;table-layout:fixed;width:100%;">
-      <colgroup>
-        <col style="width:18%">
-        <col style="width:7%">
-        <col style="width:8%">
-        <col style="width:33%">
-        <col style="width:8%">
-        <col style="width:10%">
-        <col style="width:7%">
-        <col style="width:9%">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>Catalogue</th>
-          <th>Qté</th>
-          <th>Réf.</th>
-          <th>Produit</th>
-          <th style="color:#5cb85c;">P.U</th>
-          <th>Sous-total</th>
-          <th>Frais</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .Lines}}
-        <tr>
-          <td><a href="/contractAdmin/view/{{.CatalogID}}" style="color:#5cb85c;">{{.CatalogName}}</a></td>
-          <td>{{.Qty}}</td>
-          <td style="color:#aaa;font-size:0.9em;">{{.Ref}}</td>
-          <td>{{.ProductName}}</td>
-          <td>{{printf "%.2f" .UnitPrice}} €</td>
-          <td>{{printf "%.2f" .SubTotal}} €</td>
-          <td>{{if gt .Fees 0.0}}{{printf "%.2f" .Fees}} €{{end}}</td>
-          <td>{{printf "%.2f" .Total}} €</td>
-        </tr>
-        {{end}}
-      </tbody>
-      <tfoot>
-        <tr style="background:#f9f9f9;">
-          <td colspan="7" style="text-align:right;font-weight:bold;">Total membre</td>
-          <td style="font-weight:bold;">{{printf "%.2f" .MemberTotal}} €</td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-  {{end}}
-
-  <div style="background:#fff;border:1px solid #ddd;border-radius:4px;padding:12px 16px;text-align:right;font-size:1.2em;font-weight:bold;">
-    Total de toutes les commandes : {{printf "%.2f" .GrandTotal}} €
-  </div>
-
-  {{else}}
-  <div style="background:#fff;border:1px solid #ddd;border-radius:4px;padding:20px;">
-    <p class="text-muted">Aucune commande pour cette distribution.</p>
-  </div>
-  {{end}}
-
-  <a href="/distribution" class="btn btn-default btn-sm" style="margin-top:12px;">
-    <i class="icon icon-chevron-left"></i> Retour
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+  <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modalNewOrder">
+    <i class="icon icon-plus"></i> Nouvelle commande
+  </button>
+  <a href="/contractAdmin/ordersByDate/{{.DateISO}}/{{.Group.ID}}/csv{{if .Catalog.ID}}?catalog={{.Catalog.ID}}{{end}}" class="btn btn-default btn-sm">
+    <i class="icon icon-list"></i> Export CSV
+  </a>
+  <a href="/distribution/listByDate/{{.DateISO}}/{{.Group.ID}}" class="btn btn-default btn-sm">
+    <i class="icon icon-print"></i> Liste d'émargement
+  </a>
+  <a href="/contractAdmin/vendorsByDate/{{.DateISO}}/{{.Group.ID}}" class="btn btn-default btn-sm">
+    Totaux par producteur
   </a>
 </div>
+
+{{if .Members}}
+{{range .Members}}
+<div style="margin-bottom:20px;border:1px solid #ddd;border-radius:4px;">
+  <div style="background:#555;color:#fff;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;border-radius:4px 4px 0 0;">
+    <span>
+      <span style="background:#333;padding:2px 8px;border-radius:3px;margin-right:8px;font-size:0.9em;font-weight:bold;">N°{{.BasketNum}}</span>
+      <b>{{.UserName}}</b>
+    </span>
+    <a href="#" class="btn btn-default btn-xs" data-toggle="modal" data-target="#modal-member-{{.UserID}}">
+      <i class="icon icon-edit"></i> Modifier
+    </a>
+  </div>
+  <div style="overflow-x:auto;width:100%;">
+  <table class="table table-bordered table-condensed" style="margin-bottom:0;width:100%;">
+    <thead>
+      <tr>
+        <th>Réf.</th>
+        <th>Qté</th>
+        <th>Produit</th>
+        <th style="color:#5cb85c;">P.U</th>
+        <th>Sous-total</th>
+        <th>Total</th>
+        <th>Payé</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Lines}}
+      <tr>
+        <td style="color:#aaa;font-size:0.9em;">{{.Ref}}</td>
+        <td>{{.Qty}}</td>
+        <td>{{.ProductName}}</td>
+        <td>{{printf "%.2f" .UnitPrice}} €</td>
+        <td>{{printf "%.2f" .SubTotal}} €</td>
+        <td>{{printf "%.2f" .Total}} €</td>
+        <td></td>
+      </tr>
+      {{end}}
+    </tbody>
+    <tfoot>
+      <tr style="background:#f9f9f9;">
+        <td colspan="6" style="text-align:right;font-weight:bold;">Total membre</td>
+        <td style="font-weight:bold;">{{printf "%.2f" .MemberTotal}} €</td>
+      </tr>
+    </tfoot>
+  </table>
+  </div>
+</div>
+{{end}}
+
+<div style="border:1px solid #ddd;border-radius:4px;padding:12px 16px;text-align:right;font-size:1.1em;font-weight:bold;background:#f9f9f9;">
+  Total général : {{printf "%.2f" .GrandTotal}} €
+</div>
+
+{{else}}
+<p class="text-muted">Aucune commande pour cette distribution.</p>
+{{end}}
+
+<div style="margin-top:16px;">
+  <a href="/contractAdmin/distributions/{{.Catalog.ID}}" class="btn btn-default btn-sm">
+    <i class="icon icon-chevron-left"></i> Retour aux distributions
+  </a>
+</div>
+
+<!-- Modals modification par membre -->
+{{range .Members}}
+<div class="modal fade" id="modal-member-{{.UserID}}" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content" style="border-radius:6px;overflow:hidden;">
+
+      <!-- En-tête sans chrome Bootstrap -->
+      <div style="padding:24px 28px 16px;">
+        <h4 style="font-style:italic;margin:0 0 6px;font-size:1.5em;">Commandes de <b>{{.UserName}}</b></h4>
+        <p style="margin:0;font-size:1em;color:#555;">
+          Pour la livraison du <b>{{$.DayLabel}} à {{$.StartHour}}</b>{{if $.Place}} à <b>{{$.Place}}</b>{{end}}
+        </p>
+      </div>
+
+      <hr style="margin:0;" />
+
+      {{$uid := .UserID}}
+      <form method="POST" action="/contractAdmin/updateOrders/{{$.MultiDistribID}}/{{.UserID}}?back={{$.BackURL}}">
+        <table class="table" style="margin-bottom:0;">
+          <thead>
+            <tr style="color:#aaa;font-weight:normal;font-size:1em;border-bottom:1px solid #eee;">
+              <th style="padding-left:28px;font-weight:normal;">Produits</th>
+              <th style="font-weight:normal;">Ref.</th>
+              <th style="font-weight:normal;">Prix</th>
+              <th style="font-weight:normal;">Qté</th>
+              <th style="font-weight:normal;text-align:center;">Payé</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Lines}}
+            <tr data-order-id="{{.OrderID}}" style="border-bottom:1px solid #f0f0f0;">
+              <td style="vertical-align:middle;padding:12px 16px 12px 28px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  {{if .ImageURL}}
+                  <img src="{{.ImageURL}}" style="width:64px;height:64px;object-fit:cover;border-radius:4px;flex-shrink:0;" />
+                  {{else}}
+                  <div style="width:64px;height:64px;background:#f5f5f5;border-radius:4px;flex-shrink:0;"></div>
+                  {{end}}
+                  <div>
+                    <div style="font-weight:bold;">{{.ProductName}} <span class="member-row-qty" style="font-weight:normal;">{{.Qty}}</span></div>
+                    <div style="color:#aaa;font-size:0.95em;margin-top:2px;">{{printf "%.2f" .UnitPrice}} €</div>
+                  </div>
+                </div>
+              </td>
+              <td style="vertical-align:middle;color:#bbb;font-size:0.95em;">{{.Ref}}</td>
+              <td style="vertical-align:middle;">{{printf "%.2f" .UnitPrice}} €</td>
+              <td style="vertical-align:middle;">
+                <input type="number" name="qty_{{.OrderID}}"
+                  class="form-control"
+                  style="width:100px;font-size:1.1em;padding:6px 10px;"
+                  step="0.01" min="0" value="{{printf "%g" .Quantity}}" />
+              </td>
+              <td style="vertical-align:middle;text-align:center;">
+                <input type="checkbox" name="paid_{{.OrderID}}" value="1"
+                  style="width:18px;height:18px;cursor:pointer;"
+                  {{if .Paid}}checked{{end}} />
+              </td>
+              <td style="vertical-align:middle;text-align:center;padding-right:16px;">
+                <button type="button" class="btn-delete-order" data-user="{{$uid}}" data-order-id="{{.OrderID}}"
+                  title="Supprimer" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:1.2em;padding:4px 8px;">
+                  <i class="icon icon-delete"></i>
+                </button>
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+          <tfoot>
+            <tr style="background:#fafafa;border-top:1px solid #eee;">
+              <td colspan="2" style="text-align:right;color:#aaa;font-size:1em;letter-spacing:0.05em;padding:12px 16px;">TOTAL</td>
+              <td data-member-total style="font-weight:bold;vertical-align:middle;">{{printf "%.2f" .MemberTotal}} €</td>
+              <td colspan="3"></td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div style="padding:16px 28px 20px;display:flex;gap:10px;align-items:center;">
+          <button type="submit" class="btn btn-success" style="font-weight:bold;letter-spacing:0.05em;">
+            <i class="icon icon-chevron-right"></i> VALIDER
+          </button>
+          <button type="button" class="btn btn-default" style="font-weight:bold;"
+             data-dismiss="modal"
+             onclick="openAddProduct({{.UserID}})">
+            <i class="icon icon-plus"></i> AJOUTER UN PRODUIT
+          </button>
+          <button type="button" class="btn btn-link" data-dismiss="modal"
+            style="margin-left:auto;color:#555;font-weight:bold;">
+            <i class="icon icon-delete"></i> FERMER
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+{{end}}
+
+<!-- Modal nouvelle commande -->
+<div class="modal fade" id="modalNewOrder" tabindex="-1" role="dialog" aria-labelledby="modalNewOrderLabel">
+  <div class="modal-dialog modal-sm" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Fermer"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="modalNewOrderLabel"><i class="icon icon-basket"></i> Nouvelle commande</h4>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom:0;">
+            <label for="selectMember">Membre</label>
+            <select id="selectMember" class="form-control">
+              <option value="" disabled selected>— Choisir un membre —</option>
+              {{range .GroupMembers}}
+              <option value="{{.UserID}}">{{.FullName}}</option>
+              {{end}}
+            </select>
+          </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;">
+        <button type="button" class="btn btn-default" data-dismiss="modal">
+          <i class="icon icon-delete"></i> Fermer
+        </button>
+        <button type="button" class="btn btn-primary" onclick="openMemberOrder({{.MultiDistribID}})">
+          <i class="icon icon-check"></i> Ouvrir
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden triggers for Bootstrap declarative modal API -->
+<a id="btnTriggerProductModal" data-toggle="modal" data-target="#modalAddProduct" style="display:none;"></a>
+{{range .Members}}
+<a id="btnTriggerMember_{{.UserID}}" data-toggle="modal" data-target="#modal-member-{{.UserID}}" style="display:none;"></a>
+{{end}}
+
+<!-- Modal ajout de produit (partagé) -->
+<div class="modal fade" id="modalAddProduct" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content" style="border-radius:6px;overflow:hidden;">
+      <div style="padding:20px 28px 12px;">
+        <h4 style="font-style:italic;margin:0 0 4px;font-size:1.3em;">Choisissez le produit à ajouter</h4>
+      </div>
+      <hr style="margin:0;" />
+      <div style="padding:16px 28px;max-height:65vh;overflow-y:auto;">
+        {{range .AvailableCatalogs}}
+        <h5 style="color:#888;text-transform:uppercase;letter-spacing:0.08em;font-size:0.82em;margin:12px 0 8px;">{{.CatalogName}}</h5>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+          {{range .Products}}
+          <form class="product-add-form" method="POST"
+                data-distrib="{{.DistribID}}" data-product="{{.ProductID}}">
+            <input type="hidden" name="qty_{{.DistribID}}_{{.ProductID}}" value="1" />
+            <button type="submit" style="
+              width:100%;text-align:left;background:#fff;border:1px solid #e0e0e0;
+              border-radius:8px;padding:10px;display:flex;align-items:center;gap:10px;
+              cursor:pointer;transition:box-shadow 0.15s;
+            " onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.12)'"
+               onmouseout="this.style.boxShadow='none'">
+              {{if .ImageURL}}
+              <img src="{{.ImageURL}}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;flex-shrink:0;" />
+              {{else}}
+              <div style="width:56px;height:56px;background:#f0f0f0;border-radius:6px;flex-shrink:0;"></div>
+              {{end}}
+              <div style="min-width:0;">
+                <div style="font-size:0.95em;color:#444;">{{.Name}} <b>{{.QtLabel}}</b></div>
+                <div style="font-size:0.9em;color:#888;margin-top:2px;">{{printf "%.2f" .Price}} €</div>
+              </div>
+            </button>
+          </form>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+      <div style="padding:12px 28px;border-top:1px solid #eee;text-align:right;">
+        <button type="button" class="btn btn-default" id="btnBackToOrder" data-dismiss="modal">
+          <i class="icon icon-chevron-left"></i> Retour
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var _currentMemberId = null;
+var _multiDistribId = {{.MultiDistribID}};
+
+function openAddProduct(userId) {
+  _currentMemberId = userId;
+  setTimeout(function() {
+    document.getElementById('btnTriggerProductModal').click();
+  }, 400);
+}
+
+// --- AJAX add product ---
+document.querySelectorAll('.product-add-form').forEach(function(form) {
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (!_currentMemberId) return;
+    var distribId = parseInt(form.dataset.distrib, 10);
+    var productId = parseInt(form.dataset.product, 10);
+    var btn = form.querySelector('button');
+    btn.disabled = true;
+    var prevBg = btn.style.background;
+
+    fetch('/contractAdmin/addProduct/' + _multiDistribId + '/' + _currentMemberId, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin',
+      body: JSON.stringify({distribId: distribId, productId: productId, qty: 1})
+    })
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(data) {
+      applyOrderUpdate(_currentMemberId, data);
+      btn.disabled = false;
+      // Ferme la modale produit ; btnBackToOrder rouvre la modale membre
+      document.getElementById('btnBackToOrder').click();
+    })
+    .catch(function(err) {
+      alert('Erreur: ' + err.message);
+      btn.disabled = false;
+    });
+  });
+});
+
+function applyOrderUpdate(userId, data) {
+  var tbody = document.querySelector('#modal-member-' + userId + ' tbody');
+  if (!tbody) return;
+  var row = tbody.querySelector('tr[data-order-id="' + data.orderId + '"]');
+  if (row) {
+    // Mise à jour de la ligne existante
+    var qtyInput = row.querySelector('input[type="number"]');
+    if (qtyInput) qtyInput.value = data.quantityStr;
+    var qtyLabel = row.querySelector('.member-row-qty');
+    if (qtyLabel) qtyLabel.textContent = data.quantityStr;
+  } else {
+    // Nouvelle ligne
+    var tr = document.createElement('tr');
+    tr.setAttribute('data-order-id', data.orderId);
+    tr.style.borderBottom = '1px solid #f0f0f0';
+    var img = data.imageUrl
+      ? '<img src="' + data.imageUrl + '" style="width:64px;height:64px;object-fit:cover;border-radius:4px;flex-shrink:0;" />'
+      : '<div style="width:64px;height:64px;background:#f5f5f5;border-radius:4px;flex-shrink:0;"></div>';
+    tr.innerHTML =
+      '<td style="vertical-align:middle;padding:12px 16px 12px 28px;">' +
+        '<div style="display:flex;align-items:center;gap:12px;">' + img +
+        '<div><div style="font-weight:bold;">' + escapeHtml(data.productName) +
+        ' <span class="member-row-qty" style="font-weight:normal;">' + escapeHtml(data.quantityStr) + '</span></div>' +
+        '<div style="color:#aaa;font-size:0.95em;margin-top:2px;">' + data.unitPrice.toFixed(2) + ' €</div>' +
+        '</div></div></td>' +
+      '<td style="vertical-align:middle;color:#bbb;font-size:0.95em;">' + escapeHtml(data.ref) + '</td>' +
+      '<td style="vertical-align:middle;">' + data.unitPrice.toFixed(2) + ' €</td>' +
+      '<td style="vertical-align:middle;">' +
+        '<input type="number" name="qty_' + data.orderId + '" class="form-control" ' +
+        'style="width:100px;font-size:1.1em;padding:6px 10px;" step="0.01" min="0" value="' + escapeHtml(data.quantityStr) + '" />' +
+      '</td>' +
+      '<td style="vertical-align:middle;text-align:center;">' +
+        '<input type="checkbox" name="paid_' + data.orderId + '" value="1" style="width:18px;height:18px;cursor:pointer;" />' +
+      '</td>' +
+      '<td style="vertical-align:middle;text-align:center;padding-right:16px;">' +
+        '<button type="button" class="btn-delete-order" data-user="' + userId + '" data-order-id="' + data.orderId + '" ' +
+        'title="Supprimer" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:1.2em;padding:4px 8px;">' +
+        '<i class="icon icon-delete"></i></button>' +
+      '</td>';
+    tbody.appendChild(tr);
+  }
+  // Mise à jour du total membre
+  var totalCell = document.querySelector('#modal-member-' + userId + ' tfoot td[data-member-total]');
+  if (totalCell) totalCell.textContent = data.memberTotal.toFixed(2) + ' €';
+}
+
+// --- AJAX delete product (event delegation) ---
+document.body.addEventListener('click', function(e) {
+  var btn = e.target.closest('.btn-delete-order');
+  if (!btn) return;
+  e.preventDefault();
+  var userId = btn.dataset.user;
+  var orderId = btn.dataset.orderId;
+  btn.disabled = true;
+  fetch('/contractAdmin/deleteOrder/' + _multiDistribId + '/' + userId + '/' + orderId, {
+    method: 'POST',
+    credentials: 'same-origin'
+  })
+  .then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  })
+  .then(function(data) {
+    var row = document.querySelector('#modal-member-' + userId + ' tr[data-order-id="' + orderId + '"]');
+    if (row) row.remove();
+    var totalCell = document.querySelector('#modal-member-' + userId + ' tfoot td[data-member-total]');
+    if (totalCell) totalCell.textContent = data.memberTotal.toFixed(2) + ' €';
+  })
+  .catch(function(err) {
+    alert('Erreur: ' + err.message);
+    btn.disabled = false;
+  });
+});
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+document.getElementById('btnBackToOrder').addEventListener('click', function() {
+  setTimeout(function() {
+    if (_currentMemberId) {
+      var memberTrigger = document.getElementById('btnTriggerMember_' + _currentMemberId);
+      if (memberTrigger) memberTrigger.click();
+    }
+  }, 400);
+});
+
+function openMemberOrder(multiDistribId) {
+  var uid = document.getElementById('selectMember').value;
+  if (!uid) { alert('Choisissez un membre.'); return; }
+  window.location.href = '/contractAdmin/memberOrder/' + multiDistribId + '/' + uid;
+}
+
+// Auto-open membre après ajout produit
+document.addEventListener('DOMContentLoaded', function() {
+  var params = new URLSearchParams(window.location.search);
+  var uid = params.get('openModal');
+  if (uid) {
+    var t = document.getElementById('btnTriggerMember_' + uid);
+    if (t) t.click();
+  }
+});
+</script>
+
+{{if .Catalog.ID}}
+{{template "contractadmin_close" .}}
+{{else}}
+    </div></div></div>
+{{end}}
 {{end}}

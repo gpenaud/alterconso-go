@@ -19,13 +19,8 @@
           <a href="/contractAdmin/distributions/{{.Catalog.ID}}"><i class="icon icon-calendar"></i> Distributions</a>
         </li>
         <li {{if eq .ActiveTab "orders"}}class="active"{{end}}>
-          <a href="/contractAdmin/distributions/{{.Catalog.ID}}"><i class="icon icon-basket"></i> Commandes</a>
+          <a href="/contractAdmin/selectDistrib/{{.Catalog.ID}}"><i class="icon icon-basket"></i> Commandes</a>
         </li>
-        {{if eq .Catalog.Type 1}}
-        <li {{if eq .ActiveTab "subscriptions"}}class="active"{{end}}>
-          <a href="/contractAdmin/subscriptions/{{.Catalog.ID}}"><i class="icon icon-calendar-check"></i> Souscriptions</a>
-        </li>
-        {{end}}
       </ul>
     </div>
   </div>

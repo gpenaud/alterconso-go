@@ -134,6 +134,7 @@ type PageData struct {
 	Distribs []DistribView
 	// shop page
 	MultiDistribID uint
+	TargetUserID   uint
 	// account page
 	Subscriptions []SubscriptionView
 	RecentOrders  []RecentOrderView
@@ -187,6 +188,7 @@ type MultiDistribView struct {
 	Month           string
 	StartHour       string
 	EndHour         string
+	DayLabelFull    string
 	Active          bool
 	Past            bool
 	CanOrder        bool
@@ -195,6 +197,7 @@ type MultiDistribView struct {
 	OrderEndDate    string
 	Distributions   bool
 	UserOrders      []UserOrderView
+	UserOrderTotal  float64
 	ProductImages   []ProductImageView
 	VolunteerNeeded int
 	VolunteerRoles  []string
@@ -203,6 +206,10 @@ type MultiDistribView struct {
 type UserOrderView struct {
 	ProductName string
 	SmartQty    string
+	UnitPrice   float64
+	SubTotal    float64
+	Fees        float64
+	Total       float64
 }
 
 type ProductImageView struct {
@@ -509,6 +516,7 @@ func (h *PagesHandler) HomePage(c *gin.Context) {
 			Month:        frMonthsFull[start.Month()],
 			StartHour:    fmt.Sprintf("%02d:%02d", start.Hour(), start.Minute()),
 			EndHour:      fmt.Sprintf("%02d:%02d", end.Hour(), end.Minute()),
+			DayLabelFull: fmt.Sprintf("%s %d %s à %02d:%02d", frDaysFull[start.Weekday()], start.Day(), frMonthsFull[start.Month()], start.Hour(), start.Minute()),
 			Active:       now.After(start) && now.Before(end),
 			Past:         !now.Before(time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())),
 		}
@@ -594,10 +602,17 @@ func (h *PagesHandler) HomePage(c *gin.Context) {
 			Find(&orders)
 
 		for _, o := range orders {
+			subTotal := o.Quantity * o.ProductPrice
+			total := o.TotalPrice()
 			view.UserOrders = append(view.UserOrders, UserOrderView{
 				ProductName: o.Product.Name,
 				SmartQty:    formatQty(o.Quantity, o.Product.UnitType),
+				UnitPrice:   o.ProductPrice,
+				SubTotal:    subTotal,
+				Fees:        total - subTotal,
+				Total:       total,
 			})
+			view.UserOrderTotal += total
 		}
 
 		views = append(views, view)
@@ -734,6 +749,11 @@ func (h *PagesHandler) ShopPage(c *gin.Context) {
 
 	pd.Title = "Boutique"
 	pd.MultiDistribID = uint(id)
+	if uidStr := c.Query("userId"); uidStr != "" {
+		if uid, err2 := strconv.ParseUint(uidStr, 10, 64); err2 == nil {
+			pd.TargetUserID = uint(uid)
+		}
+	}
 
 	t, err := loadTemplates("base.html", "design.html", "shop.html")
 	if err != nil {

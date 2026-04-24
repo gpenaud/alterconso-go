@@ -4,6 +4,7 @@
 
 <script>
   document.addEventListener("DOMContentLoaded", function() {
+    {{if .TargetUserID}}_.userId = {{.TargetUserID}};{{end}}
     _.shop({{.MultiDistribID}});
   });
 </script>
