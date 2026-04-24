@@ -53,6 +53,8 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/amapadmin", pageAuth, pagesH.AmapAdminPage)
 	r.GET("/amapadmin/edit", pageAuth, pagesH.AmapAdminEditPage)
 	r.POST("/amapadmin/update", pageAuth, pagesH.AmapAdminUpdate)
+	r.POST("/amapadmin/logo", pageAuth, pagesH.AmapAdminLogoUpload)
+	r.GET("/amapadmin/logo/delete", pageAuth, pagesH.AmapAdminLogoDelete)
 	r.GET("/amapadmin/rights", pageAuth, pagesH.AmapAdminRightsPage)
 	r.GET("/amapadmin/rights/add", pageAuth, pagesH.AmapAdminRightsAddPage)
 	r.POST("/amapadmin/rights/add", pageAuth, pagesH.AmapAdminRightsAddPage)

@@ -3,10 +3,20 @@
 <div class="col-md-9">
   <div class="article">
     {{if .Group}}
-    <h3 style="font-style:italic;margin-top:0;">{{.Group.Name}}</h3>
-
-    <p style="margin:0;"><b>{{.NbMembers}}</b> membres.</p>
-    <p><b>{{.NbActiveCatalogs}}</b> catalogues actifs.</p>
+    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+      {{if .LogoURL}}
+      <img src="{{.LogoURL}}" alt="Logo" style="width:96px;height:96px;object-fit:cover;border-radius:12px;border:1px solid #eee;" />
+      {{else}}
+      <div style="width:96px;height:96px;background:#f5f5f5;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:2em;">
+        <i class="icon icon-image"></i>
+      </div>
+      {{end}}
+      <div style="flex:1;min-width:220px;">
+        <h3 style="font-style:italic;margin:0 0 4px;">{{.Group.Name}}</h3>
+        <p style="margin:0;color:#555;"><b>{{.NbMembers}}</b> membres.</p>
+        <p style="margin:0;color:#555;"><b>{{.NbActiveCatalogs}}</b> catalogues actifs.</p>
+      </div>
+    </div>
 
     <hr />
 
@@ -14,9 +24,14 @@
       <a href="/amapadmin/edit" class="btn btn-default">
         <i class="icon icon-edit"></i> Modifier les propriétés
       </a>
-      <a href="#" class="btn btn-default">
-        <i class="icon icon-image"></i> Définir un logo
+      <button type="button" class="btn btn-default" data-toggle="modal" data-target="#modalLogo">
+        <i class="icon icon-image"></i> {{if .LogoURL}}Changer le logo{{else}}Définir un logo{{end}}
+      </button>
+      {{if .LogoURL}}
+      <a href="/amapadmin/logo/delete" class="btn btn-default" onclick="return confirm('Supprimer le logo ?')">
+        <i class="icon icon-delete"></i> Retirer le logo
       </a>
+      {{end}}
     </div>
 
     <p style="margin-bottom:8px;">
@@ -46,4 +61,47 @@
     {{end}}
   </div>
 </div>
+
+<!-- Modal upload logo -->
+<div class="modal fade" id="modalLogo" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content" style="border-radius:6px;overflow:hidden;">
+      <form method="POST" action="/amapadmin/logo" enctype="multipart/form-data">
+        <div style="padding:24px 28px 16px;">
+          <h4 style="font-style:italic;margin:0;font-size:1.4em;">Ajouter un logo</h4>
+        </div>
+        <hr style="margin:0;" />
+        <div style="padding:24px 28px;">
+          <div id="logoPreview" style="width:220px;height:220px;margin:0 auto 16px;background:#f5f5f5;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#ccc;overflow:hidden;">
+            {{if .LogoURL}}
+            <img src="{{.LogoURL}}" style="width:100%;height:100%;object-fit:cover;" />
+            {{else}}
+            <i class="icon icon-image" style="font-size:3em;"></i>
+            {{end}}
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label style="display:block;color:#666;font-weight:normal;margin-bottom:6px;">Image (PNG, JPG, GIF, WebP — max 5 Mo)</label>
+            <input type="file" name="logo" accept="image/png,image/jpeg,image/gif,image/webp" required
+              onchange="previewLogo(this)" />
+          </div>
+        </div>
+        <div style="padding:16px 28px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:8px;">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-success"><i class="icon icon-chevron-right"></i> Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+function previewLogo(input) {
+  if (!input.files || !input.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('logoPreview').innerHTML =
+      '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;" />';
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+</script>
 {{end}}

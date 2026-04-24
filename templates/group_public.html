@@ -1,7 +1,9 @@
 {{define "body"}}
 <style>
+  html { scrollbar-gutter: stable both-edges; }
   body.group-public-body { background:#f4f1e8; margin:0; padding:0; color:#333; }
-  .gp-wrap { max-width:1200px; margin:0 auto; padding:24px 16px 48px; }
+  body.group-public-body.container-fluid { padding-left:0; padding-right:0; }
+  .gp-wrap { max-width:960px; margin:0 auto; padding:24px 16px 48px; box-sizing:border-box; }
   @media (min-width:768px) { .gp-wrap { padding:36px 32px 64px; } }
 
   .gp-hero {
@@ -10,12 +12,14 @@
     margin-bottom:28px;
   }
   .gp-hero-top {
-    display:flex; align-items:center; justify-content:space-between;
-    gap:16px; flex-wrap:wrap;
-    padding:28px 28px 18px;
+    display:flex; flex-direction:column; align-items:center;
+    gap:16px;
+    padding:32px 28px 22px;
     border-bottom:1px solid #f0ece0;
+    text-align:center;
   }
-  @media (min-width:768px) { .gp-hero-top { padding:36px 40px 24px; } }
+  @media (min-width:768px) { .gp-hero-top { padding:44px 40px 28px; } }
+  .gp-hero-title { display:flex; align-items:center; gap:18px; flex-wrap:wrap; justify-content:center; }
   .gp-name { font-style:italic; font-size:2em; margin:0; line-height:1.2; }
   @media (min-width:768px) { .gp-name { font-size:2.6em; } }
   .gp-login-btn {
@@ -39,7 +43,7 @@
   @media (min-width:768px) { .gp-section h2 { font-size:1.7em; } }
 
   /* Distributions */
-  .gp-distribs { display:flex; gap:12px; flex-wrap:wrap; }
+  .gp-distribs { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
   .gp-date-tile {
     flex:0 0 auto; width:120px;
     border:2px solid #c8a464; border-radius:10px;
@@ -59,10 +63,11 @@
   .gp-date-foot .hours { color:#888; display:block; font-size:0.9em; }
 
   /* Contact */
-  .gp-contact-row { display:flex; flex-direction:column; gap:6px; color:#444; line-height:1.7; }
+  .gp-contact-row { display:flex; flex-direction:column; gap:10px; color:#444; }
+  .gp-contact-row > div { display:flex; align-items:center; gap:10px; line-height:1.4; }
   .gp-contact-row a { color:#6a9a2a; text-decoration:none; }
   .gp-contact-row a:hover { text-decoration:underline; }
-  .gp-contact-row .ico { color:#888; display:inline-block; width:20px; }
+  .gp-contact-row .ico { color:#888; width:20px; display:inline-flex; justify-content:center; flex-shrink:0; }
 
   /* Vendors */
   .gp-vendor { padding:18px 0; border-bottom:1px solid #f0ece0; }
@@ -85,7 +90,7 @@
     width:100%; aspect-ratio:1; background:#f0f0f0;
     background-size:cover; background-position:center;
   }
-  .gp-prod-name { font-size:0.85em; color:#555; padding:6px 8px; line-height:1.25; }
+  .gp-prod-name { font-size:0.78em; color:#555; padding:5px 6px; line-height:1.2; }
 
   /* Documents */
   .gp-docs { display:flex; flex-direction:column; gap:8px; }
@@ -107,7 +112,12 @@
 
   <div class="gp-hero">
     <div class="gp-hero-top">
-      <h1 class="gp-name">{{.Group.Name}}</h1>
+      <div class="gp-hero-title">
+        {{if .LogoURL}}
+        <img src="{{.LogoURL}}" alt="Logo" style="width:80px;height:80px;object-fit:cover;border-radius:12px;border:1px solid #eee;flex-shrink:0;" />
+        {{end}}
+        <h1 class="gp-name">{{.Group.Name}}</h1>
+      </div>
       {{if .LoggedIn}}
       <a href="/home" class="gp-login-btn"><i class="icon icon-chevron-right"></i> Accéder à mon espace</a>
       {{else}}

@@ -1194,6 +1194,81 @@ func (h *PagesHandler) AmapAdminDocumentsDelete(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/amapadmin/documents")
 }
 
+// ---- POST /amapadmin/logo ----
+
+const maxLogoSize = 5 * 1024 * 1024 // 5 MB
+
+func (h *PagesHandler) AmapAdminLogoUpload(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
+		c.String(http.StatusForbidden, "accès refusé")
+		return
+	}
+	fh, err := c.FormFile("logo")
+	if err != nil || fh == nil {
+		c.Redirect(http.StatusFound, "/amapadmin")
+		return
+	}
+	name := strings.ToLower(fh.Filename)
+	allowed := false
+	for _, ext := range []string{".png", ".jpg", ".jpeg", ".gif", ".webp"} {
+		if strings.HasSuffix(name, ext) {
+			allowed = true
+			break
+		}
+	}
+	if !allowed || fh.Size > maxLogoSize {
+		c.Redirect(http.StatusFound, "/amapadmin")
+		return
+	}
+	src, err := fh.Open()
+	if err != nil {
+		c.String(http.StatusInternalServerError, "erreur: %v", err)
+		return
+	}
+	defer src.Close()
+	data, err := io.ReadAll(src)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "erreur: %v", err)
+		return
+	}
+
+	// Supprimer l'ancien logo s'il existe
+	var current model.Group
+	h.db.First(&current, pd.Group.ID)
+	if current.LogoID != nil {
+		oldID := *current.LogoID
+		h.db.Model(&model.Group{}).Where("id = ?", pd.Group.ID).Update("logoId", nil)
+		h.db.Delete(&model.File{}, oldID)
+	}
+
+	file := model.File{Name: fh.Filename, Data: data}
+	if err := h.db.Create(&file).Error; err != nil {
+		c.String(http.StatusInternalServerError, "erreur: %v", err)
+		return
+	}
+	h.db.Model(&model.Group{}).Where("id = ?", pd.Group.ID).Update("logoId", file.ID)
+	c.Redirect(http.StatusFound, "/amapadmin")
+}
+
+// ---- GET /amapadmin/logo/delete ----
+
+func (h *PagesHandler) AmapAdminLogoDelete(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
+		c.String(http.StatusForbidden, "accès refusé")
+		return
+	}
+	var current model.Group
+	h.db.First(&current, pd.Group.ID)
+	if current.LogoID != nil {
+		oldID := *current.LogoID
+		h.db.Model(&model.Group{}).Where("id = ?", pd.Group.ID).Update("logoId", nil)
+		h.db.Delete(&model.File{}, oldID)
+	}
+	c.Redirect(http.StatusFound, "/amapadmin")
+}
+
 // ---- GET /group/:id — public group page ----
 
 type GroupPublicDistrib struct {
@@ -1226,6 +1301,7 @@ type GroupPublicDocView struct {
 type GroupPublicData struct {
 	Title        string
 	Group        *model.Group
+	LogoURL      string
 	Intro        string
 	Home         string
 	ExtURL       string
@@ -1247,7 +1323,7 @@ func (h *PagesHandler) GroupPublicPage(c *gin.Context) {
 		return
 	}
 	var g model.Group
-	if err := h.db.Preload("Contact").First(&g, groupID).Error; err != nil {
+	if err := h.db.Preload("Contact").Preload("Logo").First(&g, groupID).Error; err != nil {
 		c.String(http.StatusNotFound, "groupe introuvable")
 		return
 	}
@@ -1258,6 +1334,9 @@ func (h *PagesHandler) GroupPublicPage(c *gin.Context) {
 		Group:     &g,
 		Container: "container-fluid",
 		LoggedIn:  claims != nil,
+	}
+	if g.Logo != nil {
+		data.LogoURL = FileURL(g.Logo.ID, h.cfg.Key, g.Logo.Name)
 	}
 	if g.TxtIntro != nil {
 		data.Intro = *g.TxtIntro
@@ -1297,6 +1376,7 @@ func (h *PagesHandler) GroupPublicPage(c *gin.Context) {
 			}
 			addr += *md.Place.City
 		}
+		isToday := s.Year() == now.Year() && s.Month() == now.Month() && s.Day() == now.Day()
 		data.Distribs = append(data.Distribs, GroupPublicDistrib{
 			DayOfWeek: frDaysFull[s.Weekday()],
 			Day:       fmt.Sprintf("%d", s.Day()),
@@ -1304,7 +1384,7 @@ func (h *PagesHandler) GroupPublicPage(c *gin.Context) {
 			Place:     md.Place.Name,
 			Address:   addr,
 			Hours:     fmt.Sprintf("%02d:%02d – %02d:%02d", s.Hour(), s.Minute(), e.Hour(), e.Minute()),
-			Active:    now.After(s) && now.Before(e),
+			Active:    isToday,
 		})
 	}
 

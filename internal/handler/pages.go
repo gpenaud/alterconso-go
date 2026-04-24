@@ -150,6 +150,7 @@ type PageData struct {
 	NbMembers        int
 	NbActiveCatalogs int
 	PublicGroupURL   string
+	LogoURL          string
 	// amap page
 	Vendors     []model.Vendor
 	AmapVendors []AmapVendorView
@@ -318,8 +319,11 @@ func (h *PagesHandler) buildPageData(c *gin.Context) PageData {
 
 	if claims.GroupID != 0 {
 		var group model.Group
-		if err := h.db.First(&group, claims.GroupID).Error; err == nil {
+		if err := h.db.Preload("Logo").First(&group, claims.GroupID).Error; err == nil {
 			pd.Group = &group
+			if group.Logo != nil {
+				pd.LogoURL = FileURL(group.Logo.ID, h.cfg.Key, group.Logo.Name)
+			}
 		}
 		// Check manager right
 		var ug model.UserGroup

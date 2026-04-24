@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{{if .Title}}{{.Title}} — {{end}}Alterconso</title>
 
+  {{if .LogoURL}}
+  <link rel="icon" href="{{.LogoURL}}" />
+  <link rel="apple-touch-icon" href="{{.LogoURL}}" />
+  {{else}}
+  <link rel="icon" href="/img/logo3.png" />
+  {{end}}
+
   <link rel="stylesheet" href="/css/bootstrap.min.css" />
   <link rel="stylesheet" type="text/css" href="/css/style.css"/>
   <link rel="stylesheet" href="/font/icons.css" />

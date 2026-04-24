@@ -87,6 +87,10 @@ type Group struct {
 	MainPlaceID *uint  `json:"-"`
 	MainPlace   *Place `gorm:"foreignKey:MainPlaceID" json:"mainPlace,omitempty"`
 
+	// Logo (FK vers File)
+	LogoID *uint `gorm:"column:logoId" json:"-"`
+	Logo   *File `gorm:"foreignKey:LogoID" json:"-"`
+
 	// Taux de TVA (4 paires nom/taux)
 	VatName1 string  `gorm:"size:32" json:"-"`
 	VatRate1 float64 `gorm:"default:0" json:"-"`
