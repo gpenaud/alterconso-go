@@ -1,42 +1,60 @@
 {{define "content"}}
-<div class="col-md-12">
+{{template "amapadmin_nav" .}}
+<div class="col-md-9">
   <div class="article">
-    <h2>Editer les taux de TVA</h2>
-    <form method="POST" action="/amapadmin/vatRates">
-      <div class="form-group row">
-        <label class="col-sm-2 control-label">Nom 1</label>
-        <div class="col-sm-10"><input type="text" name="name1" class="form-control" value="{{index .VatNames 0}}" /></div>
+    <h3><i class="icon icon-percent"></i> Taux de TVA</h3>
+
+    {{if .Vats}}
+    <table class="table" style="margin-bottom:16px;">
+      <thead>
+        <tr style="color:#aaa;font-weight:normal;border-bottom:1px solid #eee;">
+          <th style="font-weight:normal;">Nom</th>
+          <th style="font-weight:normal;width:180px;">Taux (%)</th>
+          <th style="font-weight:normal;width:60px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Vats}}
+        <tr>
+          <td style="vertical-align:middle;">{{.Name}}</td>
+          <td style="vertical-align:middle;">{{printf "%g" .Rate}}</td>
+          <td style="vertical-align:middle;text-align:right;">
+            <form method="POST" action="/amapadmin/vatRates" style="margin:0;">
+              <input type="hidden" name="action" value="delete" />
+              <input type="hidden" name="slot" value="{{.Slot}}" />
+              <button type="submit" title="Supprimer"
+                style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:1.1em;padding:4px 8px;">
+                <i class="icon icon-delete"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <p class="text-muted" style="margin-bottom:16px;">Aucun taux de TVA défini pour le moment.</p>
+    {{end}}
+
+    {{if gt .FreeSlot 0}}
+    <hr />
+    <h4 style="margin-top:16px;">Ajouter un taux</h4>
+    <form method="POST" action="/amapadmin/vatRates" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+      <div style="flex:1;min-width:220px;">
+        <label style="display:block;color:#666;font-weight:normal;margin-bottom:4px;">Nom</label>
+        <input type="text" name="name" class="form-control" required />
       </div>
-      <div class="form-group row">
-        <label class="col-sm-2 control-label">Taux 1</label>
-        <div class="col-sm-10"><input type="text" name="rate1" class="form-control" value="{{index .VatRates 0}}" /></div>
+      <div style="width:180px;">
+        <label style="display:block;color:#666;font-weight:normal;margin-bottom:4px;">Taux (%)</label>
+        <input type="text" name="rate" class="form-control" placeholder="0.00" />
       </div>
-      <div class="form-group row">
-        <label class="col-sm-2 control-label">Nom 2</label>
-        <div class="col-sm-10"><input type="text" name="name2" class="form-control" value="{{index .VatNames 1}}" /></div>
-      </div>
-      <div class="form-group row">
-        <label class="col-sm-2 control-label">Taux 2</label>
-        <div class="col-sm-10"><input type="text" name="rate2" class="form-control" value="{{index .VatRates 1}}" /></div>
-      </div>
-      <div class="form-group row">
-        <label class="col-sm-2 control-label">Nom 3</label>
-        <div class="col-sm-10"><input type="text" name="name3" class="form-control" value="{{index .VatNames 2}}" /></div>
-      </div>
-      <div class="form-group row">
-        <label class="col-sm-2 control-label">Taux 3</label>
-        <div class="col-sm-10"><input type="text" name="rate3" class="form-control" value="{{index .VatRates 2}}" /></div>
-      </div>
-      <div class="form-group row">
-        <label class="col-sm-2 control-label">Nom 4</label>
-        <div class="col-sm-10"><input type="text" name="name4" class="form-control" value="{{index .VatNames 3}}" /></div>
-      </div>
-      <div class="form-group row">
-        <label class="col-sm-2 control-label">Taux 4</label>
-        <div class="col-sm-10"><input type="text" name="rate4" class="form-control" value="{{index .VatRates 3}}" /></div>
-      </div>
-      <button type="submit" class="btn btn-primary" style="background:#6a9a2a;border-color:#5a8a1a;">OK</button>
+      <button type="submit" class="btn btn-success">
+        <i class="icon icon-plus"></i> Ajouter
+      </button>
     </form>
+    {{else}}
+    <p class="text-muted">Nombre maximum de taux atteint (4).</p>
+    {{end}}
   </div>
 </div>
 {{end}}

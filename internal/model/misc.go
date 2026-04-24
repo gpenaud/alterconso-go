@@ -132,6 +132,22 @@ type VolunteerRole struct {
 
 func (vr *VolunteerRole) TableName() string { return "volunteer_roles" }
 
+// GroupDoc : document PDF attaché à un groupe.
+type GroupDoc struct {
+	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"cdate"`
+
+	GroupID uint  `json:"-"`
+	Group   Group `gorm:"foreignKey:GroupID" json:"-"`
+
+	FileID uint `json:"-"`
+	File   File `gorm:"foreignKey:FileID" json:"-"`
+
+	Name string `gorm:"size:255" json:"name"`
+}
+
+func (GroupDoc) TableName() string { return "group_docs" }
+
 // MultiDistribRole : rôle sélectionné pour une distribution donnée.
 type MultiDistribRole struct {
 	MultiDistribID   uint `gorm:"primaryKey"`

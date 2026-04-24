@@ -144,8 +144,12 @@ type PageData struct {
 	AllDistribs []DistribAdminView
 	PeriodLabel string
 	// amapadmin page
-	Places  []model.Place
-	Admins  []model.User
+	Places           []model.Place
+	Admins           []model.User
+	AmapAdminTab     string
+	NbMembers        int
+	NbActiveCatalogs int
+	PublicGroupURL   string
 	// amap page
 	Vendors     []model.Vendor
 	AmapVendors []AmapVendorView
@@ -1308,19 +1312,64 @@ func (h *PagesHandler) AmapAdminPage(c *gin.Context) {
 		return
 	}
 
-	// Load places for the group
-	h.db.Where("group_id = ?", pd.Group.ID).Find(&pd.Places)
+	var nbMembers int64
+	h.db.Model(&model.UserGroup{}).Where("group_id = ?", pd.Group.ID).Count(&nbMembers)
+	pd.NbMembers = int(nbMembers)
 
-	// Load admins for contact/legal selects
-	h.db.Joins("JOIN user_groups ON user_groups.user_id = users.id").
-		Where("user_groups.group_id = ? AND user_groups.rights LIKE ?", pd.Group.ID, "%GroupAdmin%").
-		Order("users.last_name").Find(&pd.Admins)
+	var nbActive int64
+	now := time.Now()
+	h.db.Model(&model.Catalog{}).
+		Where("group_id = ? AND (end_date IS NULL OR end_date > ?) AND (start_date IS NULL OR start_date <= ?)",
+			pd.Group.ID, now, now).
+		Count(&nbActive)
+	pd.NbActiveCatalogs = int(nbActive)
+
+	scheme := "http"
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	pd.PublicGroupURL = fmt.Sprintf("%s://%s/group/%d", scheme, c.Request.Host, pd.Group.ID)
 
 	pd.Title = "Paramètres"
 	pd.Category = "amapadmin"
 	pd.Breadcrumb = []BreadcrumbItem{{Name: "Paramètres", Link: "/amapadmin"}}
 
-	t, err := loadTemplates("base.html", "design.html", "amapadmin.html")
+	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin.html")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err)
+		return
+	}
+	if err := t.ExecuteTemplate(c.Writer, "base", pd); err != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err)
+	}
+}
+
+// ---- AmapAdmin edit page (form) ----
+
+func (h *PagesHandler) AmapAdminEditPage(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil {
+		c.Redirect(http.StatusFound, "/user/choose")
+		return
+	}
+	if !pd.IsGroupManager {
+		c.String(http.StatusForbidden, "accès refusé")
+		return
+	}
+
+	h.db.Where("group_id = ?", pd.Group.ID).Find(&pd.Places)
+	h.db.Joins("JOIN user_groups ON user_groups.user_id = users.id").
+		Where("user_groups.group_id = ? AND user_groups.rights LIKE ?", pd.Group.ID, "%GroupAdmin%").
+		Order("users.last_name").Find(&pd.Admins)
+
+	pd.Title = "Modifier les propriétés"
+	pd.Category = "amapadmin"
+	pd.Breadcrumb = []BreadcrumbItem{
+		{Name: "Paramètres", Link: "/amapadmin"},
+		{Name: "Modifier les propriétés", Link: "/amapadmin/edit"},
+	}
+
+	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin_edit.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return

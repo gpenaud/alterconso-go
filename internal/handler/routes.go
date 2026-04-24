@@ -51,6 +51,7 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/distribution", pageAuth, pagesH.DistributionPage)
 	r.GET("/amap", pageAuth, pagesH.AmapPage)
 	r.GET("/amapadmin", pageAuth, pagesH.AmapAdminPage)
+	r.GET("/amapadmin/edit", pageAuth, pagesH.AmapAdminEditPage)
 	r.POST("/amapadmin/update", pageAuth, pagesH.AmapAdminUpdate)
 	r.GET("/amapadmin/rights", pageAuth, pagesH.AmapAdminRightsPage)
 	r.GET("/amapadmin/rights/add", pageAuth, pagesH.AmapAdminRightsAddPage)
@@ -65,10 +66,13 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/amapadmin/currency", pageAuth, pagesH.AmapAdminCurrencyPage)
 	r.POST("/amapadmin/currency", pageAuth, pagesH.AmapAdminCurrencyUpdate)
 	r.GET("/amapadmin/documents", pageAuth, pagesH.AmapAdminDocumentsPage)
+	r.POST("/amapadmin/documents", pageAuth, pagesH.AmapAdminDocumentsUpload)
+	r.GET("/amapadmin/documents/delete/:id", pageAuth, pagesH.AmapAdminDocumentsDelete)
 
 	// Group creation
 	r.GET("/group/create/", pageAuth, pagesH.GroupCreatePage)
 	r.POST("/group/create/", pageAuth, pagesH.GroupCreatePage)
+	r.GET("/group/:id", pagesH.GroupPublicPage)
 	r.GET("/contractAdmin", pageAuth, pagesH.ContractAdminPage)
 
 	// Member sub-pages

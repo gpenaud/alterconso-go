@@ -65,15 +65,21 @@ func (h *FileHandler) ServeFile(c *gin.Context) {
 	}
 
 	contentType := "image/png"
-	if ext == "jpg" || ext == "jpeg" {
+	switch strings.ToLower(ext) {
+	case "jpg", "jpeg":
 		contentType = "image/jpeg"
-	} else if ext == "gif" {
+	case "gif":
 		contentType = "image/gif"
-	} else if ext == "webp" {
+	case "webp":
 		contentType = "image/webp"
+	case "pdf":
+		contentType = "application/pdf"
 	}
 
 	c.Header("Cache-Control", "public, max-age=86400")
+	if contentType == "application/pdf" {
+		c.Header("Content-Disposition", "inline; filename=\""+file.Name+"\"")
+	}
 	c.Data(http.StatusOK, contentType, file.Data)
 }
 

@@ -1,32 +1,33 @@
 {{define "content"}}
 {{template "amapadmin_nav" .}}
 <div class="col-md-9">
-  <h2>Permanences</h2>
   <div class="article">
-    <h3>Rôles de bénévoles</h3>
-    <p>Ici vous pouvez définir les rôles de bénévoles.</p>
+    <h3 style="font-style:italic;margin:0 0 8px;">Permanences</h3>
+    <h4 style="margin:16px 0 4px;">Rôles de bénévoles</h4>
+    <p style="color:#666;margin-bottom:20px;">Ici vous pouvez définir les rôles de bénévoles.</p>
 
     {{if .VolunteerRoles}}
-    <table class="table table-bordered table-condensed">
+    <table class="table table-bordered" style="margin-bottom:20px;">
       <thead>
-        <tr>
-          <th>Rôle de bénévole</th>
-          <th>Catalogue correspondant</th>
-          <th></th>
+        <tr style="color:#aaa;font-weight:normal;">
+          <th style="font-weight:normal;">Rôle de bénévole</th>
+          <th style="font-weight:normal;">Catalogue correspondant</th>
+          <th style="font-weight:normal;width:220px;text-align:right;"></th>
         </tr>
       </thead>
       <tbody>
         {{range .VolunteerRoles}}
         <tr>
-          <td>{{.Name}}</td>
-          <td>{{if .Catalog}}{{.Catalog.Name}}{{end}}</td>
-          <td>
-            <a href="/amapadmin/volunteers/edit/{{.ID}}" class="btn btn-default btn-xs">
+          <td style="vertical-align:middle;padding:12px 14px;">{{.Name}}</td>
+          <td style="vertical-align:middle;padding:12px 14px;">{{if .Catalog}}{{.Catalog.Name}}{{end}}</td>
+          <td style="vertical-align:middle;padding:12px 14px;text-align:right;white-space:nowrap;">
+            <a href="/amapadmin/volunteers/edit/{{.ID}}" class="btn btn-default" style="margin-right:6px;">
               <i class="icon icon-edit"></i> Modifier
             </a>
-            <a href="/amapadmin/volunteers/delete/{{.ID}}" class="btn btn-default btn-xs"
+            <a href="/amapadmin/volunteers/delete/{{.ID}}" class="btn btn-danger"
+               title="Supprimer"
                onclick="return confirm('Supprimer ce rôle ?')">
-              <i class="icon icon-delete"></i> Supprimer
+              <i class="icon icon-delete"></i>
             </a>
           </td>
         </tr>
@@ -37,7 +38,7 @@
     <p class="text-muted">Aucun rôle de bénévole défini.</p>
     {{end}}
 
-    <a href="/amapadmin/volunteers/new" class="btn btn-default btn-sm">
+    <a href="/amapadmin/volunteers/new" class="btn btn-success">
       <i class="icon icon-plus"></i> Nouveau rôle
     </a>
   </div>

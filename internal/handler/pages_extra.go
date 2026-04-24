@@ -3,11 +3,14 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gpenaud/alterconso/internal/middleware"
 	"github.com/gpenaud/alterconso/internal/model"
 )
 
@@ -863,10 +866,16 @@ func (h *PagesHandler) buildAmapAdminData(c *gin.Context, tab string) (AmapAdmin
 
 // ---- GET /amapadmin/vatRates ----
 
+type VatEntry struct {
+	Slot int
+	Name string
+	Rate float64
+}
+
 type VatRatesData struct {
 	AmapAdminPageData
-	VatNames [4]string
-	VatRates [4]float64
+	Vats     []VatEntry
+	FreeSlot int // 0 si plus de slot libre
 }
 
 func (h *PagesHandler) AmapAdminVatRatesPage(c *gin.Context) {
@@ -877,8 +886,15 @@ func (h *PagesHandler) AmapAdminVatRatesPage(c *gin.Context) {
 	data := VatRatesData{AmapAdminPageData: base}
 	data.Title = "Taux de TVA"
 	g := base.Group
-	data.VatNames = [4]string{g.VatName1, g.VatName2, g.VatName3, g.VatName4}
-	data.VatRates = [4]float64{g.VatRate1, g.VatRate2, g.VatRate3, g.VatRate4}
+	names := [4]string{g.VatName1, g.VatName2, g.VatName3, g.VatName4}
+	rates := [4]float64{g.VatRate1, g.VatRate2, g.VatRate3, g.VatRate4}
+	for i, n := range names {
+		if strings.TrimSpace(n) != "" {
+			data.Vats = append(data.Vats, VatEntry{Slot: i + 1, Name: n, Rate: rates[i]})
+		} else if data.FreeSlot == 0 {
+			data.FreeSlot = i + 1
+		}
+	}
 
 	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin_vatrates.html")
 	if err != nil {
@@ -896,17 +912,47 @@ func (h *PagesHandler) AmapAdminVatRatesUpdate(c *gin.Context) {
 		c.String(http.StatusForbidden, "accès refusé")
 		return
 	}
-	parseRate := func(s string) float64 {
-		var f float64
-		fmt.Sscanf(s, "%f", &f)
-		return f
+
+	if c.PostForm("action") == "delete" {
+		slot, _ := strconv.Atoi(c.PostForm("slot"))
+		if slot >= 1 && slot <= 4 {
+			h.db.Model(&model.Group{}).Where("id = ?", pd.Group.ID).Updates(map[string]interface{}{
+				fmt.Sprintf("vat_name%d", slot): "",
+				fmt.Sprintf("vat_rate%d", slot): 0,
+			})
+		}
+		c.Redirect(http.StatusFound, "/amapadmin/vatRates")
+		return
 	}
-	h.db.Model(&model.Group{}).Where("id = ?", pd.Group.ID).Updates(map[string]interface{}{
-		"vat_name1": c.PostForm("name1"), "vat_rate1": parseRate(c.PostForm("rate1")),
-		"vat_name2": c.PostForm("name2"), "vat_rate2": parseRate(c.PostForm("rate2")),
-		"vat_name3": c.PostForm("name3"), "vat_rate3": parseRate(c.PostForm("rate3")),
-		"vat_name4": c.PostForm("name4"), "vat_rate4": parseRate(c.PostForm("rate4")),
-	})
+
+	name := strings.TrimSpace(c.PostForm("name"))
+	if name == "" {
+		c.Redirect(http.StatusFound, "/amapadmin/vatRates")
+		return
+	}
+	var rate float64
+	fmt.Sscanf(c.PostForm("rate"), "%f", &rate)
+
+	var g model.Group
+	h.db.First(&g, pd.Group.ID)
+	slots := []struct {
+		name string
+		rate float64
+	}{
+		{g.VatName1, g.VatRate1},
+		{g.VatName2, g.VatRate2},
+		{g.VatName3, g.VatRate3},
+		{g.VatName4, g.VatRate4},
+	}
+	for i, s := range slots {
+		if strings.TrimSpace(s.name) == "" {
+			h.db.Model(&model.Group{}).Where("id = ?", pd.Group.ID).Updates(map[string]interface{}{
+				fmt.Sprintf("vat_name%d", i+1): name,
+				fmt.Sprintf("vat_rate%d", i+1): rate,
+			})
+			break
+		}
+	}
 	c.Redirect(http.StatusFound, "/amapadmin/vatRates")
 }
 
@@ -961,10 +1007,24 @@ func (h *PagesHandler) AmapAdminMembershipUpdate(c *gin.Context) {
 		c.String(http.StatusForbidden, "accès refusé")
 		return
 	}
-	hasMembership := c.PostForm("hasMembership") == "1"
-	h.db.Model(&model.Group{}).Where("id = ?", pd.Group.ID).Updates(map[string]interface{}{
-		"has_membership": hasMembership,
-	})
+	updates := map[string]interface{}{
+		"has_membership": c.PostForm("hasMembership") == "1",
+	}
+	if fee := strings.TrimSpace(c.PostForm("membershipFee")); fee != "" {
+		if n, err := strconv.Atoi(fee); err == nil {
+			updates["membership_fee"] = n
+		}
+	} else {
+		updates["membership_fee"] = nil
+	}
+	if d := strings.TrimSpace(c.PostForm("membershipRenewalDate")); d != "" {
+		if t, err := time.Parse("2006-01-02", d); err == nil {
+			updates["membership_renewal_date"] = t
+		}
+	} else {
+		updates["membership_renewal_date"] = nil
+	}
+	h.db.Model(&model.Group{}).Where("id = ?", pd.Group.ID).Updates(updates)
 	c.Redirect(http.StatusFound, "/amapadmin/membership")
 }
 
@@ -1002,19 +1062,311 @@ func (h *PagesHandler) AmapAdminCurrencyUpdate(c *gin.Context) {
 
 // ---- GET /amapadmin/documents ----
 
+type DocView struct {
+	ID        uint
+	Name      string
+	FileName  string
+	URL       string
+	CreatedAt string
+	SizeLabel string
+}
+
+type AmapAdminDocumentsData struct {
+	AmapAdminPageData
+	Docs     []DocView
+	ErrorMsg string
+}
+
 func (h *PagesHandler) AmapAdminDocumentsPage(c *gin.Context) {
 	base, ok := h.buildAmapAdminData(c, "documents")
 	if !ok {
 		return
 	}
-	base.Title = "Documents"
+	data := AmapAdminDocumentsData{AmapAdminPageData: base}
+	data.Title = "Documents"
+
+	switch c.Query("err") {
+	case "nofile":
+		data.ErrorMsg = "Veuillez choisir un fichier."
+	case "notpdf":
+		data.ErrorMsg = "Seuls les fichiers PDF sont acceptés."
+	case "toobig":
+		data.ErrorMsg = "Le fichier dépasse la taille maximale (10 Mo)."
+	}
+
+	var docs []model.GroupDoc
+	h.db.Where("group_id = ?", base.Group.ID).Preload("File").
+		Order("created_at DESC").Find(&docs)
+	for _, d := range docs {
+		size := len(d.File.Data)
+		var sizeLabel string
+		if size >= 1024*1024 {
+			sizeLabel = fmt.Sprintf("%.1f Mo", float64(size)/(1024*1024))
+		} else {
+			sizeLabel = fmt.Sprintf("%d Ko", size/1024)
+		}
+		data.Docs = append(data.Docs, DocView{
+			ID:        d.ID,
+			Name:      d.Name,
+			FileName:  d.File.Name,
+			URL:       FileURL(d.File.ID, h.cfg.Key, d.File.Name),
+			CreatedAt: d.CreatedAt.Format("02/01/2006"),
+			SizeLabel: sizeLabel,
+		})
+	}
 
 	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin_documents.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
 	}
-	if err := t.ExecuteTemplate(c.Writer, "base", base); err != nil {
+	if err := t.ExecuteTemplate(c.Writer, "base", data); err != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err)
+	}
+}
+
+// ---- POST /amapadmin/documents (upload) ----
+
+const maxDocSize = 10 * 1024 * 1024 // 10 MB
+
+func (h *PagesHandler) AmapAdminDocumentsUpload(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
+		c.String(http.StatusForbidden, "accès refusé")
+		return
+	}
+	fh, err := c.FormFile("file")
+	if err != nil || fh == nil {
+		c.Redirect(http.StatusFound, "/amapadmin/documents?err=nofile")
+		return
+	}
+	if !strings.HasSuffix(strings.ToLower(fh.Filename), ".pdf") {
+		c.Redirect(http.StatusFound, "/amapadmin/documents?err=notpdf")
+		return
+	}
+	if fh.Size > maxDocSize {
+		c.Redirect(http.StatusFound, "/amapadmin/documents?err=toobig")
+		return
+	}
+	src, err := fh.Open()
+	if err != nil {
+		c.String(http.StatusInternalServerError, "erreur: %v", err)
+		return
+	}
+	defer src.Close()
+	data, err := io.ReadAll(src)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "erreur: %v", err)
+		return
+	}
+
+	file := model.File{Name: fh.Filename, Data: data}
+	if err := h.db.Create(&file).Error; err != nil {
+		c.String(http.StatusInternalServerError, "erreur: %v", err)
+		return
+	}
+	name := strings.TrimSpace(c.PostForm("name"))
+	if name == "" {
+		name = fh.Filename
+	}
+	doc := model.GroupDoc{GroupID: pd.Group.ID, FileID: file.ID, Name: name}
+	h.db.Create(&doc)
+	c.Redirect(http.StatusFound, "/amapadmin/documents")
+}
+
+// ---- GET /amapadmin/documents/delete/:id ----
+
+func (h *PagesHandler) AmapAdminDocumentsDelete(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
+		c.String(http.StatusForbidden, "accès refusé")
+		return
+	}
+	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+	var doc model.GroupDoc
+	if err := h.db.Where("id = ? AND group_id = ?", id, pd.Group.ID).First(&doc).Error; err != nil {
+		c.Redirect(http.StatusFound, "/amapadmin/documents")
+		return
+	}
+	fileID := doc.FileID
+	h.db.Delete(&doc)
+	h.db.Delete(&model.File{}, fileID)
+	c.Redirect(http.StatusFound, "/amapadmin/documents")
+}
+
+// ---- GET /group/:id — public group page ----
+
+type GroupPublicDistrib struct {
+	DayOfWeek string
+	Day       string
+	Month     string
+	Place     string
+	Address   string
+	Hours     string
+	Active    bool
+}
+
+type GroupPublicProduct struct {
+	Name string
+	URL  string
+}
+
+type GroupPublicVendor struct {
+	Name     string
+	Address  string
+	Organic  bool
+	Products []GroupPublicProduct
+}
+
+type GroupPublicDocView struct {
+	Name string
+	URL  string
+}
+
+type GroupPublicData struct {
+	Title        string
+	Group        *model.Group
+	Intro        string
+	Home         string
+	ExtURL       string
+	ContactName  string
+	ContactEmail string
+	ContactPhone string
+	ShowPhone    bool
+	Distribs     []GroupPublicDistrib
+	Vendors      []GroupPublicVendor
+	Documents    []GroupPublicDocView
+	LoggedIn     bool
+	Container    string
+}
+
+func (h *PagesHandler) GroupPublicPage(c *gin.Context) {
+	groupID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.String(http.StatusNotFound, "groupe introuvable")
+		return
+	}
+	var g model.Group
+	if err := h.db.Preload("Contact").First(&g, groupID).Error; err != nil {
+		c.String(http.StatusNotFound, "groupe introuvable")
+		return
+	}
+
+	claims := middleware.GetClaims(c)
+	data := GroupPublicData{
+		Title:     g.Name,
+		Group:     &g,
+		Container: "container-fluid",
+		LoggedIn:  claims != nil,
+	}
+	if g.TxtIntro != nil {
+		data.Intro = *g.TxtIntro
+	}
+	if g.TxtHome != nil {
+		data.Home = *g.TxtHome
+	}
+	if g.ExtURL != nil {
+		data.ExtURL = *g.ExtURL
+	}
+	if g.Contact != nil {
+		data.ContactName = g.Contact.FirstName + " " + g.Contact.LastName
+		data.ContactEmail = g.Contact.Email
+		if g.Contact.Phone != nil {
+			data.ContactPhone = *g.Contact.Phone
+		}
+		data.ShowPhone = g.CanExposePhone() && data.ContactPhone != ""
+	}
+
+	now := time.Now()
+	frMonths := [...]string{"", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"}
+	frDaysFull := [...]string{"Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"}
+
+	var mds []model.MultiDistrib
+	h.db.Where("group_id = ? AND distrib_end_date >= ?", g.ID, now).
+		Preload("Place").Order("distrib_start_date ASC").Limit(5).Find(&mds)
+	for _, md := range mds {
+		s := md.DistribStartDate
+		e := md.DistribEndDate
+		addr := ""
+		if md.Place.Address != nil {
+			addr = *md.Place.Address
+		}
+		if md.Place.City != nil {
+			if addr != "" {
+				addr += ", "
+			}
+			addr += *md.Place.City
+		}
+		data.Distribs = append(data.Distribs, GroupPublicDistrib{
+			DayOfWeek: frDaysFull[s.Weekday()],
+			Day:       fmt.Sprintf("%d", s.Day()),
+			Month:     frMonths[s.Month()],
+			Place:     md.Place.Name,
+			Address:   addr,
+			Hours:     fmt.Sprintf("%02d:%02d – %02d:%02d", s.Hour(), s.Minute(), e.Hour(), e.Minute()),
+			Active:    now.After(s) && now.Before(e),
+		})
+	}
+
+	var cats []model.Catalog
+	h.db.Where("group_id = ? AND (end_date IS NULL OR end_date > ?) AND (start_date IS NULL OR start_date <= ?)",
+		g.ID, now, now).
+		Preload("Vendor").Find(&cats)
+	seen := map[uint]int{}
+	for _, cat := range cats {
+		idx, ok := seen[cat.VendorID]
+		if !ok {
+			addr := ""
+			if cat.Vendor.ZipCode != nil {
+				addr = *cat.Vendor.ZipCode
+			}
+			if cat.Vendor.City != nil {
+				if addr != "" {
+					addr += " "
+				}
+				addr += *cat.Vendor.City
+			}
+			data.Vendors = append(data.Vendors, GroupPublicVendor{
+				Name:    cat.Vendor.Name,
+				Address: addr,
+				Organic: cat.Vendor.Organic,
+			})
+			idx = len(data.Vendors) - 1
+			seen[cat.VendorID] = idx
+		}
+		if len(data.Vendors[idx].Products) >= 4 {
+			continue
+		}
+		remaining := 4 - len(data.Vendors[idx].Products)
+		var prods []model.Product
+		h.db.Where("catalog_id = ? AND active = ?", cat.ID, true).
+			Preload("Image").Limit(remaining).Find(&prods)
+		for _, p := range prods {
+			url := ""
+			if p.Image != nil {
+				url = FileURL(p.Image.ID, h.cfg.Key, p.Image.Name)
+			}
+			data.Vendors[idx].Products = append(data.Vendors[idx].Products, GroupPublicProduct{
+				Name: p.Name, URL: url,
+			})
+		}
+	}
+
+	var docs []model.GroupDoc
+	h.db.Where("group_id = ?", g.ID).Preload("File").Order("created_at DESC").Find(&docs)
+	for _, d := range docs {
+		data.Documents = append(data.Documents, GroupPublicDocView{
+			Name: d.Name,
+			URL:  FileURL(d.File.ID, h.cfg.Key, d.File.Name),
+		})
+	}
+
+	t, err := loadTemplates("base.html", "group_public.html")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err)
+		return
+	}
+	if err := t.ExecuteTemplate(c.Writer, "base", data); err != nil {
 		c.String(http.StatusInternalServerError, "render error: %v", err)
 	}
 }

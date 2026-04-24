@@ -1,5 +1,12 @@
 {{define "amapadmin_nav"}}
-<div class="col-md-3">
+<style>
+  .amapadmin-section ~ .col-md-9 .article { padding: 24px 28px; }
+  .amapadmin-section ~ .col-md-9 .article + .article { margin-top: 16px; }
+  .amapadmin-section ~ .col-md-9 .article h3,
+  .amapadmin-section ~ .col-md-9 .article h4 { margin-top: 0; }
+  .amapadmin-section ~ .col-md-9 > h2 { margin: 0 0 16px; padding: 0 4px; }
+</style>
+<div class="col-md-3 amapadmin-section">
   <div class="article" style="padding:0;">
     <ul class="nav nav-pills nav-stacked" style="margin:0;">
       <li {{if eq .AmapAdminTab "rights"}}class="active"{{end}}>

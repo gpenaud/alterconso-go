@@ -1,0 +1,200 @@
+{{define "body"}}
+<style>
+  body.group-public-body { background:#f4f1e8; margin:0; padding:0; color:#333; }
+  .gp-wrap { max-width:1200px; margin:0 auto; padding:24px 16px 48px; }
+  @media (min-width:768px) { .gp-wrap { padding:36px 32px 64px; } }
+
+  .gp-hero {
+    background:#fff; border-radius:12px; overflow:hidden;
+    box-shadow:0 2px 18px rgba(0,0,0,0.05);
+    margin-bottom:28px;
+  }
+  .gp-hero-top {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:16px; flex-wrap:wrap;
+    padding:28px 28px 18px;
+    border-bottom:1px solid #f0ece0;
+  }
+  @media (min-width:768px) { .gp-hero-top { padding:36px 40px 24px; } }
+  .gp-name { font-style:italic; font-size:2em; margin:0; line-height:1.2; }
+  @media (min-width:768px) { .gp-name { font-size:2.6em; } }
+  .gp-login-btn {
+    display:inline-flex; align-items:center; gap:8px;
+    background:#84BD55; color:#fff; padding:10px 18px;
+    border-radius:6px; text-decoration:none; font-weight:bold;
+    white-space:nowrap; transition:background 0.15s;
+  }
+  .gp-login-btn:hover { background:#6ea543; color:#fff; text-decoration:none; }
+
+  .gp-intro { padding:20px 28px; color:#555; line-height:1.55; font-size:1.05em; }
+  @media (min-width:768px) { .gp-intro { padding:24px 40px; font-size:1.1em; } }
+
+  .gp-section { background:#fff; border-radius:12px; margin-bottom:28px;
+    box-shadow:0 2px 18px rgba(0,0,0,0.05); padding:24px 24px; }
+  @media (min-width:768px) { .gp-section { padding:32px 40px; } }
+  .gp-section h2 {
+    font-style:italic; font-size:1.5em; margin:0 0 20px; color:#333;
+    border-bottom:2px solid #e8e3d3; padding-bottom:10px;
+  }
+  @media (min-width:768px) { .gp-section h2 { font-size:1.7em; } }
+
+  /* Distributions */
+  .gp-distribs { display:flex; gap:12px; flex-wrap:wrap; }
+  .gp-date-tile {
+    flex:0 0 auto; width:120px;
+    border:2px solid #c8a464; border-radius:10px;
+    background:#d9b678; color:#fff; text-align:center;
+    overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.08);
+  }
+  .gp-date-tile.active { background:#84BD55; border-color:#5a9b2f; }
+  .gp-date-head { padding:6px 8px; font-size:0.95em; line-height:1.1; }
+  .gp-date-day { font-size:2.4em; font-weight:bold; color:#fff; line-height:1; padding:4px 0; background:rgba(255,255,255,0.12); }
+  .gp-date-tile.active .gp-date-day { color:#fff; background:rgba(255,255,255,0.15); }
+  .gp-date-foot {
+    background:#fff; color:#333; font-size:0.85em;
+    padding:8px 6px; line-height:1.25; border-top:1px solid #c8a464;
+  }
+  .gp-date-tile.active .gp-date-foot { border-top-color:#5a9b2f; }
+  .gp-date-foot .place { font-weight:bold; display:block; }
+  .gp-date-foot .hours { color:#888; display:block; font-size:0.9em; }
+
+  /* Contact */
+  .gp-contact-row { display:flex; flex-direction:column; gap:6px; color:#444; line-height:1.7; }
+  .gp-contact-row a { color:#6a9a2a; text-decoration:none; }
+  .gp-contact-row a:hover { text-decoration:underline; }
+  .gp-contact-row .ico { color:#888; display:inline-block; width:20px; }
+
+  /* Vendors */
+  .gp-vendor { padding:18px 0; border-bottom:1px solid #f0ece0; }
+  .gp-vendor:last-child { border-bottom:none; }
+  .gp-vendor h3 { margin:0 0 4px; font-size:1.15em; color:#222; }
+  .gp-vendor .addr { color:#888; font-size:0.95em; margin-bottom:12px; }
+  .gp-vendor .organic-badge {
+    display:inline-block; background:#e8f5d8; color:#5a8a1a;
+    font-size:0.75em; padding:2px 8px; border-radius:10px; margin-left:8px;
+    font-weight:bold; letter-spacing:0.04em;
+  }
+  .gp-products { display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; }
+  @media (min-width:576px) { .gp-products { grid-template-columns:repeat(3, 1fr); } }
+  @media (min-width:768px) { .gp-products { grid-template-columns:repeat(4, 1fr); } }
+  .gp-prod {
+    background:#fafafa; border:1px solid #ececec; border-radius:8px;
+    overflow:hidden; text-align:center;
+  }
+  .gp-prod-img {
+    width:100%; aspect-ratio:1; background:#f0f0f0;
+    background-size:cover; background-position:center;
+  }
+  .gp-prod-name { font-size:0.85em; color:#555; padding:6px 8px; line-height:1.25; }
+
+  /* Documents */
+  .gp-docs { display:flex; flex-direction:column; gap:8px; }
+  .gp-doc {
+    display:flex; align-items:center; gap:10px;
+    padding:10px 14px; background:#fafafa; border:1px solid #ececec;
+    border-radius:8px; color:#333; text-decoration:none;
+    transition:background 0.15s;
+  }
+  .gp-doc:hover { background:#f0ece0; color:#333; text-decoration:none; }
+  .gp-doc .ico { color:#c0392b; font-size:1.2em; }
+
+  .gp-footer { text-align:center; color:#999; font-size:0.85em; padding:20px 0; }
+</style>
+
+<script>document.body.classList.add('group-public-body');</script>
+
+<div class="gp-wrap">
+
+  <div class="gp-hero">
+    <div class="gp-hero-top">
+      <h1 class="gp-name">{{.Group.Name}}</h1>
+      {{if .LoggedIn}}
+      <a href="/home" class="gp-login-btn"><i class="icon icon-chevron-right"></i> Accéder à mon espace</a>
+      {{else}}
+      <a href="/user/login" class="gp-login-btn"><i class="icon icon-user"></i> Se connecter</a>
+      {{end}}
+    </div>
+    {{if .Intro}}
+    <div class="gp-intro">{{.Intro}}</div>
+    {{end}}
+  </div>
+
+  {{if .Distribs}}
+  <div class="gp-section">
+    <h2>Prochaines distributions</h2>
+    <div class="gp-distribs">
+      {{range .Distribs}}
+      <div class="gp-date-tile{{if .Active}} active{{end}}">
+        <div class="gp-date-head">{{.DayOfWeek}}</div>
+        <div class="gp-date-day">{{.Day}}</div>
+        <div class="gp-date-head">{{.Month}}</div>
+        <div class="gp-date-foot">
+          <span class="place">{{.Place}}</span>
+          <span class="hours">{{.Hours}}</span>
+        </div>
+      </div>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+
+  <div class="gp-section">
+    <h2>Contact</h2>
+    <div class="gp-contact-row">
+      {{if .ContactName}}
+      <div><span class="ico"><i class="icon icon-user"></i></span><b>{{.ContactName}}</b></div>
+      {{end}}
+      {{if .ContactEmail}}
+      <div><span class="ico"><i class="icon icon-mail"></i></span><a href="mailto:{{.ContactEmail}}">{{.ContactEmail}}</a></div>
+      {{end}}
+      {{if .ShowPhone}}
+      <div><span class="ico"><i class="icon icon-phone"></i></span>{{.ContactPhone}}</div>
+      {{end}}
+      {{if .ExtURL}}
+      <div><span class="ico"><i class="icon icon-link"></i></span><a href="{{.ExtURL}}" target="_blank" rel="noopener">{{.ExtURL}}</a></div>
+      {{end}}
+    </div>
+  </div>
+
+  {{if .Vendors}}
+  <div class="gp-section">
+    <h2>Producteurs et produits</h2>
+    <p style="color:#666;margin-bottom:16px;">Extrait non exhaustif des produits proposés :</p>
+    {{range .Vendors}}
+    <div class="gp-vendor">
+      <h3>{{.Name}}{{if .Organic}}<span class="organic-badge">BIO</span>{{end}}</h3>
+      {{if .Address}}<div class="addr">{{.Address}}</div>{{end}}
+      {{if .Products}}
+      <div class="gp-products">
+        {{range .Products}}
+        <div class="gp-prod" title="{{.Name}}">
+          <div class="gp-prod-img"{{if .URL}} style="background-image:url('{{.URL}}');"{{end}}></div>
+          <div class="gp-prod-name">{{.Name}}</div>
+        </div>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+
+  {{if .Documents}}
+  <div class="gp-section">
+    <h2>Documents</h2>
+    <div class="gp-docs">
+      {{range .Documents}}
+      <a class="gp-doc" href="{{.URL}}" target="_blank" rel="noopener">
+        <span class="ico"><i class="icon icon-file"></i></span>
+        <span>{{.Name}}</span>
+      </a>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+
+  <div class="gp-footer">
+    Page publique — Alterconso
+  </div>
+</div>
+{{end}}

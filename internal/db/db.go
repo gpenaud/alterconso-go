@@ -51,6 +51,7 @@ func Migrate(db *gorm.DB) error {
 		&model.WaitingList{},
 		&model.Volunteer{},
 		&model.VolunteerRole{},
+		&model.GroupDoc{},
 		&model.NotificationSent{},
 		&model.PasswordResetToken{},
 	)
