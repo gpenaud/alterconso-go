@@ -1,6 +1,12 @@
 {{define "content"}}
+<style>
+  .farmers-table > tbody > tr:nth-of-type(2n) { background: #fff; }
+  .farmers-table > tbody > tr:nth-of-type(2n+1) { background: #f4f1e8; }
+  /* le header "Commandes variables" garde son fond explicite */
+  .farmers-table > tbody > tr:first-child { background: #f0ece0 !important; }
+</style>
 <div class="col-md-12">
-  <h2 style="font-style:italic;"><b>Distributions</b></h2>
+  <h2 style="margin:0 0 12px;padding:0 4px;">Distributions</h2>
 
   <div style="display:flex;align-items:center;margin-bottom:20px;gap:8px;flex-wrap:wrap;">
     <a href="/distribution?offset=-1" class="btn btn-default btn-sm"><i class="icon icon-chevron-left"></i></a>
@@ -49,8 +55,8 @@
       </div>
       <!-- Actions -->
       <div style="flex-shrink:0;display:flex;gap:4px;align-items:flex-start;">
-        <a href="/distribution/editMd/{{.ID}}" class="btn btn-default btn-xs"><i class="icon icon-edit"></i> Modifier</a>
-        <a href="/distribution/deleteMd/{{.ID}}" class="btn btn-danger btn-xs" onclick="return confirm('Supprimer cette distribution ?')"><i class="icon icon-delete"></i> Suppr.</a>
+        <a href="/distribution/editMd/{{.ID}}" class="btn btn-default" style="padding:5px 11px;"><i class="icon icon-edit"></i> Modifier</a>
+        <a href="/distribution/deleteMd/{{.ID}}" class="btn btn-danger" style="padding:5px 11px;" onclick="return confirm('Supprimer cette distribution ?')"><i class="icon icon-delete"></i> Suppr.</a>
       </div>
     </div>
 
@@ -84,7 +90,7 @@
         <div style="color:#aaa;margin-bottom:6px;font-size:0.9em;"><i class="icon icon-farmer"></i> Producteurs</div>
         <div style="font-size:2.8em;font-weight:300;color:#333;line-height:1.1;">{{len .Catalogs}}</div>
         <div style="margin-top:14px;">
-          <button type="button" class="btn btn-default btn-xs" onclick="toggleFarmers({{.ID}})"><i class="icon icon-chevron-down"></i> Producteurs participants</button>
+          <button type="button" class="btn btn-default" style="padding:5px 11px;" onclick="toggleFarmers({{.ID}})"><i class="icon icon-chevron-down"></i> Producteurs participants</button>
         </div>
       </div>
 
@@ -94,8 +100,8 @@
         <div style="font-size:2.8em;font-weight:300;color:#333;line-height:1.1;">{{.NbVolunteers}} / {{.NbVolunteersRequired}}</div>
         <div style="color:#aaa;font-size:0.88em;margin-bottom:14px;">bénévoles inscrit(s)</div>
         <div style="display:flex;flex-direction:column;gap:6px;align-items:center;">
-          <a href="/distribution/roles/{{.ID}}" class="btn btn-default btn-xs" style="width:160px;"><i class="icon icon-users"></i> Rôles de bénévoles</a>
-          <a href="/distribution/volunteersSummary/{{.ID}}" class="btn btn-default btn-xs" style="width:160px;"><i class="icon icon-users"></i> Bénévoles inscrits</a>
+          <a href="/distribution/roles/{{.ID}}" class="btn btn-default" style="width:180px;padding:5px 11px;"><i class="icon icon-users"></i> Rôles de bénévoles</a>
+          <a href="/distribution/volunteersSummary/{{.ID}}" class="btn btn-default" style="width:180px;padding:5px 11px;"><i class="icon icon-users"></i> Bénévoles inscrits</a>
         </div>
       </div>
 
@@ -104,7 +110,7 @@
         <div style="color:#aaa;margin-bottom:6px;font-size:0.9em;"><i class="icon icon-basket"></i> Commandes</div>
         <div style="font-size:2.8em;font-weight:300;color:#333;line-height:1.1;">{{.NbOrders}}</div>
         <div style="color:#aaa;font-size:0.88em;margin-bottom:14px;">Commande(s)<br/>pour un total de <b style="color:#555;">{{printf "%.2f" .TotalAmount}} €</b></div>
-        <a href="/contractAdmin/ordersByDate/{{.DateISO}}/{{$.Group.ID}}" class="btn btn-default btn-xs" style="width:120px;">
+        <a href="/contractAdmin/ordersByDate/{{.DateISO}}/{{$.Group.ID}}" class="btn btn-default" style="width:160px;padding:5px 11px;">
           <i class="icon icon-basket"></i> Commandes
         </a>
       </div>
@@ -112,34 +118,48 @@
     </div>
 
     <!-- Farmers panel (hidden by default) -->
-    <div id="farmers-{{.ID}}" style="display:none;border:1px solid #ddd;border-top:none;border-radius:0 0 6px 6px;overflow:hidden;">
-      <div style="padding:10px 14px;background:#f9f9f9;">
-        <a href="/distribution/inviteFarmers/{{.ID}}" class="btn btn-success btn-sm">
+    <div id="farmers-{{.ID}}" style="display:none;background:#fff;border:1px solid #e5e5e5;border-top:none;border-radius:0 0 6px 6px;padding:16px;">
+      <div style="margin-bottom:14px;">
+        <a href="/distribution/inviteFarmers/{{.ID}}" class="btn btn-success" style="padding:8px 16px;">
           <i class="icon icon-plus"></i> Ajouter / supprimer des producteurs
         </a>
       </div>
       {{if .DistribLinks}}
-      <table class="table table-bordered" style="margin-bottom:0;">
+      <table class="table table-bordered farmers-table" style="margin-bottom:0;">
         <tbody>
-          <tr><td colspan="3" style="background:#f5f5f5;font-weight:bold;padding:8px 14px;">Commandes variables</td></tr>
+          <tr><td colspan="3" style="background:#f0ece0;font-weight:bold;padding:8px 14px;">Commandes variables</td></tr>
           {{range .DistribLinks}}
           <tr>
-            <td style="padding:8px 14px;"><a href="/contractAdmin/view/{{.CatalogID}}" style="color:#5cb85c;">{{.CatalogName}}</a></td>
-            <td style="padding:8px 14px;">{{.VendorName}}</td>
-            <td style="padding:8px 14px;white-space:nowrap;">
-              <div class="btn-group">
-                <button class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
-                  <i class="icon icon-chevron-down"></i> Dates
-                </button>
-                <ul class="dropdown-menu">
-                  <li><a href="/edit/{{.DistribID}}?from=distribSection"><i class="icon icon-calendar"></i> Personnaliser les dates</a></li>
-                  <li><a href="/distribution/shift/{{.DistribID}}?from=distribSection"><i class="icon icon-calendar"></i> Reporter la distribution</a></li>
-                </ul>
+            <td style="padding:14px;vertical-align:middle;"><a href="/contractAdmin/view/{{.CatalogID}}" style="color:#5cb85c;">{{.CatalogName}}</a></td>
+            <td style="padding:14px;vertical-align:middle;">{{.VendorName}}</td>
+            <td style="padding:14px;vertical-align:middle;">
+              {{if .CustomOrderStart}}
+              <div style="background:#fdf6e3;color:#5a5a5a;padding:8px 12px;border-radius:4px;margin-bottom:8px;font-size:0.92em;">
+                <i class="icon icon-info" style="color:#d4a017;"></i>
+                La date d'ouverture des commandes est différente de celle de la distribution principale. : <b>{{.CustomOrderStart}}</b>
               </div>
-              <a href="/distribution/notAttend/{{.DistribID}}" class="btn btn-default btn-xs"
-                 onclick="return confirm('Retirer ce producteur de la distribution ?')">
-                <i class="icon icon-delete"></i> Ne participe plus
-              </a>
+              {{end}}
+              {{if .CustomOrderEnd}}
+              <div style="background:#fdf6e3;color:#5a5a5a;padding:8px 12px;border-radius:4px;margin-bottom:8px;font-size:0.92em;">
+                <i class="icon icon-info" style="color:#d4a017;"></i>
+                La date de fermeture des commandes est différente de celle de la distribution principale. : <b>{{.CustomOrderEnd}}</b>
+              </div>
+              {{end}}
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <div class="btn-group">
+                  <button class="btn btn-default dropdown-toggle" style="padding:5px 11px;" data-toggle="dropdown">
+                    <i class="icon icon-chevron-down"></i> Dates
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a href="/edit/{{.DistribID}}?from=distribSection"><i class="icon icon-calendar"></i> Personnaliser les dates</a></li>
+                    <li><a href="/distribution/shift/{{.DistribID}}?from=distribSection"><i class="icon icon-calendar"></i> Reporter la distribution</a></li>
+                  </ul>
+                </div>
+                <a href="/distribution/notAttend/{{.DistribID}}" class="btn btn-default" style="padding:5px 11px;"
+                   onclick="return confirm('Retirer ce producteur de la distribution ?')">
+                  <i class="icon icon-delete"></i> Ne participe plus
+                </a>
+              </div>
             </td>
           </tr>
           {{end}}

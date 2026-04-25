@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"math"
@@ -113,6 +114,7 @@ type PageData struct {
 	HasMembership     bool
 	HasMessages       bool
 	HasCatalogAdmin   bool
+	HasDatabaseAdmin  bool
 	AllowedCatalogIDs []uint // nil = tous (GroupManager ou CatalogAdmin global)
 	Category       string
 	Breadcrumb     []BreadcrumbItem
@@ -286,10 +288,12 @@ type CatalogAdminRow struct {
 }
 
 type DistribLink struct {
-	DistribID   uint
-	CatalogID   uint
-	CatalogName string
-	VendorName  string
+	DistribID         uint
+	CatalogID         uint
+	CatalogName       string
+	VendorName        string
+	CustomOrderStart  string // si la date d'ouverture diffère du parent
+	CustomOrderEnd    string // si la date de fermeture diffère du parent
 }
 
 // ---- Handler ----
@@ -330,9 +334,10 @@ func (h *PagesHandler) buildPageData(c *gin.Context) PageData {
 		if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, claims.GroupID).
 			First(&ug).Error; err == nil {
 			pd.IsGroupManager = ug.IsGroupManager()
-			pd.HasMembership = ug.HasRight(model.RightMembership)
-			pd.HasMessages = ug.HasRight(model.RightMessages)
-			pd.HasCatalogAdmin = ug.HasRight(model.RightCatalogAdmin)
+			pd.HasMembership = pd.IsGroupManager || ug.HasRight(model.RightMembership)
+			pd.HasMessages = pd.IsGroupManager || ug.HasRight(model.RightMessages)
+			pd.HasCatalogAdmin = pd.IsGroupManager || ug.HasRight(model.RightCatalogAdmin)
+			pd.HasDatabaseAdmin = pd.IsGroupManager || ug.HasRight(model.RightDatabaseAdmin)
 			if pd.HasCatalogAdmin && !pd.IsGroupManager {
 				for _, r := range ug.GetRights() {
 					if r.Right == model.RightCatalogAdmin {
@@ -421,9 +426,26 @@ func (h *PagesHandler) ChoosePage(c *gin.Context) {
 		groupIDs = append(groupIDs, ug.GroupID)
 	}
 
+	// Si l'utilisateur n'est membre que d'un seul groupe, on l'y connecte directement.
+	if len(groupIDs) == 1 && claims.GroupID != groupIDs[0] {
+		newToken, err := h.issueToken(claims.UserID, groupIDs[0])
+		if err == nil {
+			c.SetCookie("token", newToken, 3600*24*7, "/", "", false, true)
+			c.Redirect(http.StatusFound, "/home")
+			return
+		}
+	}
+
 	var groups []model.Group
 	if len(groupIDs) > 0 {
-		h.db.Where("id IN ?", groupIDs).Find(&groups)
+		h.db.Preload("Logo").Where("id IN ?", groupIDs).Find(&groups)
+	}
+	logoURL := ""
+	for _, g := range groups {
+		if g.Logo != nil {
+			logoURL = FileURL(g.Logo.ID, h.cfg.Key, g.Logo.Name)
+			break
+		}
 	}
 
 	t, err := loadTemplates("base.html", "design.html", "choose.html")
@@ -436,6 +458,7 @@ func (h *PagesHandler) ChoosePage(c *gin.Context) {
 		User:    &user,
 		Groups:  groups,
 		HideNav: true,
+		LogoURL: logoURL,
 	}
 	if err := t.ExecuteTemplate(c.Writer, "base", pd); err != nil {
 		c.String(http.StatusInternalServerError, "render error: %v", err)
@@ -1028,14 +1051,30 @@ func (h *PagesHandler) DistributionPage(c *gin.Context) {
 	for _, md := range mds {
 		catalogs := make([]string, 0, len(md.Distributions))
 		links := make([]DistribLink, 0, len(md.Distributions))
+		fmtFR := func(t time.Time) string {
+			return fmt.Sprintf("%s %d %s à %02d:%02d",
+				frDaysFull[t.Weekday()], t.Day(), frMonthsFull[t.Month()],
+				t.Hour(), t.Minute())
+		}
 		for _, d := range md.Distributions {
 			catalogs = append(catalogs, d.Catalog.Name)
-			links = append(links, DistribLink{
+			link := DistribLink{
 				DistribID:   d.ID,
 				CatalogID:   d.CatalogID,
 				CatalogName: d.Catalog.Name,
 				VendorName:  d.Catalog.Vendor.Name,
-			})
+			}
+			if d.OrderStartDate != nil && md.OrderStartDate != nil && !d.OrderStartDate.Equal(*md.OrderStartDate) {
+				link.CustomOrderStart = fmtFR(*d.OrderStartDate)
+			} else if d.OrderStartDate != nil && md.OrderStartDate == nil {
+				link.CustomOrderStart = fmtFR(*d.OrderStartDate)
+			}
+			if d.OrderEndDate != nil && md.OrderEndDate != nil && !d.OrderEndDate.Equal(*md.OrderEndDate) {
+				link.CustomOrderEnd = fmtFR(*d.OrderEndDate)
+			} else if d.OrderEndDate != nil && md.OrderEndDate == nil {
+				link.CustomOrderEnd = fmtFR(*d.OrderEndDate)
+			}
+			links = append(links, link)
 		}
 		var nbOrders, nbVols int64
 		h.db.Model(&model.UserOrder{}).
@@ -1426,14 +1465,41 @@ func (h *PagesHandler) AmapAdminUpdate(c *gin.Context) {
 	} else {
 		updates["contact_id"] = nil
 	}
+	var legalRepID uint
 	if lid, err := strconv.ParseUint(c.PostForm("legal_representative_id"), 10, 64); err == nil && lid > 0 {
-		updates["legal_representative_id"] = uint(lid)
+		legalRepID = uint(lid)
+		updates["legal_representative_id"] = legalRepID
 	} else {
 		updates["legal_representative_id"] = nil
 	}
 
 	h.db.Model(&model.Group{}).Where("id = ?", pd.Group.ID).Updates(updates)
+
+	if legalRepID > 0 {
+		h.ensureGroupAdmin(pd.Group.ID, legalRepID)
+	}
+
 	c.Redirect(http.StatusFound, "/amapadmin")
+}
+
+// ensureGroupAdmin garantit que l'utilisateur donné possède le droit GroupAdmin
+// sur le groupe indiqué. Utilisé pour le représentant légal.
+func (h *PagesHandler) ensureGroupAdmin(groupID, userID uint) {
+	var ug model.UserGroup
+	if err := h.db.Where("user_id = ? AND group_id = ?", userID, groupID).First(&ug).Error; err != nil {
+		return
+	}
+	rights := ug.GetRights()
+	for _, r := range rights {
+		if r.Right == model.RightGroupAdmin {
+			return
+		}
+	}
+	rights = append(rights, model.UserRight{Right: model.RightGroupAdmin})
+	if raw, err := json.Marshal(rights); err == nil {
+		ug.Rights = string(raw)
+		h.db.Save(&ug)
+	}
 }
 
 // ---- Helpers ----

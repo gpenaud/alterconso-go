@@ -4,9 +4,12 @@
   .amapadmin-section ~ .col-md-9 .article + .article { margin-top: 16px; }
   .amapadmin-section ~ .col-md-9 .article h3,
   .amapadmin-section ~ .col-md-9 .article h4 { margin-top: 0; }
-  .amapadmin-section ~ .col-md-9 > h2 { margin: 0 0 16px; padding: 0 4px; }
+  .amapadmin-section ~ .col-md-9 > h2 { margin: 0 0 12px; padding: 0 4px; }
+  /* La colonne de droite est offsetée seulement si elle n'a pas son propre titre */
+  @media (min-width:992px) { .amapadmin-section ~ .col-md-9:not(:has(> h2)) { padding-top: 48px; } }
 </style>
 <div class="col-md-3 amapadmin-section">
+  <h2 style="margin:0 0 12px;padding:0 4px;">Paramètres</h2>
   <div class="article" style="padding:0;">
     <ul class="nav nav-pills nav-stacked" style="margin:0;">
       <li {{if eq .AmapAdminTab "rights"}}class="active"{{end}}>

@@ -1,0 +1,112 @@
+{{template "base" .}}
+
+{{define "body"}}
+<div class="row header" style="margin-top:10px;">
+  <div class="col-md-12" style="text-align:center;">
+    <div style="margin:24px auto 18px;">
+      <img src="/img/logo3.png" alt="Alterconso" style="max-height:120px;" />
+    </div>
+    {{if .Welcome}}
+    <h1 style="font-style:italic;font-size:2.6em;color:#333;margin:0 auto 10px;max-width:820px;line-height:1.25;">
+      Bienvenue {{.Member.FirstName}} !
+    </h1>
+    <p style="color:#666;font-size:1.1em;margin:0 auto 28px;max-width:680px;line-height:1.5;">
+      Votre compte est activé. Complétez votre profil pour faciliter vos futures commandes — vous pourrez aussi le faire plus tard.
+    </p>
+    {{else}}
+    <h1 style="font-style:italic;font-size:2.6em;color:#333;margin:0 auto 10px;max-width:820px;line-height:1.25;">
+      Compléter mon profil
+    </h1>
+    {{end}}
+  </div>
+</div>
+
+<div class="col-md-12">
+  <div style="max-width:680px;margin:0 auto;">
+    <div class="article" style="padding:28px 32px;">
+      <form method="POST" action="/user/completeProfile" class="form-horizontal">
+
+        <div class="form-group">
+          <label class="col-sm-4 control-label">Téléphone</label>
+          <div class="col-sm-8">
+            <input type="tel" name="phone" class="form-control" autocomplete="tel"
+              value="{{if .Member.Phone}}{{deref .Member.Phone}}{{end}}" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-4 control-label">Adresse</label>
+          <div class="col-sm-8">
+            <input type="text" name="address1" class="form-control" placeholder="Numéro et rue" autocomplete="address-line1"
+              value="{{if .Member.Address1}}{{deref .Member.Address1}}{{end}}" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-4 control-label">Complément</label>
+          <div class="col-sm-8">
+            <input type="text" name="address2" class="form-control" placeholder="(facultatif)" autocomplete="address-line2"
+              value="{{if .Member.Address2}}{{deref .Member.Address2}}{{end}}" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-4 control-label">Code postal</label>
+          <div class="col-sm-8">
+            <input type="text" name="zipCode" class="form-control" autocomplete="postal-code"
+              value="{{if .Member.ZipCode}}{{deref .Member.ZipCode}}{{end}}" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-4 control-label">Ville</label>
+          <div class="col-sm-8">
+            <input type="text" name="city" class="form-control" autocomplete="address-level2"
+              value="{{if .Member.City}}{{deref .Member.City}}{{end}}" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-4 control-label">Date de naissance</label>
+          <div class="col-sm-8">
+            <input type="date" name="birthDate" class="form-control"
+              value="{{if .Member.BirthDate}}{{.Member.BirthDate.Format "2006-01-02"}}{{end}}" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-4 control-label">Nationalité</label>
+          <div class="col-sm-8">
+            <select name="nationality" class="form-control">
+              <option value="">—</option>
+              {{range .Nationalities}}
+              <option value="{{.Code}}" {{if $.Member.Nationality}}{{if eq (deref $.Member.Nationality) .Code}}selected{{end}}{{end}}>{{.Label}}</option>
+              {{end}}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-4 control-label">Pays de résidence</label>
+          <div class="col-sm-8">
+            <select name="countryOfResidence" class="form-control">
+              <option value="">—</option>
+              {{range .Countries}}
+              <option value="{{.Code}}" {{if $.Member.CountryOfResidence}}{{if eq (deref $.Member.CountryOfResidence) .Code}}selected{{end}}{{end}}>{{.Label}}</option>
+              {{end}}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="col-sm-offset-4 col-sm-8" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-success" style="font-weight:bold;">
+              <i class="icon icon-check"></i> Enregistrer
+            </button>
+            <a href="/user/choose" class="btn btn-default">
+              Plus tard
+            </a>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
+{{end}}

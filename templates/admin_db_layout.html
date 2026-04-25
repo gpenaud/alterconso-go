@@ -1,0 +1,28 @@
+{{define "admin_db_nav"}}
+<style>
+  .admin-db-section ~ .col-md-9 .article { padding: 20px 24px; }
+  .admin-db-section ~ .col-md-9 .article h3 { margin-top: 0; font-style: italic; }
+  .admin-db-table td, .admin-db-table th { font-size: 0.92em; vertical-align: middle; }
+  .admin-db-table td.id, .admin-db-table th.id { font-family: monospace; color: #888; width: 70px; }
+  .admin-db-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .admin-db-pager { display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 16px; color: #666; }
+  .admin-db-search { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+  .admin-db-search input[type=text] { flex: 1 1 auto; max-width: 380px; }
+  .admin-db-form .form-group { margin-bottom: 16px; }
+  .admin-db-form label { font-weight: 600; color: #555; display: block; margin-bottom: 4px; }
+  .admin-db-form textarea { min-height: 100px; font-family: monospace; font-size: 0.92em; }
+  .admin-db-warn { background: #fcf8e3; color: #8a6d3b; padding: 10px 14px; border-radius: 4px; margin-bottom: 16px; font-size: 0.92em; }
+  .admin-db-ok { background: #dff0d8; color: #3c763d; padding: 10px 14px; border-radius: 4px; margin-bottom: 16px; font-size: 0.92em; }
+</style>
+<div class="col-md-3 admin-db-section">
+  <div class="article" style="padding:0;">
+    <ul class="nav nav-pills nav-stacked" style="margin:0;">
+      {{range .Tables}}
+      <li {{if eq $.ActiveSlug .Slug}}class="active"{{end}}>
+        <a href="/admin/db/{{.Slug}}" style="font-size:0.92em;">{{.Label}}</a>
+      </li>
+      {{end}}
+    </ul>
+  </div>
+</div>
+{{end}}

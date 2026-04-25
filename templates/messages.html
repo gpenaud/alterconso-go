@@ -1,21 +1,7 @@
 {{define "content"}}
-<div class="col-md-3">
-  <b>Tous les messages envoyés</b>
-  <div style="overflow-y:auto;max-height:700px;margin-top:8px;">
-    {{range .SentMessages}}
-    <a href="#msg-{{.ID}}" style="display:block;padding:6px 0;border-bottom:1px solid #eee;color:#5a8a00;text-decoration:none;">
-      {{.Title}}
-      <div style="color:#888;font-size:11px;">{{.Date}}</div>
-    </a>
-    {{else}}
-    <p style="color:#999;font-size:13px;">Aucun message.</p>
-    {{end}}
-  </div>
-</div>
-
 <div class="col-md-9">
-  <div class="article">
-    <h2>Envoyer un email</h2>
+  <h2 style="margin:0 0 12px;padding:0 4px;">Envoyer un email</h2>
+  <div class="article" style="padding:24px 28px;">
     <form method="POST" action="/messages" id="msgForm">
       <div class="form-group row">
         <label class="col-sm-3 control-label">Nom expéditeur *</label>
@@ -55,7 +41,7 @@
       </div>
       <div class="form-group row">
         <div class="col-sm-9 col-sm-offset-3">
-          <button type="submit" class="btn btn-primary">
+          <button type="submit" class="btn btn-success">
             <i class="icon icon-mail"></i> Envoyer
           </button>
         </div>
@@ -64,11 +50,29 @@
   </div>
 
   {{range .SentMessages}}
-  <div class="article" id="msg-{{.ID}}" style="margin-top:12px;">
-    <h4>{{.Title}} <small style="color:#999;">{{.Date}}</small></h4>
-    <p>{{.Body}}</p>
+  <div class="article" id="msg-{{.ID}}" style="margin-top:12px;padding:18px 22px;">
+    <h4 style="margin-top:0;">{{.Title}} <small style="color:#999;">{{.Date}}</small></h4>
+    <p style="margin-bottom:0;">{{.Body}}</p>
   </div>
   {{end}}
+</div>
+
+<div class="col-md-3">
+  <h2 style="margin:0 0 12px;padding:0 4px;">Archivé</h2>
+  <div class="article" style="padding:14px 16px;">
+    {{if .SentMessages}}
+    <div style="overflow-y:auto;max-height:700px;">
+      {{range .SentMessages}}
+      <a href="#msg-{{.ID}}" style="display:block;padding:8px 0;border-bottom:1px solid #eee;color:#5a8a00;text-decoration:none;">
+        {{.Title}}
+        <div style="color:#888;font-size:11px;">{{.Date}}</div>
+      </a>
+      {{end}}
+    </div>
+    {{else}}
+    <p style="color:#999;font-size:13px;margin:0;">Aucun message.</p>
+    {{end}}
+  </div>
 </div>
 
 <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>

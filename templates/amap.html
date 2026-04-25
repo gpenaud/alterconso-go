@@ -1,26 +1,9 @@
 {{define "content"}}
-<div class="col-md-3">
-  {{if .Group}}
-  <div class="article">
-    <h3 style="font-style:italic;">{{.Group.Name}}</h3>
-    {{if .IsGroupManager}}
-    <a href="/amapadmin" class="btn btn-default btn-sm"><i class="icon icon-edit"></i> Modifier</a>
-    {{end}}
-  </div>
-  {{end}}
-  {{if .Contact}}
-  <div class="article" style="margin-top:12px;font-size:0.9em;">
-    <b>Contact principal :</b>
-    <p style="margin-top:8px;margin-bottom:0;">
-      <i class="icon icon-user"></i> <b>{{.Contact.FirstName}} {{.Contact.LastName}}</b><br/>
-      {{if .Contact.Email}}<i class="icon icon-mail"></i> <a href="mailto:{{.Contact.Email}}" style="color:#5a8a00;">{{.Contact.Email}}</a><br/>{{end}}
-      {{if .Contact.Phone}}<i class="icon icon-phone"></i> {{deref .Contact.Phone}}{{end}}
-    </p>
-  </div>
-  {{end}}
-</div>
-
+<style>
+  @media (min-width:992px) { .amap-side-offset { padding-top:48px; } }
+</style>
 <div class="col-md-9">
+  <h2 style="margin:0 0 12px;padding:0 4px;">Producteurs</h2>
   {{if .AmapVendors}}
   {{range .AmapVendors}}
   <div class="article" style="margin-bottom:12px;padding:16px;">
@@ -70,6 +53,27 @@
   {{end}}
   {{else}}
   <p class="text-muted">Aucun producteur associé à ce groupe.</p>
+  {{end}}
+</div>
+
+<div class="col-md-3 amap-side-offset">
+  {{if .Group}}
+  <div class="article">
+    <h3 style="font-style:italic;margin-top:0;">{{.Group.Name}}</h3>
+    {{if .IsGroupManager}}
+    <a href="/amapadmin" class="btn btn-default btn-sm"><i class="icon icon-edit"></i> Modifier</a>
+    {{end}}
+  </div>
+  {{end}}
+  {{if .Contact}}
+  <div class="article" style="margin-top:12px;font-size:0.9em;">
+    <b>Contact principal :</b>
+    <p style="margin-top:8px;margin-bottom:0;">
+      <i class="icon icon-user"></i> <b>{{.Contact.FirstName}} {{.Contact.LastName}}</b><br/>
+      {{if .Contact.Email}}<i class="icon icon-mail"></i> <a href="mailto:{{.Contact.Email}}" style="color:#5a8a00;">{{.Contact.Email}}</a><br/>{{end}}
+      {{if .Contact.Phone}}<i class="icon icon-phone"></i> {{deref .Contact.Phone}}{{end}}
+    </p>
+  </div>
   {{end}}
 </div>
 {{end}}

@@ -10,6 +10,7 @@ const (
 	RightCatalogAdmin  Right = "CatalogAdmin" // peut avoir un catalogID optionnel
 	RightMembership    Right = "Membership"
 	RightMessages      Right = "Messages"
+	RightDatabaseAdmin Right = "DatabaseAdmin"
 )
 
 // UserRight stocke un droit avec ses paramètres optionnels (ex: catalogID pour CatalogAdmin).

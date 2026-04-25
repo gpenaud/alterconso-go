@@ -1,0 +1,25 @@
+{{define "content"}}
+{{template "admin_db_nav" .}}
+<div class="col-md-9">
+  <div class="article">
+    <h3>Base de données</h3>
+    <p style="color:#555;margin-bottom:20px;">
+      Outil d'administration des données. Sélectionnez une table dans la barre latérale pour consulter ou éditer ses enregistrements.
+    </p>
+    <div class="admin-db-warn">
+      <i class="icon icon-alert"></i>
+      Modifier directement en base peut contourner la logique métier. Agissez avec précaution : aucune annulation n'est possible.
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;">
+      {{range .Tables}}
+      <a href="/admin/db/{{.Slug}}" style="display:block;padding:14px 16px;background:#fafafa;border:1px solid #e8e8e8;border-radius:6px;color:#333;text-decoration:none;transition:background 0.15s;"
+         onmouseover="this.style.background='#f0ece0'" onmouseout="this.style.background='#fafafa'">
+        <b>{{.Label}}</b><br/>
+        <span style="color:#888;font-family:monospace;font-size:0.85em;">{{.Slug}}</span>
+      </a>
+      {{end}}
+    </div>
+  </div>
+</div>
+{{end}}

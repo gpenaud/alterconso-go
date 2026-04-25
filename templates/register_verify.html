@@ -1,0 +1,36 @@
+{{template "base" .}}
+
+{{define "body"}}
+<div class="row header" style="margin-top:10px;">
+  <div class="col-md-12" style="text-align:center;">
+    <div style="margin:24px auto 18px;">
+      <img src="/img/logo3.png" alt="Alterconso" style="max-height:120px;" />
+    </div>
+  </div>
+</div>
+
+<div class="col-md-12">
+  <div style="max-width:520px;margin:0 auto;">
+    <div class="article" style="padding:32px;text-align:center;">
+
+      {{if .OK}}
+      <div style="font-size:3em;color:#6a9a2a;margin-bottom:8px;"><i class="icon icon-check"></i></div>
+      <h2 style="font-style:italic;margin:0 0 12px;">Compte activé !</h2>
+      <p style="color:#555;margin-bottom:24px;">
+        Votre compte a été activé avec succès. Vous pouvez maintenant vous connecter.
+      </p>
+      <a href="/user/login" class="btn btn-success" style="padding:10px 28px;font-weight:bold;">
+        <i class="icon icon-user"></i> Se connecter
+      </a>
+      {{else}}
+      <div style="font-size:3em;color:#c0392b;margin-bottom:8px;"><i class="icon icon-alert"></i></div>
+      <h2 style="font-style:italic;margin:0 0 12px;">Activation impossible</h2>
+      <p style="color:#555;margin-bottom:24px;">{{.Error}}</p>
+      <a href="/user/register" class="btn btn-default">Recréer un compte</a>
+      <a href="/user/login" class="btn btn-default">Retour à la connexion</a>
+      {{end}}
+
+    </div>
+  </div>
+</div>
+{{end}}

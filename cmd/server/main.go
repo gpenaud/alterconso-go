@@ -49,6 +49,12 @@ func main() {
 	if err := db.Migrate(database); err != nil {
 		log.Fatalf("failed to migrate database: %v", err)
 	}
+	if err := db.EnsureLegalRepAdmins(database); err != nil {
+		log.Printf("warning: EnsureLegalRepAdmins: %v", err)
+	}
+	if err := db.BackfillVerifiedUsers(database); err != nil {
+		log.Printf("warning: BackfillVerifiedUsers: %v", err)
+	}
 
 	m := mailer.New(cfg)
 	cronSvc := service.NewCronService(database, m, cfg)

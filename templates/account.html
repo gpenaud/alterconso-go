@@ -1,6 +1,6 @@
 {{define "content"}}
 <div class="col-md-8">
-  <h2>Dernières commandes</h2>
+  <h2 style="margin:0 0 12px;padding:0 4px;">Dernières commandes</h2>
 
   {{if .RecentOrders}}
   <div class="article">
@@ -37,7 +37,7 @@
 <div class="col-md-4">
 
   <!-- Compte -->
-  <h2>Compte</h2>
+  <h2 style="margin:0 0 12px;padding:0 4px;">Compte</h2>
   <div class="article" style="margin-bottom:16px;">
     <p>
       <i class="icon icon-user"></i> <b>{{if .User}}{{.User.FirstName}} {{.User.LastName}}{{end}}</b><br/>
@@ -50,7 +50,7 @@
 
   <!-- Adhésion -->
   {{if .MembershipRenewalPeriod}}
-  <h2>Adhésion</h2>
+  <h2 style="margin:0 0 12px;padding:0 4px;">Adhésion</h2>
   <div class="article" style="margin-bottom:16px;background:#fdf2f2;border-color:#e8b0b0;">
     <p style="color:#c0392b;margin:0;">
       <i class="icon icon-alert"></i> Cotisation à renouveler pour la période <b>{{.MembershipRenewalPeriod}}</b>
@@ -60,7 +60,7 @@
 
   <!-- Tutoriels -->
   {{if .IsGroupManager}}
-  <h2>Tutoriels</h2>
+  <h2 style="margin:0 0 12px;padding:0 4px;">Tutoriels</h2>
   <div class="article" style="margin-bottom:16px;">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <span>Visite guidée de l'administrateur de groupe</span>
@@ -70,7 +70,7 @@
   {{end}}
 
   <!-- Langue -->
-  <h2>Langue</h2>
+  <h2 style="margin:0 0 12px;padding:0 4px;">Langue</h2>
   <div class="article">
     <p>Afficher l'interface dans une autre langue (beta) :</p>
     <ul style="padding-left:20px;margin-bottom:8px;">

@@ -43,6 +43,10 @@ func (h *CompatHandler) UserLogin(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"error": gin.H{"message": "Email ou mot de passe incorrect."}})
 		return
 	}
+	if user.EmailVerifiedAt == nil {
+		c.JSON(http.StatusOK, gin.H{"error": gin.H{"message": "Votre compte n'est pas encore activé. Vérifiez votre boîte mail."}})
+		return
+	}
 
 	now := time.Now()
 	h.db.Model(&user).Update("last_login", now)

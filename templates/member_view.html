@@ -15,13 +15,21 @@
         {{if .Member.LastLogin}}{{.Member.LastLogin.Format "02/01/2006 15:04"}}{{else}}<b>Jamais connecté</b>{{end}}<br/>
         Inscrit le : {{.Member.CreatedAt.Format "02/01/2006"}}
       </p>
-      <p>
+      <p style="display:flex;gap:6px;flex-wrap:wrap;">
         <a href="/member/edit/{{.Member.ID}}" class="btn btn-default btn-sm"><i class="icon icon-edit"></i> Modifier</a>
         <a href="/member/payments/{{.Member.ID}}" class="btn btn-default btn-sm"><i class="icon icon-payment-type"></i> Paiements</a>
-        <a href="/member/delete/{{.Member.ID}}" class="btn btn-danger btn-sm"
+        <a href="/member/delete/{{.Member.ID}}" class="btn btn-default btn-sm"
           onclick="return confirm('Retirer ce membre du groupe ?')">
-          <i class="icon icon-delete"></i> Retirer
+          <i class="icon icon-delete"></i> Retirer du groupe
         </a>
+        {{if .IsGroupManager}}
+        <form method="POST" action="/member/fullDelete/{{.Member.ID}}" style="display:inline;margin:0;"
+              onsubmit="return confirm('SUPPRIMER DÉFINITIVEMENT le compte de {{.Member.FirstName}} {{.Member.LastName}} ?\n\nLe compte sera retiré de tous les groupes et toutes les données associées (commandes, adhésions, bénévolat) seront perdues. Cette action est irréversible.');">
+          <button type="submit" class="btn btn-danger btn-sm">
+            <i class="icon icon-delete"></i> Supprimer le compte
+          </button>
+        </form>
+        {{end}}
       </p>
       <p>
         Solde :

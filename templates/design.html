@@ -8,10 +8,14 @@
   </script>
   {{end}}
 
-  <div class="row header" style="margin-top:10px;">
+  <div class="row header" style="margin-top:10px;display:flex;align-items:center;flex-wrap:wrap;">
     <div class="col-md-8">
       {{if .Group}}
         <h1>{{.Group.Name}}</h1>
+      {{else if .LogoURL}}
+        <div style="margin-bottom:22px;">
+          <img src="{{.LogoURL}}" alt="Logo" style="max-height:120px;border-radius:12px;" />
+        </div>
       {{else}}
         <div style="margin-bottom:22px;">
           <a href="https://alterconso.leportail.org" target="_blank">
@@ -31,9 +35,8 @@
             {{.User.FirstName}} {{.User.LastName}} <span class="caret"></span>
           </a>
           <ul class="dropdown-menu dropdown-menu-right">
-            {{if .IsGroupManager}}
-            <li><a href="/amapadmin"><i class="icon icon-cog"></i> Admin</a></li>
-            <li><a href="/amapadmin"><i class="icon icon-cog"></i> Base de données</a></li>
+            {{if .HasDatabaseAdmin}}
+            <li><a href="/admin/db"><i class="icon icon-cog"></i> Base de données</a></li>
             <li role="separator" class="divider"></li>
             {{end}}
             <li><a href="/user/logout"><i class="icon icon-delete"></i> Déconnexion</a></li>
@@ -47,7 +50,7 @@
   </div>
 
   {{if .User}}{{if not .HideNav}}
-  <nav class="navbar navbar-default">
+  <nav class="navbar navbar-default" style="margin-top:14px;">
     <div class="navbar-header">
       <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#cagette-navbar">
         <span class="sr-only">Toggle navigation</span>
@@ -104,7 +107,7 @@
   <!-- Breadcrumb -->
   <div class="row" style="margin-top:20px;">
     <div class="col-md-12">
-      <ol class="breadcrumb" style="margin-bottom:24px;">
+      <ol class="breadcrumb" style="margin-bottom:5px;">
         <li><a href="/user/choose">Accueil</a></li>
         {{if .Group}}<li><a href="/user/choose">Groupe : {{.Group.Name}}</a></li>{{end}}
         {{range .Breadcrumb}}

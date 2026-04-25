@@ -66,6 +66,9 @@ type User struct {
 	// Dernière connexion
 	LastLogin *time.Time `json:"ldate,omitempty"`
 
+	// Vérification email (compte activé après confirmation par email)
+	EmailVerifiedAt *time.Time `json:"-"`
+
 	// Relations
 	UserGroups []UserGroup `gorm:"foreignKey:UserID" json:"-"`
 }

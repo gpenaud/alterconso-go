@@ -503,15 +503,21 @@ type RightUserView struct {
 }
 
 func formatRightLabels(rights []model.UserRight, catalogMap map[string]string) []string {
+	// Si l'utilisateur est administrateur de groupe, les autres droits sont implicites.
+	for _, r := range rights {
+		if r.Right == model.RightGroupAdmin {
+			return []string{"Administrateur de groupe"}
+		}
+	}
 	var labels []string
 	for _, r := range rights {
 		switch r.Right {
-		case model.RightGroupAdmin:
-			labels = append(labels, "Administrateur de groupe")
 		case model.RightMembership:
 			labels = append(labels, "Gestion des membres")
 		case model.RightMessages:
 			labels = append(labels, "Messages")
+		case model.RightDatabaseAdmin:
+			labels = append(labels, "Gestion de la base de données")
 		case model.RightCatalogAdmin:
 			if len(r.Params) == 0 {
 				labels = append(labels, "Gestion des catalogues : tous")
@@ -706,6 +712,9 @@ func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
 		if c.PostForm("right_messages") != "" {
 			addRight(model.RightMessages)
 		}
+		if c.PostForm("right_database_admin") != "" {
+			addRight(model.RightDatabaseAdmin)
+		}
 		if c.PostForm("catalog_all") != "" {
 			addRight(model.RightCatalogAdmin)
 		} else {
@@ -743,10 +752,11 @@ type AmapAdminRightsEditData struct {
 	AmapAdminPageData
 	Member         model.UserGroup
 	Catalogs       []model.Catalog
-	HasGroupAdmin  bool
-	HasMembership  bool
-	HasMessages    bool
-	HasAllCatalogs bool
+	HasGroupAdmin    bool
+	HasMembership    bool
+	HasMessages      bool
+	HasDatabaseAdmin bool
+	HasAllCatalogs   bool
 	CatalogRights  map[string]bool
 	Error          string
 }
@@ -789,6 +799,8 @@ func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
 				data.HasMembership = true
 			case model.RightMessages:
 				data.HasMessages = true
+			case model.RightDatabaseAdmin:
+				data.HasDatabaseAdmin = true
 			case model.RightCatalogAdmin:
 				if len(r.Params) == 0 {
 					data.HasAllCatalogs = true

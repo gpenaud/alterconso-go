@@ -71,6 +71,15 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.POST("/amapadmin/documents", pageAuth, pagesH.AmapAdminDocumentsUpload)
 	r.GET("/amapadmin/documents/delete/:id", pageAuth, pagesH.AmapAdminDocumentsDelete)
 
+	// ---- Admin base de données (gated on HasDatabaseAdmin) ----
+	r.GET("/admin/db", pageAuth, pagesH.AdminDBIndex)
+	r.GET("/admin/db/:slug", pageAuth, pagesH.AdminDBList)
+	r.GET("/admin/db/:slug/new", pageAuth, pagesH.AdminDBNew)
+	r.POST("/admin/db/:slug/new", pageAuth, pagesH.AdminDBCreate)
+	r.GET("/admin/db/:slug/edit/:id", pageAuth, pagesH.AdminDBEdit)
+	r.POST("/admin/db/:slug/edit/:id", pageAuth, pagesH.AdminDBSave)
+	r.POST("/admin/db/:slug/delete/:id", pageAuth, pagesH.AdminDBDelete)
+
 	// Group creation
 	r.GET("/group/create/", pageAuth, pagesH.GroupCreatePage)
 	r.POST("/group/create/", pageAuth, pagesH.GroupCreatePage)
@@ -86,6 +95,7 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/member/edit/:id", pageAuth, pagesH.MemberEditPage)
 	r.POST("/member/edit/:id", pageAuth, pagesH.MemberEditPage)
 	r.GET("/member/delete/:id", pageAuth, pagesH.MemberDelete)
+	r.POST("/member/fullDelete/:id", pageAuth, pagesH.MemberFullDelete)
 	r.GET("/member/waiting", pageAuth, pagesH.MemberWaitingPage)
 	r.GET("/member/invoice/:multiDistribId", pageAuth, pagesH.MemberInvoicePage)
 
@@ -160,6 +170,11 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	// Auth
 	r.GET("/user/forgottenPassword", pagesH.ForgotPasswordPage)
 	r.POST("/user/forgottenPassword", pagesH.ForgotPasswordPage)
+	r.GET("/user/register", pagesH.RegisterPage)
+	r.POST("/user/register", pagesH.RegisterPage)
+	r.GET("/user/verify", pagesH.VerifyEmailPage)
+	r.GET("/user/completeProfile", pageAuth, pagesH.CompleteProfilePage)
+	r.POST("/user/completeProfile", pageAuth, pagesH.CompleteProfilePage)
 	r.GET("/user/definePassword", pagesH.DefinePasswordPage)
 	r.POST("/user/definePassword", pagesH.DefinePasswordPage)
 	r.GET("/user/resetPassword", pagesH.DefinePasswordPage)

@@ -1,21 +1,103 @@
 {{template "base" .}}
 
 {{define "body"}}
+<style>
+  #loginForm button[type=submit].btn-success:focus,
+  #loginForm button[type=submit].btn-success:active,
+  #loginForm button[type=submit].btn-success:active:focus,
+  #loginForm button[type=submit].btn-success:hover {
+    background-color: #3c8a3c !important;
+    border-color: #2f6e2f !important;
+    color: #fff !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+</style>
 <div class="row header" style="margin-top:10px;">
-  <div class="col-md-8">
-    <div style="margin-bottom:22px;">
+  <div class="col-md-12" style="text-align:center;">
+    <div style="margin:24px auto 18px;">
       <a href="https://alterconso.leportail.org" target="_blank">
-        <img src="/img/logo3.png" alt="Alterconso" />
+        <img src="/img/logo3.png" alt="Alterconso" style="max-height:120px;" />
       </a>
+    </div>
+    <h1 style="font-style:italic;font-size:2.6em;color:#333;margin:0 auto 10px;max-width:820px;line-height:1.25;">
+      Bienvenue sur Alterconso
+    </h1>
+    <p style="color:#666;font-size:1.1em;margin:0 auto 28px;max-width:680px;line-height:1.5;">
+      Site de vente de produits frais, bio et locaux en ligne
+    </p>
+  </div>
+</div>
+
+<div class="col-md-12">
+  <div style="max-width:480px;margin:0 auto;">
+    <div class="article" style="padding:28px 32px;">
+      <h2 style="font-style:italic;margin:0 0 20px;text-align:center;">S'identifier</h2>
+
+      <div id="loginError" style="display:none;background:#fdecea;color:#c0392b;padding:10px 14px;border-radius:4px;margin-bottom:14px;">
+        <i class="icon icon-alert"></i> <span></span>
+      </div>
+
+      <form id="loginForm" autocomplete="on">
+        <input type="hidden" name="redirect" value="{{if .Redirect}}{{.Redirect}}{{else}}/user/choose{{end}}" />
+        <div class="form-group" style="margin-bottom:14px;">
+          <label style="font-weight:600;color:#555;display:block;margin-bottom:4px;">Email</label>
+          <input type="email" name="email" class="form-control" required autofocus autocomplete="username" />
+        </div>
+        <div class="form-group" style="margin-bottom:18px;">
+          <label style="font-weight:600;color:#555;display:block;margin-bottom:4px;">Mot de passe</label>
+          <input type="password" name="password" class="form-control" required autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn btn-success" style="width:100%;padding:10px;font-weight:bold;">
+          <i class="icon icon-user"></i> S'identifier
+        </button>
+      </form>
+
+      <div style="text-align:center;margin-top:14px;">
+        <a href="/user/forgottenPassword" style="color:#5a8a00;">Mot de passe oublié ?</a>
+      </div>
+
+      <hr style="margin:20px 0;" />
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <span style="color:#555;">C'est votre première visite ?</span>
+        <a href="/user/register" class="btn btn-default">
+          <i class="icon icon-chevron-right"></i> Créer un compte
+        </a>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="col-md-12" style="height:500px;">
-  <script language="javascript">
-    document.addEventListener("DOMContentLoaded", function(event) {
-      _.loginBox('{{if .Redirect}}{{.Redirect}}{{else}}/user/choose{{end}}', null, false, false);
+<script>
+(function () {
+  var form = document.getElementById('loginForm');
+  var errBox = document.getElementById('loginError');
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    errBox.style.display = 'none';
+    var fd = new FormData(form);
+    fetch('/api/user/login', {
+      method: 'POST',
+      body: fd,
+      credentials: 'same-origin'
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data && data.success) {
+        var redirect = fd.get('redirect') || '/user/choose';
+        window.location.href = redirect;
+      } else {
+        var msg = (data && data.error && data.error.message) || 'Erreur de connexion.';
+        errBox.querySelector('span').textContent = msg;
+        errBox.style.display = 'block';
+      }
+    })
+    .catch(function () {
+      errBox.querySelector('span').textContent = 'Erreur réseau, réessayez.';
+      errBox.style.display = 'block';
     });
-  </script>
-</div>
+  });
+})();
+</script>
 {{end}}

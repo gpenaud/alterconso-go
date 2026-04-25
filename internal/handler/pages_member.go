@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gpenaud/alterconso/internal/middleware"
 	"github.com/gpenaud/alterconso/internal/model"
 	"github.com/gpenaud/alterconso/pkg/mailer"
 )
@@ -506,6 +507,21 @@ func (h *PagesHandler) MemberEditPage(c *gin.Context) {
 			"country_of_residence": strPtr(c.PostForm("countryOfResidence")),
 			"flags":                flags,
 		}
+		if bd := strings.TrimSpace(c.PostForm("birthDate")); bd != "" {
+			if t, err := time.Parse("2006-01-02", bd); err == nil {
+				updates["birth_date"] = t
+			}
+		} else {
+			updates["birth_date"] = nil
+		}
+		// Réinitialisation du mot de passe (admins seulement)
+		if pd.IsGroupManager || pd.HasMembership {
+			if newPass := strings.TrimSpace(c.PostForm("newPassword")); newPass != "" {
+				u := model.User{ID: uint(id)}
+				u.SetPassword(newPass, h.cfg.Key)
+				updates["pass"] = u.Pass
+			}
+		}
 		h.db.Model(&model.User{}).Where("id = ?", id).Updates(updates)
 		c.Redirect(http.StatusFound, "/member/view/"+c.Param("id"))
 		return
@@ -541,7 +557,7 @@ func (h *PagesHandler) MemberEditPage(c *gin.Context) {
 	}
 }
 
-// ---- POST /member/delete/:id ----
+// ---- GET /member/delete/:id (retirer du groupe courant) ----
 
 func (h *PagesHandler) MemberDelete(c *gin.Context) {
 	pd := h.buildPageData(c)
@@ -555,6 +571,43 @@ func (h *PagesHandler) MemberDelete(c *gin.Context) {
 		return
 	}
 	h.db.Where("user_id = ? AND group_id = ?", id, pd.Group.ID).Delete(&model.UserGroup{})
+	c.Redirect(http.StatusFound, "/member")
+}
+
+// ---- POST /member/fullDelete/:id (supprimer le compte de la base) ----
+
+func (h *PagesHandler) MemberFullDelete(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
+		c.Redirect(http.StatusFound, "/home")
+		return
+	}
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.String(http.StatusBadRequest, "id invalide")
+		return
+	}
+	if uint(id) == pd.User.ID {
+		c.String(http.StatusBadRequest, "vous ne pouvez pas supprimer votre propre compte")
+		return
+	}
+	uid := uint(id)
+
+	// Suppression en cascade des données rattachées au user
+	h.db.Where("user_id = ?", uid).Delete(&model.UserGroup{})
+	h.db.Where("user_id = ?", uid).Delete(&model.UserOrder{})
+	h.db.Where("user_id = ?", uid).Delete(&model.Volunteer{})
+	h.db.Where("user_id = ?", uid).Delete(&model.Subscription{})
+	h.db.Where("user_id = ?", uid).Delete(&model.Membership{})
+	h.db.Where("user_id = ?", uid).Delete(&model.WaitingList{})
+	h.db.Where("user_id = ?", uid).Delete(&model.Basket{})
+	h.db.Where("user_id = ?", uid).Delete(&model.PasswordResetToken{})
+	h.db.Where("user_id = ?", uid).Delete(&model.EmailVerifyToken{})
+	h.db.Where("sender_id = ?", uid).Delete(&model.Message{})
+
+	// Suppression du user
+	h.db.Delete(&model.User{}, uid)
+
 	c.Redirect(http.StatusFound, "/member")
 }
 
@@ -718,6 +771,259 @@ func (h *PagesHandler) sendPasswordResetEmail(user model.User, resetURL string) 
 	m.AddRecipient(user.Email, user.FirstName+" "+user.LastName)
 	if err := h.mailer.Send(m); err != nil {
 		fmt.Printf("[MAIL] password reset failed for %s: %v\n", user.Email, err)
+	}
+}
+
+// ---- GET/POST /user/register ----
+
+type RegisterData struct {
+	PageData
+	Step      int
+	Error     string
+	Email     string
+	FirstName string
+	LastName  string
+}
+
+func (h *PagesHandler) RegisterPage(c *gin.Context) {
+	data := RegisterData{Step: 1}
+
+	if c.Request.Method == http.MethodPost {
+		email := strings.ToLower(strings.TrimSpace(c.PostForm("email")))
+		password := c.PostForm("password")
+		passwordConfirm := c.PostForm("passwordConfirm")
+		firstName := strings.TrimSpace(c.PostForm("firstName"))
+		lastName := strings.TrimSpace(c.PostForm("lastName"))
+
+		data.Email = email
+		data.FirstName = firstName
+		data.LastName = lastName
+
+		switch {
+		case email == "" || firstName == "" || lastName == "" || password == "":
+			data.Error = "Tous les champs sont requis."
+		case len(password) < 8:
+			data.Error = "Le mot de passe doit faire au moins 8 caractères."
+		case password != passwordConfirm:
+			data.Error = "Les deux mots de passe ne correspondent pas."
+		default:
+			var existing model.User
+			if err := h.db.Where("email = ?", email).First(&existing).Error; err == nil {
+				if existing.EmailVerifiedAt != nil {
+					data.Error = "Cet email est déjà utilisé."
+				} else {
+					// Compte non vérifié : on régénère un token et renvoie un email
+					h.db.Where("user_id = ?", existing.ID).Delete(&model.EmailVerifyToken{})
+					token := newSecureToken()
+					h.db.Create(&model.EmailVerifyToken{
+						UserID: existing.ID, Token: token,
+						ExpiresAt: time.Now().Add(24 * time.Hour),
+					})
+					url := fmt.Sprintf("https://%s/user/verify?token=%s", h.cfg.Host, token)
+					h.sendVerifyEmail(existing, url)
+					data.Step = 2
+					break
+				}
+				break
+			}
+
+			user := model.User{Email: email, FirstName: firstName, LastName: lastName}
+			user.SetPassword(password, h.cfg.Key)
+			if err := h.db.Create(&user).Error; err != nil {
+				data.Error = "Erreur lors de la création du compte."
+				break
+			}
+			token := newSecureToken()
+			h.db.Create(&model.EmailVerifyToken{
+				UserID: user.ID, Token: token,
+				ExpiresAt: time.Now().Add(24 * time.Hour),
+			})
+			url := fmt.Sprintf("https://%s/user/verify?token=%s", h.cfg.Host, token)
+			h.sendVerifyEmail(user, url)
+			data.Step = 2
+		}
+	}
+
+	t, err := loadTemplates("base.html", "register.html")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err)
+		return
+	}
+	if err := t.ExecuteTemplate(c.Writer, "base", data); err != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err)
+	}
+}
+
+// GET /user/verify?token=...
+func (h *PagesHandler) VerifyEmailPage(c *gin.Context) {
+	token := c.Query("token")
+	type verifyData struct {
+		PageData
+		OK    bool
+		Error string
+	}
+	data := verifyData{}
+
+	if token == "" {
+		data.Error = "Lien d'activation invalide."
+	} else {
+		var t model.EmailVerifyToken
+		if err := h.db.Where("token = ?", token).First(&t).Error; err != nil {
+			data.Error = "Ce lien d'activation est invalide ou déjà utilisé."
+		} else if t.IsExpired() {
+			data.Error = "Ce lien d'activation a expiré. Inscrivez-vous à nouveau."
+			h.db.Delete(&t)
+		} else {
+			now := time.Now()
+			h.db.Model(&model.User{}).Where("id = ?", t.UserID).Update("email_verified_at", now)
+			h.db.Delete(&t)
+
+			// Auto-ajout aux groupes en mode d'inscription "Ouvert"
+			var autoGroups []model.Group
+			h.db.Where("reg_option = ?", string(model.RegOptionOpen)).Find(&autoGroups)
+			for _, g := range autoGroups {
+				var existing model.UserGroup
+				if err := h.db.Where("user_id = ? AND group_id = ?", t.UserID, g.ID).First(&existing).Error; err == nil {
+					continue // déjà membre
+				}
+				h.db.Create(&model.UserGroup{
+					UserID:  t.UserID,
+					GroupID: g.ID,
+					Rights:  "[]",
+				})
+			}
+
+			// Auto-login : émission d'un JWT et cookie, puis redirection vers la complétion du profil
+			if jwtToken, err := h.issueToken(t.UserID, 0); err == nil {
+				c.SetCookie("token", jwtToken, 3600*24*7, "/", "", false, true)
+				c.Redirect(http.StatusFound, "/user/completeProfile?welcome=1")
+				return
+			}
+			data.OK = true
+		}
+	}
+
+	tpl, err := loadTemplates("base.html", "register_verify.html")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err)
+		return
+	}
+	if err := tpl.ExecuteTemplate(c.Writer, "base", data); err != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err)
+	}
+}
+
+func newSecureToken() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+func (h *PagesHandler) sendVerifyEmail(user model.User, url string) {
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;background:#f5f0e8;padding:24px;">
+<table width="100%%" cellpadding="0" cellspacing="0">
+  <tr><td align="center">
+    <table width="560" style="background:#fff;border-radius:4px;overflow:hidden;">
+      <tr><td style="background:#6a9a2a;padding:20px 30px;">
+        <h1 style="margin:0;color:#fff;font-size:1.3em;">Bienvenue sur Alterconso</h1>
+      </td></tr>
+      <tr><td style="padding:28px 30px;">
+        <p>Bonjour <strong>%s</strong>,</p>
+        <p>Merci de votre inscription. Pour activer votre compte, cliquez sur le bouton ci-dessous :</p>
+        <table cellpadding="0" cellspacing="0" style="margin:24px 0;">
+          <tr><td style="background:#6a9a2a;border-radius:4px;">
+            <a href="%s" style="display:inline-block;padding:12px 28px;color:#fff;text-decoration:none;font-weight:bold;">
+              Activer mon compte →
+            </a>
+          </td></tr>
+        </table>
+        <p style="color:#888;font-size:0.85em;">Ce lien est valable <strong>24 heures</strong>. Si vous n'êtes pas à l'origine de cette inscription, ignorez cet email.</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`, user.FirstName, url)
+
+	m := &mailer.Mail{
+		From:     h.cfg.DefaultEmail,
+		FromName: "Alterconso",
+		Subject:  "Activation de votre compte Alterconso",
+		HTMLBody: html,
+	}
+	m.AddRecipient(user.Email, user.FirstName+" "+user.LastName)
+	if err := h.mailer.Send(m); err != nil {
+		fmt.Printf("[MAIL] verify failed for %s: %v\n", user.Email, err)
+	}
+}
+
+// ---- GET/POST /user/completeProfile ----
+// Affichée après activation du compte pour collecter les infos optionnelles.
+
+type CompleteProfileData struct {
+	PageData
+	Member        *model.User
+	Nationalities []CountryOption
+	Countries     []CountryOption
+	Welcome       bool
+	Saved         bool
+	Error         string
+}
+
+func (h *PagesHandler) CompleteProfilePage(c *gin.Context) {
+	claims := middleware.GetClaims(c)
+	if claims == nil {
+		c.Redirect(http.StatusFound, "/user/login")
+		return
+	}
+	var user model.User
+	if err := h.db.First(&user, claims.UserID).Error; err != nil {
+		c.Redirect(http.StatusFound, "/user/login")
+		return
+	}
+
+	data := CompleteProfileData{
+		Member:        &user,
+		Nationalities: nationalities,
+		Countries:     countries,
+		Welcome:       c.Query("welcome") == "1",
+	}
+	data.Title = "Compléter mon profil"
+
+	if c.Request.Method == http.MethodPost {
+		strPtr := func(s string) *string {
+			if s == "" {
+				return nil
+			}
+			return &s
+		}
+		updates := map[string]interface{}{
+			"phone":                strPtr(strings.TrimSpace(c.PostForm("phone"))),
+			"address1":             strPtr(strings.TrimSpace(c.PostForm("address1"))),
+			"address2":             strPtr(strings.TrimSpace(c.PostForm("address2"))),
+			"zip_code":             strPtr(strings.TrimSpace(c.PostForm("zipCode"))),
+			"city":                 strPtr(strings.TrimSpace(c.PostForm("city"))),
+			"nationality":          strPtr(c.PostForm("nationality")),
+			"country_of_residence": strPtr(c.PostForm("countryOfResidence")),
+		}
+		if bd := strings.TrimSpace(c.PostForm("birthDate")); bd != "" {
+			if t, err := time.Parse("2006-01-02", bd); err == nil {
+				updates["birth_date"] = t
+			}
+		}
+		h.db.Model(&model.User{}).Where("id = ?", user.ID).Updates(updates)
+		c.Redirect(http.StatusFound, "/user/choose")
+		return
+	}
+
+	t, err := loadTemplates("base.html", "complete_profile.html")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err)
+		return
+	}
+	if err := t.ExecuteTemplate(c.Writer, "base", data); err != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err)
 	}
 }
 

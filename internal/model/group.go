@@ -14,6 +14,7 @@ const (
 	GroupFlagHidePhone                                  // masquer téléphone du responsable
 	GroupFlagPhoneRequired                              // téléphone obligatoire
 	GroupFlagAddressRequired                            // adresse obligatoire
+	GroupFlagAutoJoinNewUsers                           // ajouter automatiquement les nouveaux inscrits
 )
 
 // RegOption : mode d'inscription des nouveaux membres.

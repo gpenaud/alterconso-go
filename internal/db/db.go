@@ -1,6 +1,8 @@
 package db
 
 import (
+	"encoding/json"
+
 	"github.com/gpenaud/alterconso/internal/config"
 	"github.com/gpenaud/alterconso/internal/model"
 
@@ -26,6 +28,52 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 	}
 
 	return db, nil
+}
+
+// BackfillVerifiedUsers : marque comme "email vérifié" tous les comptes
+// existants créés avant l'introduction du flux d'activation par email.
+// Critère : compte avec mot de passe défini ET EmailVerifiedAt nil.
+func BackfillVerifiedUsers(db *gorm.DB) error {
+	return db.Exec(
+		"UPDATE users SET email_verified_at = NOW() WHERE email_verified_at IS NULL AND pass <> ''",
+	).Error
+}
+
+// EnsureLegalRepAdmins garantit que chaque représentant légal de groupe
+// possède le droit GroupAdmin. À exécuter après Migrate au démarrage.
+func EnsureLegalRepAdmins(db *gorm.DB) error {
+	var groups []model.Group
+	if err := db.Where("legal_representative_id IS NOT NULL").Find(&groups).Error; err != nil {
+		return err
+	}
+	for _, g := range groups {
+		if g.LegalRepresentativeID == nil {
+			continue
+		}
+		var ug model.UserGroup
+		if err := db.Where("user_id = ? AND group_id = ?", *g.LegalRepresentativeID, g.ID).First(&ug).Error; err != nil {
+			continue
+		}
+		rights := ug.GetRights()
+		hasAdmin := false
+		for _, r := range rights {
+			if r.Right == model.RightGroupAdmin {
+				hasAdmin = true
+				break
+			}
+		}
+		if hasAdmin {
+			continue
+		}
+		rights = append(rights, model.UserRight{Right: model.RightGroupAdmin})
+		raw, err := json.Marshal(rights)
+		if err != nil {
+			continue
+		}
+		ug.Rights = string(raw)
+		db.Save(&ug)
+	}
+	return nil
 }
 
 // Migrate crée ou met à jour les tables à partir des modèles Go.
@@ -54,5 +102,6 @@ func Migrate(db *gorm.DB) error {
 		&model.GroupDoc{},
 		&model.NotificationSent{},
 		&model.PasswordResetToken{},
+		&model.EmailVerifyToken{},
 	)
 }
