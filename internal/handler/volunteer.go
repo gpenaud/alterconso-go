@@ -71,8 +71,8 @@ func (h *VolunteerHandler) Register(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "distribution not found"})
 			return
 		}
-		var ug model.UserGroup
-		if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, md.GroupID).First(&ug).Error; err != nil || !ug.IsGroupManager() {
+		ug := loadGroupAccess(h.db, claims.UserID, md.GroupID)
+		if ug == nil || !ug.IsGroupManager() {
 			c.JSON(http.StatusForbidden, gin.H{"error": "only group admins can register volunteers for others"})
 			return
 		}

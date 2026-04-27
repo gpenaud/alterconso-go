@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -32,12 +33,30 @@ type Config struct {
 	SMTPPassword string `yaml:"smtp_password"`
 	DefaultEmail string `yaml:"default_email"`
 
+	// Brevo API (pour récupérer le quota restant)
+	BrevoAPIKey string `yaml:"brevo_api_key"`
+
 	// App
 	Host string `yaml:"host"`
 	Key  string `yaml:"key"`
 
+	// Superadmin global (upsert au démarrage si email renseigné)
+	SuperAdmin SuperAdminConfig `yaml:"superadmin"`
+
 	// Notifications
 	Notifications NotificationsConfig `yaml:"notifications"`
+
+	// Messages (catégories de destinataires de la page /messages)
+	Messages MessagesConfig `yaml:"messages"`
+}
+
+// SuperAdminConfig décrit le compte administrateur global garanti au démarrage.
+// Il a tous les droits sur tous les groupes via User.IsAdmin() (Rights bit 0).
+type SuperAdminConfig struct {
+	Email     string `yaml:"email"`
+	Password  string `yaml:"password"`
+	FirstName string `yaml:"first_name"`
+	LastName  string `yaml:"last_name"`
 }
 
 type NotificationsConfig struct {
@@ -77,7 +96,34 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("APP_KEY / key is required")
 	}
 
+	// Si aucune catégorie de destinataires n'est configurée, on en pose 3 par défaut
+	// (cohérentes avec l'historique de l'app : réguliers / occasionnels / inactifs).
+	if len(cfg.Messages.RecipientCategories) == 0 {
+		cfg.Messages.RecipientCategories = defaultRecipientCategories()
+	}
+
+	// Compile les patterns en place. Les catégories invalides sont ignorées avec un log.
+	parsed := cfg.Messages.RecipientCategories[:0]
+	for _, cat := range cfg.Messages.RecipientCategories {
+		op, threshold, window, err := ParseRecipientPattern(cat.Pattern)
+		if err != nil {
+			log.Printf("warning: catégorie destinataire %q ignorée: %v", cat.Name, err)
+			continue
+		}
+		cat.Op, cat.Threshold, cat.Window = op, threshold, window
+		parsed = append(parsed, cat)
+	}
+	cfg.Messages.RecipientCategories = parsed
+
 	return cfg, nil
+}
+
+func defaultRecipientCategories() []RecipientCategory {
+	return []RecipientCategory{
+		{Name: "Membres réguliers", Pattern: ">= 3 commandes / 3m"},
+		{Name: "Membres occasionnels", Pattern: ">= 1 commande / 6m"},
+		{Name: "Membres inactifs", Pattern: "< 1 commande / 6m"},
+	}
 }
 
 func defaults() *Config {
@@ -151,8 +197,17 @@ func overrideFromEnv(cfg *Config) {
 	if v := os.Getenv("DEFAULT_EMAIL"); v != "" {
 		cfg.DefaultEmail = v
 	}
+	if v := os.Getenv("BREVO_API_KEY"); v != "" {
+		cfg.BrevoAPIKey = v
+	}
 	if v := os.Getenv("HOST"); v != "" {
 		cfg.Host = v
+	}
+	if v := os.Getenv("SUPERADMIN_EMAIL"); v != "" {
+		cfg.SuperAdmin.Email = v
+	}
+	if v := os.Getenv("SUPERADMIN_PASSWORD"); v != "" {
+		cfg.SuperAdmin.Password = v
 	}
 	if v := os.Getenv("NOTIF_INACTIVITY_THRESHOLD"); v != "" {
 		if d, err := time.ParseDuration(v); err == nil {

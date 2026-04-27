@@ -49,11 +49,21 @@ func main() {
 	if err := db.Migrate(database); err != nil {
 		log.Fatalf("failed to migrate database: %v", err)
 	}
+	if err := db.EnsureSuperAdmin(database, cfg); err != nil {
+		log.Printf("warning: EnsureSuperAdmin: %v", err)
+	}
 	if err := db.EnsureLegalRepAdmins(database); err != nil {
 		log.Printf("warning: EnsureLegalRepAdmins: %v", err)
 	}
 	if err := db.BackfillVerifiedUsers(database); err != nil {
 		log.Printf("warning: BackfillVerifiedUsers: %v", err)
+	}
+
+	// Subcommand "migrate" : exécute db.Migrate() puis quitte.
+	// Utile pour préparer un import (création des tables GORM avant transformation Haxe).
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		log.Println("[MIGRATE] schema GORM appliqué.")
+		return
 	}
 
 	m := mailer.New(cfg)

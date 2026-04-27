@@ -1,4 +1,7 @@
 {{define "content"}}
+<style>
+  @media (min-width:992px) { .messages-side-offset { padding-top:48px; } }
+</style>
 <div class="col-md-9">
   <h2 style="margin:0 0 12px;padding:0 4px;">Envoyer un email</h2>
   <div class="article" style="padding:24px 28px;">
@@ -21,9 +24,12 @@
         <label class="col-sm-3 control-label">Destinataires *</label>
         <div class="col-sm-9">
           <select name="recipients" class="form-control">
-            <option value="all">Tout le monde</option>
-            <option value="members">Membres uniquement</option>
-            <option value="managers">Gestionnaires uniquement</option>
+            <option value="all" data-count="{{.CountAll}}">Tout le monde</option>
+            <option value="managers" data-count="{{.CountManagers}}">Gestionnaires uniquement</option>
+            <option value="members" data-count="{{.CountMembers}}">Membres uniquement</option>
+            {{range .ActivityCategories}}
+            <option value="{{.Value}}" data-count="{{.Count}}">{{.Name}} ({{.Compact}})</option>
+            {{end}}
           </select>
         </div>
       </div>
@@ -57,8 +63,30 @@
   {{end}}
 </div>
 
-<div class="col-md-3">
-  <h2 style="margin:0 0 12px;padding:0 4px;">Archivé</h2>
+<div class="col-md-3 messages-side-offset">
+  <div class="article" style="padding:14px 16px;margin-bottom:16px;">
+    <div style="font-size:0.85em;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Aujourd'hui</div>
+    <div style="font-size:1em;color:#333;margin-bottom:12px;text-transform:capitalize;">{{.Today}}</div>
+
+    <div style="font-size:0.85em;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Quota Brevo</div>
+    {{if .BrevoError}}
+    <div style="font-size:0.88em;color:#c0392b;margin-bottom:12px;">{{.BrevoError}}</div>
+    {{else}}
+    <div style="margin-bottom:12px;">
+      <span style="font-size:1.4em;font-weight:bold;color:{{if lt .BrevoRemaining 50}}#c0392b{{else}}#5a8a00{{end}};">{{.BrevoRemaining}}</span>
+      <span style="color:#888;"> / {{.BrevoLimit}}</span>
+      <div style="font-size:0.82em;color:#aaa;">emails restants aujourd'hui</div>
+    </div>
+    {{end}}
+
+    <div style="font-size:0.85em;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Sera envoyé à</div>
+    <div id="recipientCount">
+      <span style="font-size:1.4em;font-weight:bold;color:#5a8a00;">{{.CountAll}}</span>
+      <span style="color:#888;"> destinataire(s)</span>
+    </div>
+  </div>
+
+  <h2 style="margin:0 0 12px;padding:0 4px;">Archivés</h2>
   <div class="article" style="padding:14px 16px;">
     {{if .SentMessages}}
     <div style="overflow-y:auto;max-height:700px;">
@@ -74,6 +102,21 @@
     {{end}}
   </div>
 </div>
+
+<script>
+(function () {
+  var sel = document.querySelector('select[name="recipients"]');
+  var box = document.getElementById('recipientCount');
+  if (!sel || !box) return;
+  function refresh() {
+    var opt = sel.options[sel.selectedIndex];
+    var n = opt ? (parseInt(opt.dataset.count, 10) || 0) : 0;
+    box.innerHTML = '<span style="font-size:1.4em;font-weight:bold;color:#5a8a00;">' + n +
+      '</span> <span style="color:#888;"> destinataire(s)</span>';
+  }
+  sel.addEventListener('change', refresh);
+})();
+</script>
 
 <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
 <script>

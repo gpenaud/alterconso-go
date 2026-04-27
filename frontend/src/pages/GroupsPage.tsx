@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { getGroups } from '../api/groups'
@@ -17,6 +18,17 @@ export function GroupsPage() {
     setGroup(groupId)
     navigate(`/groups/${groupId}`)
   }
+
+  // Auto-redirect si l'utilisateur n'a qu'un seul groupe (sauf superadmin :
+  // celui-ci doit toujours voir la page de choix).
+  useEffect(() => {
+    if (isLoading || user?.isAdmin) return
+    if (groups.length === 1) {
+      const only = groups[0]
+      setGroup(only.id)
+      navigate(`/groups/${only.id}`, { replace: true })
+    }
+  }, [isLoading, groups, user?.isAdmin, navigate, setGroup])
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -36,6 +36,11 @@ func (h *FinanceHandler) GetBalance(c *gin.Context) {
 
 	var ug model.UserGroup
 	if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, groupID).First(&ug).Error; err != nil {
+		// Pas membre : un admin site-wide a accès mais n'a pas de balance.
+		if isSiteAdmin(h.db, claims.UserID) {
+			c.JSON(http.StatusOK, gin.H{"success": true, "balance": 0.0})
+			return
+		}
 		c.JSON(http.StatusNotFound, gin.H{"error": "membership not found"})
 		return
 	}
@@ -64,9 +69,9 @@ func (h *FinanceHandler) GetGroupFinances(c *gin.Context) {
 		return
 	}
 
-	// Vérifier les droits admin
-	var ug model.UserGroup
-	if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, groupID).First(&ug).Error; err != nil || !ug.IsGroupManager() {
+	// Vérifier les droits admin (ou admin site-wide)
+	ug := loadGroupAccess(h.db, claims.UserID, uint(groupID))
+	if ug == nil || !ug.IsGroupManager() {
 		c.JSON(http.StatusForbidden, gin.H{"error": "admin only"})
 		return
 	}
@@ -138,10 +143,10 @@ func (h *FinanceHandler) GetUserFinances(c *gin.Context) {
 		return
 	}
 
-	// Un utilisateur peut voir ses propres finances ; un admin peut voir celles de n'importe qui.
+	// Un utilisateur peut voir ses propres finances ; un admin (groupe ou site-wide) peut voir celles de n'importe qui.
 	if uint(targetUID) != claims.UserID {
-		var ug model.UserGroup
-		if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, groupID).First(&ug).Error; err != nil || !ug.IsGroupManager() {
+		ug := loadGroupAccess(h.db, claims.UserID, uint(groupID))
+		if ug == nil || !ug.IsGroupManager() {
 			c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 			return
 		}

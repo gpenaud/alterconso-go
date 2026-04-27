@@ -144,20 +144,14 @@ func (h *OrderHandler) CreateOrUpdate(c *gin.Context) {
 	// Résoudre l'utilisateur cible
 	targetID := claims.UserID
 	if payload.UserID != 0 && payload.UserID != claims.UserID {
-		// Vérifier que le demandeur peut modifier les commandes d'un autre utilisateur
-		var requester model.User
-		if err := h.db.First(&requester, claims.UserID).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			return
-		}
-		// Il faut être admin du groupe de la distribution
+		// Il faut être admin du groupe de la distribution (ou admin site-wide)
 		var distrib model.Distribution
 		if err := h.db.Preload("Catalog").First(&distrib, payload.DistributionID).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "distribution not found"})
 			return
 		}
-		var ug model.UserGroup
-		if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, distrib.Catalog.GroupID).First(&ug).Error; err != nil || !ug.IsGroupManager() {
+		ug := loadGroupAccess(h.db, claims.UserID, distrib.Catalog.GroupID)
+		if ug == nil || !ug.IsGroupManager() {
 			c.JSON(http.StatusForbidden, gin.H{"error": "only group admins can edit orders for other users"})
 			return
 		}

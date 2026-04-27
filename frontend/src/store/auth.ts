@@ -17,7 +17,7 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       currentGroupId: null,
-      login: (token, user) => set({ token, user }),
+      login: (token, user) => set({ token, user, currentGroupId: null }),
       setGroup: (groupId) => set({ currentGroupId: groupId }),
       logout: () => set({ token: null, user: null, currentGroupId: null }),
     }),

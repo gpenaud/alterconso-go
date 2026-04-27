@@ -21,8 +21,7 @@ func (h *VendorHandler) getGroupAndCheckMembership(c *gin.Context) (*model.Group
 		return nil, false
 	}
 	claims := middleware.GetClaims(c)
-	var ug model.UserGroup
-	if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, id).First(&ug).Error; err != nil {
+	if loadGroupAccess(h.db, claims.UserID, uint(id)) == nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "not a member of this group"})
 		return nil, false
 	}
@@ -59,11 +58,10 @@ func (h *VendorHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Vérifier que l'utilisateur est admin du groupe
+	// Vérifier que l'utilisateur est admin du groupe (ou admin site-wide)
 	claims := middleware.GetClaims(c)
-	var ug model.UserGroup
-	h.db.Where("user_id = ? AND group_id = ?", claims.UserID, group.ID).First(&ug)
-	if !ug.IsGroupManager() {
+	ug := loadGroupAccess(h.db, claims.UserID, group.ID)
+	if ug == nil || !ug.IsGroupManager() {
 		c.JSON(http.StatusForbidden, gin.H{"error": "only group admins can create vendors"})
 		return
 	}

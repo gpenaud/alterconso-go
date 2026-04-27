@@ -23,8 +23,7 @@ func (h *CatalogHandler) List(c *gin.Context) {
 	}
 
 	claims := middleware.GetClaims(c)
-	var ug model.UserGroup
-	if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, groupID).First(&ug).Error; err != nil {
+	if loadGroupAccess(h.db, claims.UserID, uint(groupID)) == nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "not a member of this group"})
 		return
 	}
@@ -55,10 +54,9 @@ func (h *CatalogHandler) Get(c *gin.Context) {
 		return
 	}
 
-	// Vérifier que le demandeur est membre du groupe
+	// Vérifier que le demandeur est membre du groupe (ou admin site-wide)
 	claims := middleware.GetClaims(c)
-	var ug model.UserGroup
-	if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, catalog.GroupID).First(&ug).Error; err != nil {
+	if loadGroupAccess(h.db, claims.UserID, catalog.GroupID) == nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "not a member of this group"})
 		return
 	}
@@ -78,8 +76,8 @@ func (h *CatalogHandler) Create(c *gin.Context) {
 	}
 
 	claims := middleware.GetClaims(c)
-	var ug model.UserGroup
-	if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, groupID).First(&ug).Error; err != nil {
+	ug := loadGroupAccess(h.db, claims.UserID, uint(groupID))
+	if ug == nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "not a member"})
 		return
 	}
@@ -135,8 +133,8 @@ func (h *CatalogHandler) Update(c *gin.Context) {
 	}
 
 	claims := middleware.GetClaims(c)
-	var ug model.UserGroup
-	if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, catalog.GroupID).First(&ug).Error; err != nil {
+	ug := loadGroupAccess(h.db, claims.UserID, catalog.GroupID)
+	if ug == nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "not a member"})
 		return
 	}

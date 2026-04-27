@@ -24,12 +24,38 @@ key: ""                # ou env APP_KEY
 # Domaine public (utilisé dans les liens des emails)
 host: alterconso.leportail.org
 
+# Superadmin global (créé/maintenu au démarrage si email renseigné).
+# Compte avec tous les droits sur tous les groupes : peut créer et gérer
+# n'importe quel groupe. Voit toujours la page de choix de groupe au login.
+superadmin:
+  email: ""              # ex: admin@alterconso.fr (vide = désactivé)
+  password: ""           # ou env SUPERADMIN_PASSWORD
+  first_name: Super
+  last_name: Admin
+
 # Email — SMTP Brevo
 smtp_host: smtp-relay.brevo.com
 smtp_port: "587"
 smtp_user: ""          # ou env SMTP_USER (adresse email Brevo)
 smtp_password: ""      # ou env SMTP_PASSWORD (clé API Brevo)
 default_email: noreply@alterconso.fr
+
+# Catégories de destinataires de la page /messages.
+# Format de pattern : "<op> N commande[s] / Tm"
+#   op : <, <=, >, >=, =
+#   N  : nombre de commandes (distributions distinctes)
+#   T  : nombre de mois sur lequel on regarde en arrière
+# Les catégories sont mutuellement exclusives : un user appartient à la
+# première catégorie qui matche dans l'ordre du fichier (du plus engagé au
+# moins engagé).
+messages:
+  recipient_categories:
+    - name: "Membres réguliers"
+      pattern: ">= 3 commandes / 3m"
+    - name: "Membres occasionnels"
+      pattern: ">= 1 commande / 6m"
+    - name: "Membres inactifs"
+      pattern: "< 1 commande / 6m"
 
 # Notifications
 notifications:

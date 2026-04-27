@@ -21,6 +21,7 @@ func NewGroupHandler(db *gorm.DB, cfg *config.Config) *GroupHandler {
 }
 
 // List retourne les groupes dont l'utilisateur est membre.
+// Les superadmins site-wide voient tous les groupes existants.
 //
 //	@Summary      Liste des groupes
 //	@Tags         groups
@@ -31,6 +32,13 @@ func NewGroupHandler(db *gorm.DB, cfg *config.Config) *GroupHandler {
 func (h *GroupHandler) List(c *gin.Context) {
 	claims := middleware.GetClaims(c)
 
+	var groups []model.Group
+	if isSiteAdmin(h.db, claims.UserID) {
+		h.db.Order("name").Find(&groups)
+		c.JSON(http.StatusOK, groups)
+		return
+	}
+
 	var userGroups []model.UserGroup
 	h.db.Where("user_id = ?", claims.UserID).Find(&userGroups)
 
@@ -39,7 +47,6 @@ func (h *GroupHandler) List(c *gin.Context) {
 		groupIDs[i] = ug.GroupID
 	}
 
-	var groups []model.Group
 	h.db.Where("id IN ?", groupIDs).Order("name").Find(&groups)
 
 	c.JSON(http.StatusOK, groups)
@@ -65,9 +72,8 @@ func (h *GroupHandler) Get(c *gin.Context) {
 
 	claims := middleware.GetClaims(c)
 
-	// Vérifier que l'utilisateur est membre du groupe
-	var ug model.UserGroup
-	if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, id).First(&ug).Error; err != nil {
+	// Vérifier que l'utilisateur est membre du groupe (ou admin site-wide)
+	if loadGroupAccess(h.db, claims.UserID, uint(id)) == nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "not a member of this group"})
 		return
 	}
@@ -136,9 +142,9 @@ func (h *GroupHandler) Update(c *gin.Context) {
 
 	claims := middleware.GetClaims(c)
 
-	// Vérifier que l'utilisateur est admin du groupe
-	var ug model.UserGroup
-	if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, id).First(&ug).Error; err != nil {
+	// Vérifier que l'utilisateur est admin du groupe (ou admin site-wide)
+	ug := loadGroupAccess(h.db, claims.UserID, uint(id))
+	if ug == nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "not a member"})
 		return
 	}

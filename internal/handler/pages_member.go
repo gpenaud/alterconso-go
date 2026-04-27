@@ -570,6 +570,10 @@ func (h *PagesHandler) MemberDelete(c *gin.Context) {
 		c.String(http.StatusBadRequest, "id invalide")
 		return
 	}
+	if isSiteAdmin(h.db, uint(id)) {
+		c.String(http.StatusForbidden, "le superadmin global ne peut pas être retiré")
+		return
+	}
 	h.db.Where("user_id = ? AND group_id = ?", id, pd.Group.ID).Delete(&model.UserGroup{})
 	c.Redirect(http.StatusFound, "/member")
 }
@@ -589,6 +593,10 @@ func (h *PagesHandler) MemberFullDelete(c *gin.Context) {
 	}
 	if uint(id) == pd.User.ID {
 		c.String(http.StatusBadRequest, "vous ne pouvez pas supprimer votre propre compte")
+		return
+	}
+	if isSiteAdmin(h.db, uint(id)) {
+		c.String(http.StatusForbidden, "le superadmin global ne peut pas être supprimé")
 		return
 	}
 	uid := uint(id)
@@ -1088,7 +1096,26 @@ func (h *PagesHandler) DefinePasswordPage(c *gin.Context) {
 
 type MessagesData struct {
 	PageData
-	SentMessages []MessageView
+	SentMessages   []MessageView
+	Today          string
+	BrevoLimit     int
+	BrevoRemaining int
+	BrevoError     string
+	CountAll       int
+	CountMembers   int
+	CountManagers  int
+	// Catégories d'activité issues de la config (mutuellement exclusives,
+	// dans l'ordre de priorité du fichier YAML).
+	ActivityCategories []ActivityCategoryView
+}
+
+// ActivityCategoryView est une catégorie d'activité prête à afficher.
+// Value est utilisée comme valeur du <option> et clé pour le compteur JS.
+type ActivityCategoryView struct {
+	Value   string
+	Name    string
+	Compact string // version courte de la règle, ex "≥3 commandes / 3 mois"
+	Count   int
 }
 
 type MessageView struct {
@@ -1096,6 +1123,74 @@ type MessageView struct {
 	Title   string
 	Date    string
 	Body    string
+}
+
+// computeActivityCategoryCounts répartit les membres du groupe dans les
+// catégories d'activité de la config, en mode mutuellement exclusif :
+// chaque user est attribué à la PREMIÈRE catégorie qui matche, dans l'ordre
+// du fichier YAML.
+func (h *PagesHandler) computeActivityCategoryCounts(groupID uint, now time.Time) []ActivityCategoryView {
+	cats := h.cfg.Messages.RecipientCategories
+	views := make([]ActivityCategoryView, len(cats))
+	for i, cat := range cats {
+		views[i] = ActivityCategoryView{
+			Value:   fmt.Sprintf("activity-%d", i),
+			Name:    cat.Name,
+			Compact: cat.Compact(),
+		}
+	}
+	if len(cats) == 0 {
+		return views
+	}
+
+	// IDs de tous les membres du groupe.
+	var memberIDs []uint
+	h.db.Model(&model.UserGroup{}).
+		Where("group_id = ?", groupID).
+		Pluck("user_id", &memberIDs)
+	if len(memberIDs) == 0 {
+		return views
+	}
+
+	// Pour chaque fenêtre temporelle distincte, on récupère le nombre de
+	// commandes par user en une seule requête.
+	type countRow struct {
+		UserID uint
+		N      int
+	}
+	countsByWindow := make(map[time.Duration]map[uint]int)
+	for _, cat := range cats {
+		if _, ok := countsByWindow[cat.Window]; ok {
+			continue
+		}
+		since := now.Add(-cat.Window)
+		var rows []countRow
+		h.db.Raw(`
+			SELECT uo.user_id AS user_id, COUNT(DISTINCT uo.distribution_id) AS n
+			FROM user_orders uo
+			JOIN distributions d ON d.id = uo.distribution_id
+			JOIN multi_distribs md ON md.id = d.multi_distrib_id
+			WHERE md.group_id = ? AND md.distrib_start_date >= ?
+			GROUP BY uo.user_id
+		`, groupID, since).Scan(&rows)
+		m := make(map[uint]int, len(rows))
+		for _, r := range rows {
+			m[r.UserID] = r.N
+		}
+		countsByWindow[cat.Window] = m
+	}
+
+	// Affecte chaque user à la première catégorie qui matche.
+	for _, uid := range memberIDs {
+		for i, cat := range cats {
+			n := countsByWindow[cat.Window][uid] // 0 par défaut si absent
+			if cat.Match(n) {
+				views[i].Count++
+				break
+			}
+		}
+	}
+	return views
 }
 
 func (h *PagesHandler) MessagesPage(c *gin.Context) {
@@ -1121,6 +1216,36 @@ func (h *PagesHandler) MessagesPage(c *gin.Context) {
 			Body:  m.Body,
 		})
 	}
+
+	// Date du jour (français)
+	frMonths := [...]string{"", "janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"}
+	frDays := [...]string{"dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"}
+	now := time.Now()
+	data.Today = fmt.Sprintf("%s %d %s %d", frDays[now.Weekday()], now.Day(), frMonths[now.Month()], now.Year())
+
+	// Brevo quota
+	q := FetchBrevoQuota(h.cfg.BrevoAPIKey)
+	data.BrevoLimit = q.DailyLimit
+	data.BrevoRemaining = q.Remaining
+	data.BrevoError = q.Error
+
+	// Comptage des destinataires potentiels
+	var nbAll, nbManagers int64
+	h.db.Model(&model.UserGroup{}).Where("group_id = ?", pd.Group.ID).Count(&nbAll)
+	h.db.Model(&model.UserGroup{}).
+		Where("group_id = ? AND rights LIKE ?", pd.Group.ID, "%GroupAdmin%").
+		Count(&nbManagers)
+	data.CountAll = int(nbAll)
+	data.CountManagers = int(nbManagers)
+	data.CountMembers = int(nbAll) - int(nbManagers)
+	if data.CountMembers < 0 {
+		data.CountMembers = 0
+	}
+
+	// Catégories d'activité (config). Les catégories sont mutuellement
+	// exclusives : un user appartient à la première catégorie qui matche
+	// dans l'ordre de la config, puis on s'arrête.
+	data.ActivityCategories = h.computeActivityCategoryCounts(pd.Group.ID, now)
 
 	if c.Request.Method == http.MethodPost {
 		subject := strings.TrimSpace(c.PostForm("subject"))

@@ -329,10 +329,9 @@ func (h *PagesHandler) buildPageData(c *gin.Context) PageData {
 				pd.LogoURL = FileURL(group.Logo.ID, h.cfg.Key, group.Logo.Name)
 			}
 		}
-		// Check manager right
-		var ug model.UserGroup
-		if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, claims.GroupID).
-			First(&ug).Error; err == nil {
+		// Check manager right (avec bypass admin site-wide)
+		ug := loadGroupAccess(h.db, claims.UserID, claims.GroupID)
+		if ug != nil {
 			pd.IsGroupManager = ug.IsGroupManager()
 			pd.HasMembership = pd.IsGroupManager || ug.HasRight(model.RightMembership)
 			pd.HasMessages = pd.IsGroupManager || ug.HasRight(model.RightMessages)

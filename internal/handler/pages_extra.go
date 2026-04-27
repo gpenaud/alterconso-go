@@ -497,9 +497,10 @@ type AmapAdminRightsData struct {
 }
 
 type RightUserView struct {
-	UserID uint
-	Name   string
-	Rights []string
+	UserID       uint
+	Name         string
+	Rights       []string
+	IsSuperAdmin bool
 }
 
 func formatRightLabels(rights []model.UserRight, catalogMap map[string]string) []string {
@@ -556,13 +557,21 @@ func (h *PagesHandler) AmapAdminRightsPage(c *gin.Context) {
 
 	for _, ug := range ugs {
 		rights := ug.GetRights()
-		if len(rights) == 0 {
+		isSA := ug.User.IsAdmin()
+		// Le superadmin global est toujours listé avec tous les droits, même
+		// s'il n'a pas de UserGroup.Rights persisté (cf. loadGroupAccess).
+		if len(rights) == 0 && !isSA {
 			continue
 		}
+		labels := formatRightLabels(rights, catalogMap)
+		if isSA && len(labels) == 0 {
+			labels = []string{"Administrateur de groupe"}
+		}
 		rv := RightUserView{
-			UserID: ug.UserID,
-			Name:   ug.User.FirstName + " " + ug.User.LastName,
-			Rights: formatRightLabels(rights, catalogMap),
+			UserID:       ug.UserID,
+			Name:         ug.User.FirstName + " " + ug.User.LastName,
+			Rights:       labels,
+			IsSuperAdmin: isSA,
 		}
 		data.RightUsers = append(data.RightUsers, rv)
 	}
@@ -653,6 +662,15 @@ func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
 	data.Title = "Ajouter un droit"
 
 	h.db.Where("group_id = ?", base.Group.ID).Preload("User").Find(&data.Members)
+	// Le superadmin global a tous les droits par construction (cf. loadGroupAccess) :
+	// il ne doit pas apparaître dans la liste des cibles modifiables.
+	filtered := data.Members[:0]
+	for _, ug := range data.Members {
+		if !ug.User.IsAdmin() {
+			filtered = append(filtered, ug)
+		}
+	}
+	data.Members = filtered
 	h.db.Where("group_id = ?", base.Group.ID).Find(&data.Catalogs)
 
 	if c.Request.Method == http.MethodPost {
@@ -660,6 +678,12 @@ func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
 		userID, err := strconv.ParseUint(userIDStr, 10, 64)
 		if err != nil || userID == 0 {
 			data.Error = "Veuillez sélectionner un membre."
+			renderRightsAdd(c, data)
+			return
+		}
+
+		if isSiteAdmin(h.db, uint(userID)) {
+			data.Error = "Les droits du superadmin global ne sont pas modifiables."
 			renderRightsAdd(c, data)
 			return
 		}
@@ -770,6 +794,13 @@ func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
 	userID, err := strconv.ParseUint(c.Param("userId"), 10, 64)
 	if err != nil {
 		c.String(http.StatusBadRequest, "id invalide")
+		return
+	}
+
+	// Les droits du superadmin global ne sont pas modifiables : il a tous les
+	// droits par construction (cf. handler.loadGroupAccess).
+	if isSiteAdmin(h.db, uint(userID)) {
+		c.String(http.StatusForbidden, "les droits du superadmin global ne sont pas modifiables")
 		return
 	}
 

@@ -2,6 +2,9 @@ package db
 
 import (
 	"encoding/json"
+	"errors"
+	"strings"
+	"time"
 
 	"github.com/gpenaud/alterconso/internal/config"
 	"github.com/gpenaud/alterconso/internal/model"
@@ -37,6 +40,47 @@ func BackfillVerifiedUsers(db *gorm.DB) error {
 	return db.Exec(
 		"UPDATE users SET email_verified_at = NOW() WHERE email_verified_at IS NULL AND pass <> ''",
 	).Error
+}
+
+// EnsureSuperAdmin garantit l'existence du compte administrateur global défini
+// dans la config. Idempotent : à exécuter à chaque démarrage.
+//   - crée le compte s'il n'existe pas (avec Rights bit 0 activé)
+//   - active Rights bit 0 (admin site-wide) sur un compte existant
+//   - met à jour le mot de passe si fourni dans la config
+//   - marque l'email comme vérifié
+//
+// Si cfg.SuperAdmin.Email est vide, ne fait rien.
+func EnsureSuperAdmin(db *gorm.DB, cfg *config.Config) error {
+	sa := cfg.SuperAdmin
+	if strings.TrimSpace(sa.Email) == "" {
+		return nil
+	}
+	email := strings.ToLower(strings.TrimSpace(sa.Email))
+
+	var u model.User
+	err := db.Where("email = ?", email).First(&u).Error
+	isNew := errors.Is(err, gorm.ErrRecordNotFound)
+	if err != nil && !isNew {
+		return err
+	}
+	if isNew {
+		u = model.User{Email: email}
+	}
+	if sa.FirstName != "" {
+		u.FirstName = sa.FirstName
+	}
+	if sa.LastName != "" {
+		u.LastName = sa.LastName
+	}
+	u.Rights |= 1
+	if sa.Password != "" {
+		u.SetPassword(sa.Password, cfg.Key)
+	}
+	if u.EmailVerifiedAt == nil {
+		now := time.Now()
+		u.EmailVerifiedAt = &now
+	}
+	return db.Save(&u).Error
 }
 
 // EnsureLegalRepAdmins garantit que chaque représentant légal de groupe

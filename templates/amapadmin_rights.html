@@ -26,9 +26,16 @@
             </ul>
           </td>
           <td>
+            {{if .IsSuperAdmin}}
+            <button type="button" class="btn btn-default btn-xs" disabled
+                    title="Les droits du superadmin global ne sont pas modifiables">
+              <i class="icon icon-lock"></i> Verrouillé
+            </button>
+            {{else}}
             <a href="/amapadmin/rights/edit/{{.UserID}}" class="btn btn-default btn-xs">
               <i class="icon icon-edit"></i> Modifier
             </a>
+            {{end}}
           </td>
         </tr>
         {{end}}

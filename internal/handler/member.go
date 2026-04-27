@@ -23,8 +23,7 @@ func (h *MemberHandler) List(c *gin.Context) {
 	}
 
 	claims := middleware.GetClaims(c)
-	var ug model.UserGroup
-	if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, groupID).First(&ug).Error; err != nil {
+	if loadGroupAccess(h.db, claims.UserID, uint(groupID)) == nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "not a member of this group"})
 		return
 	}
@@ -60,8 +59,8 @@ func (h *MemberHandler) Add(c *gin.Context) {
 	}
 
 	claims := middleware.GetClaims(c)
-	var ug model.UserGroup
-	if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, groupID).First(&ug).Error; err != nil {
+	ug := loadGroupAccess(h.db, claims.UserID, uint(groupID))
+	if ug == nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "not a member"})
 		return
 	}
@@ -141,8 +140,8 @@ func (h *MemberHandler) Remove(c *gin.Context) {
 	}
 
 	claims := middleware.GetClaims(c)
-	var ug model.UserGroup
-	if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, groupID).First(&ug).Error; err != nil {
+	ug := loadGroupAccess(h.db, claims.UserID, uint(groupID))
+	if ug == nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "not a member"})
 		return
 	}
@@ -154,6 +153,13 @@ func (h *MemberHandler) Remove(c *gin.Context) {
 	// Empêcher de se retirer soi-même si on est le seul admin
 	if uint(userID) == claims.UserID {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot remove yourself from the group"})
+		return
+	}
+
+	// Le superadmin global ne peut pas être retiré : il est administrateur
+	// perpétuel de tous les groupes par construction.
+	if isSiteAdmin(h.db, uint(userID)) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "cannot remove the global super-admin"})
 		return
 	}
 

@@ -75,8 +75,8 @@ func (h *PaymentHandler) CreatePayment(c *gin.Context) {
 
 	targetID := claims.UserID
 	if payload.UserID != nil && *payload.UserID != claims.UserID {
-		var ug model.UserGroup
-		if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, groupID).First(&ug).Error; err != nil || !ug.IsGroupManager() {
+		ug := loadGroupAccess(h.db, claims.UserID, uint(groupID))
+		if ug == nil || !ug.IsGroupManager() {
 			c.JSON(http.StatusForbidden, gin.H{"error": "only group admins can record payments for others"})
 			return
 		}
@@ -117,8 +117,8 @@ func (h *PaymentHandler) GetOperations(c *gin.Context) {
 			return
 		}
 		if uint(uid) != claims.UserID {
-			var ug model.UserGroup
-			if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, groupID).First(&ug).Error; err != nil || !ug.IsGroupManager() {
+			ug := loadGroupAccess(h.db, claims.UserID, uint(groupID))
+			if ug == nil || !ug.IsGroupManager() {
 				c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 				return
 			}
@@ -170,8 +170,8 @@ func (h *PaymentHandler) ValidateDistribution(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "distribution not found"})
 		return
 	}
-	var ug model.UserGroup
-	if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, md.GroupID).First(&ug).Error; err != nil || !ug.IsGroupManager() {
+	ug := loadGroupAccess(h.db, claims.UserID, md.GroupID)
+	if ug == nil || !ug.IsGroupManager() {
 		c.JSON(http.StatusForbidden, gin.H{"error": "only group admins can validate distributions"})
 		return
 	}

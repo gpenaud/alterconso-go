@@ -2,6 +2,7 @@ package model
 
 import (
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -78,6 +79,18 @@ func (u *User) TableName() string { return "users" }
 // IsAdmin retourne true si l'utilisateur est administrateur site-wide.
 func (u *User) IsAdmin() bool {
 	return u.Rights&1 != 0 || u.ID == 1
+}
+
+// MarshalJSON expose le flag dérivé isAdmin sans révéler le bitmask Rights.
+func (u User) MarshalJSON() ([]byte, error) {
+	type alias User
+	return json.Marshal(struct {
+		alias
+		IsAdmin bool `json:"isAdmin"`
+	}{
+		alias:   alias(u),
+		IsAdmin: u.IsAdmin(),
+	})
 }
 
 // HasFlag vérifie si un flag est activé.
