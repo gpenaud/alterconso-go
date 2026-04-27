@@ -20,4 +20,4 @@ docs/
 *.log
 
 # SQL import
-__import.sql
+*.sql

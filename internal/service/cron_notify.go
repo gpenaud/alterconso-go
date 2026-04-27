@@ -121,7 +121,8 @@ func (s *CronService) sendOrderNotification(md model.MultiDistrib, notifType str
 
 // eligibleUsers retourne les membres du groupe qui :
 //  1. ont activé le flag de notification correspondant
-//  2. ont passé au moins une commande dans ce groupe dans les 3 derniers mois
+//  2. matchent le pattern de la catégorie référencée dans
+//     notifications.recipient_category (validée au boot, donc toujours présente).
 func (s *CronService) eligibleUsers(groupID uint, notifType string) []model.User {
 	var flag model.UserFlag
 	switch notifType {
@@ -133,27 +134,24 @@ func (s *CronService) eligibleUsers(groupID uint, notifType string) []model.User
 		return nil
 	}
 
-	since := time.Now().Add(-s.cfg.Notifications.InactivityThreshold)
+	cat := FindCategoryByName(s.cfg.Messages.RecipientCategories, s.cfg.Notifications.RecipientCategory)
+	if cat == nil {
+		// Ne devrait jamais arriver : la config est validée au boot.
+		log.Printf("[NOTIFY] BUG: catégorie %q absente à l'exécution", s.cfg.Notifications.RecipientCategory)
+		return nil
+	}
 
-	sql := `
-		SELECT DISTINCT u.*
-		FROM users u
-		JOIN user_groups ug ON ug.user_id = u.id
-		JOIN user_orders uo ON uo.user_id = u.id
-		JOIN distributions d ON d.id = uo.distribution_id
-		JOIN multi_distribs md ON md.id = d.multi_distrib_id
-		WHERE ug.group_id = ?
-		  AND md.group_id = ?
-		  AND md.distrib_start_date >= ?
-		  AND (u.flags & ?) != 0`
-
+	matchingIDs := EligibleUsersForCategory(s.db, groupID, time.Now(), *cat)
 	if s.dryRun {
-		log.Printf("[DRY-RUN] SQL utilisateurs éligibles (groupID=%d, type=%s, since=%s, flag=%d):\n%s",
-			groupID, notifType, since.Format("2006-01-02"), uint(flag), sql)
+		log.Printf("[DRY-RUN] notifications filtrées par catégorie %q (%s) — %d users matchent le pattern",
+			cat.Name, cat.Pattern, len(matchingIDs))
+	}
+	if len(matchingIDs) == 0 {
+		return nil
 	}
 
 	var users []model.User
-	s.db.Raw(sql, groupID, groupID, since, uint(flag)).Scan(&users)
+	s.db.Where("id IN ? AND (flags & ?) != 0", matchingIDs, uint(flag)).Find(&users)
 	return users
 }
 

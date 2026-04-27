@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
@@ -60,10 +60,12 @@ type SuperAdminConfig struct {
 }
 
 type NotificationsConfig struct {
-	// Durée maximale d'inactivité au-delà de laquelle un utilisateur
-	// ne reçoit plus les notifications de commande.
-	// Format Go duration : "720h" = 30 jours, "2160h" = 90 jours (3 mois).
-	InactivityThreshold time.Duration `yaml:"inactivity_threshold"`
+	// RecipientCategory : nom d'une catégorie de messages.recipient_categories.
+	// Seuls les users matchant le pattern de cette catégorie reçoivent les
+	// notifications d'ouverture/fermeture de commandes.
+	// Sémantique : pure correspondance par pattern (pas d'exclusivité mutuelle).
+	// Obligatoire — boot fatal si vide ou si le nom ne correspond à aucune catégorie.
+	RecipientCategory string `yaml:"recipient_category"`
 }
 
 // Load charge la configuration depuis (par ordre de priorité) :
@@ -105,15 +107,32 @@ func Load() (*Config, error) {
 	// Compile les patterns en place. Les catégories invalides sont ignorées avec un log.
 	parsed := cfg.Messages.RecipientCategories[:0]
 	for _, cat := range cfg.Messages.RecipientCategories {
-		op, threshold, window, err := ParseRecipientPattern(cat.Pattern)
+		op, threshold, window, perMonth, err := ParseRecipientPattern(cat.Pattern)
 		if err != nil {
 			log.Printf("warning: catégorie destinataire %q ignorée: %v", cat.Name, err)
 			continue
 		}
-		cat.Op, cat.Threshold, cat.Window = op, threshold, window
+		cat.Op, cat.Threshold, cat.Window, cat.PerMonth = op, threshold, window, perMonth
 		parsed = append(parsed, cat)
 	}
 	cfg.Messages.RecipientCategories = parsed
+
+	// notifications.recipient_category est obligatoire et doit pointer vers
+	// une messages.recipient_categories existante.
+	name := strings.TrimSpace(cfg.Notifications.RecipientCategory)
+	if name == "" {
+		return nil, fmt.Errorf("notifications.recipient_category is required (nom d'une messages.recipient_categories)")
+	}
+	found := false
+	for _, cat := range cfg.Messages.RecipientCategories {
+		if cat.Name == name {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil, fmt.Errorf("notifications.recipient_category %q ne correspond à aucune messages.recipient_categories", name)
+	}
 
 	return cfg, nil
 }
@@ -138,9 +157,6 @@ func defaults() *Config {
 		SMTPPort:       "587",
 		DefaultEmail:   "noreply@alterconso.fr",
 		Host:           "localhost",
-		Notifications: NotificationsConfig{
-			InactivityThreshold: 90 * 24 * time.Hour, // 3 mois par défaut
-		},
 	}
 }
 
@@ -208,11 +224,6 @@ func overrideFromEnv(cfg *Config) {
 	}
 	if v := os.Getenv("SUPERADMIN_PASSWORD"); v != "" {
 		cfg.SuperAdmin.Password = v
-	}
-	if v := os.Getenv("NOTIF_INACTIVITY_THRESHOLD"); v != "" {
-		if d, err := time.ParseDuration(v); err == nil {
-			cfg.Notifications.InactivityThreshold = d
-		}
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gpenaud/alterconso/internal/middleware"
 	"github.com/gpenaud/alterconso/internal/model"
+	"github.com/gpenaud/alterconso/internal/service"
 	"github.com/gpenaud/alterconso/pkg/mailer"
 )
 
@@ -1152,39 +1153,16 @@ func (h *PagesHandler) computeActivityCategoryCounts(groupID uint, now time.Time
 		return views
 	}
 
-	// Pour chaque fenêtre temporelle distincte, on récupère le nombre de
-	// commandes par user en une seule requête.
-	type countRow struct {
-		UserID uint
-		N      int
-	}
-	countsByWindow := make(map[time.Duration]map[uint]int)
-	for _, cat := range cats {
-		if _, ok := countsByWindow[cat.Window]; ok {
-			continue
-		}
-		since := now.Add(-cat.Window)
-		var rows []countRow
-		h.db.Raw(`
-			SELECT uo.user_id AS user_id, COUNT(DISTINCT uo.distribution_id) AS n
-			FROM user_orders uo
-			JOIN distributions d ON d.id = uo.distribution_id
-			JOIN multi_distribs md ON md.id = d.multi_distrib_id
-			WHERE md.group_id = ? AND md.distrib_start_date >= ?
-			GROUP BY uo.user_id
-		`, groupID, since).Scan(&rows)
-		m := make(map[uint]int, len(rows))
-		for _, r := range rows {
-			m[r.UserID] = r.N
-		}
-		countsByWindow[cat.Window] = m
+	// Pour chaque catégorie, calcule le score par user (sémantique selon le mode).
+	scores := make([]map[uint]int, len(cats))
+	for i, cat := range cats {
+		scores[i] = service.UserCategoryScores(h.db, groupID, memberIDs, now, cat)
 	}
 
 	// Affecte chaque user à la première catégorie qui matche.
 	for _, uid := range memberIDs {
 		for i, cat := range cats {
-			n := countsByWindow[cat.Window][uid] // 0 par défaut si absent
-			if cat.Match(n) {
+			if cat.Match(scores[i][uid]) {
 				views[i].Count++
 				break
 			}

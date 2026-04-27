@@ -59,7 +59,8 @@ messages:
 
 # Notifications
 notifications:
-  # Durée maximale d'inactivité : un utilisateur n'ayant pas commandé
-  # depuis cette durée ne reçoit plus les notifications.
-  # Format : "720h" = 30 jours, "2160h" = 90 jours, "8760h" = 1 an
-  inactivity_threshold: "2160h"  # 90 jours (3 mois) par défaut
+  # Catégorie (parmi messages.recipient_categories) dont les membres reçoivent
+  # les notifications d'ouverture/fermeture des commandes.
+  # Sémantique : pure correspondance par pattern, sans exclusivité mutuelle.
+  # Obligatoire — boot fatal si vide ou nom inconnu.
+  recipient_category: "Membres réguliers"

@@ -392,15 +392,31 @@ func (h *PagesHandler) ChoosePage(c *gin.Context) {
 		return
 	}
 
-	// If ?group=id → switch group and redirect to /home
+	var user model.User
+	if err := h.db.First(&user, claims.UserID).Error; err != nil {
+		c.Redirect(http.StatusFound, "/user/login")
+		return
+	}
+
+	// If ?group=id → switch group and redirect to /home.
+	// Le superadmin peut basculer vers n'importe quel groupe ; les autres uniquement
+	// vers les groupes dont ils sont membres.
 	if groupIDStr := c.Query("group"); groupIDStr != "" {
 		var groupID uint
 		if _, err := fmt.Sscanf(groupIDStr, "%d", &groupID); err == nil && groupID != 0 {
-			// Verify user is member of this group
-			var ug model.UserGroup
-			if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, groupID).
-				First(&ug).Error; err == nil {
-				// Issue new JWT with GroupID set
+			allowed := false
+			if user.IsAdmin() {
+				var g model.Group
+				if h.db.First(&g, groupID).Error == nil {
+					allowed = true
+				}
+			} else {
+				var ug model.UserGroup
+				if h.db.Where("user_id = ? AND group_id = ?", claims.UserID, groupID).First(&ug).Error == nil {
+					allowed = true
+				}
+			}
+			if allowed {
 				newToken, err := h.issueToken(claims.UserID, groupID)
 				if err == nil {
 					c.SetCookie("token", newToken, 3600*24*7, "/", "", false, true)
@@ -411,33 +427,32 @@ func (h *PagesHandler) ChoosePage(c *gin.Context) {
 		}
 	}
 
-	var user model.User
-	if err := h.db.First(&user, claims.UserID).Error; err != nil {
-		c.Redirect(http.StatusFound, "/user/login")
-		return
-	}
-
-	// Load user's groups
-	var ugs []model.UserGroup
-	h.db.Where("user_id = ?", claims.UserID).Find(&ugs)
-	groupIDs := make([]uint, 0, len(ugs))
-	for _, ug := range ugs {
-		groupIDs = append(groupIDs, ug.GroupID)
-	}
-
-	// Si l'utilisateur n'est membre que d'un seul groupe, on l'y connecte directement.
-	if len(groupIDs) == 1 && claims.GroupID != groupIDs[0] {
-		newToken, err := h.issueToken(claims.UserID, groupIDs[0])
-		if err == nil {
-			c.SetCookie("token", newToken, 3600*24*7, "/", "", false, true)
-			c.Redirect(http.StatusFound, "/home")
-			return
-		}
-	}
-
+	// Le superadmin voit tous les groupes et n'est jamais auto-redirigé,
+	// même s'il n'y a qu'un seul groupe (il doit toujours choisir explicitement).
 	var groups []model.Group
-	if len(groupIDs) > 0 {
-		h.db.Preload("Logo").Where("id IN ?", groupIDs).Find(&groups)
+	if user.IsAdmin() {
+		h.db.Preload("Logo").Order("name").Find(&groups)
+	} else {
+		var ugs []model.UserGroup
+		h.db.Where("user_id = ?", claims.UserID).Find(&ugs)
+		groupIDs := make([]uint, 0, len(ugs))
+		for _, ug := range ugs {
+			groupIDs = append(groupIDs, ug.GroupID)
+		}
+
+		// Auto-redirect pour les users normaux avec un seul groupe.
+		if len(groupIDs) == 1 && claims.GroupID != groupIDs[0] {
+			newToken, err := h.issueToken(claims.UserID, groupIDs[0])
+			if err == nil {
+				c.SetCookie("token", newToken, 3600*24*7, "/", "", false, true)
+				c.Redirect(http.StatusFound, "/home")
+				return
+			}
+		}
+
+		if len(groupIDs) > 0 {
+			h.db.Preload("Logo").Where("id IN ?", groupIDs).Find(&groups)
+		}
 	}
 	logoURL := ""
 	for _, g := range groups {

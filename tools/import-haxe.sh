@@ -116,7 +116,7 @@ DB_NAME="$TMP_DB" \
 # Étape 5 : application de la transformation Haxe -> GORM
 # ============================================================
 log "5/8 — application de migrate-haxe-to-gorm.sql..."
-mysql "${MYSQL_OPTS[@]}" "$TMP_DB" < "$SCRIPT_DIR/migrate-haxe-to-gorm.sql" 2>&1 | grep -v "Warning" | tail -20 || true
+mysql "${MYSQL_OPTS[@]}" "$TMP_DB" < "$SCRIPT_DIR/tools/migrate-haxe-to-gorm.sql" 2>&1 | grep -v "Warning" | tail -20 || true
 
 # ============================================================
 # Étape 6 : suppression des tables Haxe résiduelles
