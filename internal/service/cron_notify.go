@@ -141,7 +141,7 @@ func (s *CronService) eligibleUsers(groupID uint, notifType string) []model.User
 		return nil
 	}
 
-	matchingIDs := EligibleUsersForCategory(s.db, groupID, time.Now(), *cat)
+	matchingIDs := EligibleUsersForCategory(s.db, groupID, time.Now(), s.cfg.Messages.RecipientCategories, *cat)
 	if s.dryRun {
 		log.Printf("[DRY-RUN] notifications filtrées par catégorie %q (%s) — %d users matchent le pattern",
 			cat.Name, cat.Pattern, len(matchingIDs))

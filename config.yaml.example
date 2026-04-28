@@ -41,7 +41,7 @@ smtp_password: ""      # ou env SMTP_PASSWORD (clé API Brevo)
 default_email: noreply@alterconso.fr
 
 # Catégories de destinataires de la page /messages.
-# Format de pattern : "<op> N commande[s] / Tm"
+# Format de pattern : "<op> N commande[s] sur Tm"
 #   op : <, <=, >, >=, =
 #   N  : nombre de commandes (distributions distinctes)
 #   T  : nombre de mois sur lequel on regarde en arrière
@@ -51,11 +51,11 @@ default_email: noreply@alterconso.fr
 messages:
   recipient_categories:
     - name: "Membres réguliers"
-      pattern: ">= 3 commandes / 3m"
+      pattern: ">= 3 commandes sur 3m"
     - name: "Membres occasionnels"
-      pattern: ">= 1 commande / 6m"
+      pattern: ">= 1 commande sur 6m"
     - name: "Membres inactifs"
-      pattern: "< 1 commande / 6m"
+      pattern: "< 1 commande sur 6m"
 
 # Notifications
 notifications:

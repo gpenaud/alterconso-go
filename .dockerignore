@@ -1,5 +1,62 @@
+# .dockerignore : tout ce qui ne doit jamais entrer dans le contexte Docker.
+# Le Dockerfile utilise une whitelist explicite via COPY ; ce fichier sert
+# surtout à réduire la taille du contexte envoyé au daemon Docker.
+
+# Git
 .git
+.gitignore
+.gitattributes
+
+# Editor / IDE
+.vscode/
+.idea/
+.devcontainer/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets et configs locales — JAMAIS dans l'image, à monter au runtime
 .env
-*.md
+.env.*
+config.yaml
+config.local.yaml
+*.pem
+*.key
+
+# Sous-dépôts non packagés dans l'image serveur
 deploy/
-docs/
+frontend/
+tools/
+
+# Documentation utilisateur (le package Go `docs/` est OK car non matché ici)
+*.md
+README*
+LICENSE*
+CHANGELOG*
+
+# Dumps DB et migrations one-off
+*.sql
+*.dump
+last-backup*
+
+# Binaires de build (au cas où)
+alterconso
+alterconso-go
+*.test
+*.exe
+
+# Couverture / profiling
+coverage*
+*.out
+*.prof
+
+# Docker (pas besoin dans le contexte)
+Dockerfile*
+docker-compose*
+compose*.yaml
+compose*.yml
+.dockerignore

@@ -43,6 +43,12 @@ type Product struct {
 
 	// Catégorie (taxonomy)
 	CategoryID *uint `json:"categoryId,omitempty"`
+
+	// Lien vers la sous-catégorie de la taxonomie globale (TxpSubCategory).
+	// La catégorie parente est dérivable via TxpSubCategory.CategoryID.
+	// Nil → fallback "Autres / Tous" côté shop.
+	TxpSubCategoryID *uint           `json:"-"`
+	TxpSubCategory   *TxpSubCategory `gorm:"foreignKey:TxpSubCategoryID" json:"-"`
 }
 
 func (p *Product) TableName() string { return "products" }

@@ -3,13 +3,16 @@ package handler
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gpenaud/alterconso/internal/config"
 	"github.com/gpenaud/alterconso/internal/middleware"
 	"github.com/gpenaud/alterconso/internal/model"
 	"github.com/gpenaud/alterconso/internal/service"
@@ -1108,14 +1111,22 @@ type MessagesData struct {
 	// Catégories d'activité issues de la config (mutuellement exclusives,
 	// dans l'ordre de priorité du fichier YAML).
 	ActivityCategories []ActivityCategoryView
+	// RecipientEmailsJSON : objet JS littéral { "all": [...], "managers": [...], ... }
+	// inliné brut dans un <script> via template.JS (pas de re-encodage).
+	RecipientEmailsJSON template.JS
+	// Feedback d'envoi affiché après un POST réussi (PRG via query params).
+	SendSuccess  int
+	SendFailed   int
+	SendNoRcpt   bool
 }
 
 // ActivityCategoryView est une catégorie d'activité prête à afficher.
 // Value est utilisée comme valeur du <option> et clé pour le compteur JS.
+// Tooltip est le texte natif title="" : formule + lignes "Inclut: ...".
 type ActivityCategoryView struct {
 	Value   string
 	Name    string
-	Compact string // version courte de la règle, ex "≥3 commandes / 3 mois"
+	Tooltip string
 	Count   int
 }
 
@@ -1124,6 +1135,73 @@ type MessageView struct {
 	Title   string
 	Date    string
 	Body    string
+}
+
+// buildRecipientEmails retourne les emails par valeur de destinataire :
+// "all", "managers", "members" pour les catégories fixes (rôle), et
+// "activity-N" pour chaque catégorie d'activité (mutuellement exclusives).
+// Utilisé pour alimenter le tooltip de la page /messages.
+func (h *PagesHandler) buildRecipientEmails(groupID uint, now time.Time) map[string][]string {
+	var ugs []model.UserGroup
+	h.db.
+		Preload("User").
+		Joins("JOIN users ON users.id = user_groups.user_id").
+		Where("user_groups.group_id = ?", groupID).
+		Order("users.last_name, users.first_name").
+		Find(&ugs)
+
+	out := map[string][]string{
+		"all":      {},
+		"managers": {},
+		"members":  {},
+	}
+	memberIDs := make([]uint, 0, len(ugs))
+	emailByID := make(map[uint]string, len(ugs))
+	for _, ug := range ugs {
+		email := ug.User.Email
+		if email == "" {
+			continue
+		}
+		out["all"] = append(out["all"], email)
+		if strings.Contains(ug.Rights, "GroupAdmin") {
+			out["managers"] = append(out["managers"], email)
+		} else {
+			out["members"] = append(out["members"], email)
+		}
+		memberIDs = append(memberIDs, ug.UserID)
+		emailByID[ug.UserID] = email
+	}
+
+	cats := h.cfg.Messages.RecipientCategories
+	for i := range cats {
+		out[fmt.Sprintf("activity-%d", i)] = []string{}
+	}
+	if len(cats) == 0 || len(memberIDs) == 0 {
+		return out
+	}
+
+	sets := service.BuildCategorySets(h.db, groupID, memberIDs, now, cats)
+	for i := range cats {
+		key := fmt.Sprintf("activity-%d", i)
+		// Préserve l'ordre des memberIDs (déjà trié par last_name, first_name).
+		for _, uid := range memberIDs {
+			if sets[i][uid] {
+				out[key] = append(out[key], emailByID[uid])
+			}
+		}
+	}
+	return out
+}
+
+// buildCategoryTooltip retourne le texte affiché en title="" sur l'option
+// d'une catégorie d'activité : la formule (compact) suivie, le cas échéant,
+// d'une ligne "Inclut : Cat1, Cat2, ...".
+func buildCategoryTooltip(cat config.RecipientCategory) string {
+	tt := cat.Compact()
+	if len(cat.Includes) > 0 {
+		tt += "\nInclut : " + strings.Join(cat.Includes, ", ")
+	}
+	return tt
 }
 
 // computeActivityCategoryCounts répartit les membres du groupe dans les
@@ -1137,7 +1215,7 @@ func (h *PagesHandler) computeActivityCategoryCounts(groupID uint, now time.Time
 		views[i] = ActivityCategoryView{
 			Value:   fmt.Sprintf("activity-%d", i),
 			Name:    cat.Name,
-			Compact: cat.Compact(),
+			Tooltip: buildCategoryTooltip(cat),
 		}
 	}
 	if len(cats) == 0 {
@@ -1153,20 +1231,12 @@ func (h *PagesHandler) computeActivityCategoryCounts(groupID uint, now time.Time
 		return views
 	}
 
-	// Pour chaque catégorie, calcule le score par user (sémantique selon le mode).
-	scores := make([]map[uint]int, len(cats))
-	for i, cat := range cats {
-		scores[i] = service.UserCategoryScores(h.db, groupID, memberIDs, now, cat)
-	}
-
-	// Affecte chaque user à la première catégorie qui matche.
-	for _, uid := range memberIDs {
-		for i, cat := range cats {
-			if cat.Match(scores[i][uid]) {
-				views[i].Count++
-				break
-			}
-		}
+	// Ensembles finaux par catégorie (own + includes). Les catégories peuvent
+	// se chevaucher : un user appartient à toutes les catégories dont il
+	// satisfait le pattern OU dont il est inclus via `includes`.
+	sets := service.BuildCategorySets(h.db, groupID, memberIDs, now, cats)
+	for i := range cats {
+		views[i].Count = len(sets[i])
 	}
 	return views
 }
@@ -1225,10 +1295,23 @@ func (h *PagesHandler) MessagesPage(c *gin.Context) {
 	// dans l'ordre de la config, puis on s'arrête.
 	data.ActivityCategories = h.computeActivityCategoryCounts(pd.Group.ID, now)
 
+	// Emails par valeur de destinataire — alimente le tooltip côté UI.
+	emailsByRecipient := h.buildRecipientEmails(pd.Group.ID, now)
+	if b, err := json.Marshal(emailsByRecipient); err == nil {
+		data.RecipientEmailsJSON = template.JS(string(b))
+	} else {
+		data.RecipientEmailsJSON = "{}"
+	}
+
 	if c.Request.Method == http.MethodPost {
 		subject := strings.TrimSpace(c.PostForm("subject"))
 		body := strings.TrimSpace(c.PostForm("body"))
+		recipientsValue := strings.TrimSpace(c.PostForm("recipients"))
+		senderName := strings.TrimSpace(c.PostForm("senderName"))
+		senderEmail := strings.TrimSpace(c.PostForm("senderEmail"))
+
 		if subject != "" && body != "" {
+			// Persist le message (table `messages`).
 			msg := model.Message{
 				SenderID: pd.User.ID,
 				GroupID:  pd.Group.ID,
@@ -1236,9 +1319,55 @@ func (h *PagesHandler) MessagesPage(c *gin.Context) {
 				Body:     body,
 			}
 			h.db.Create(&msg)
-			c.Redirect(http.StatusFound, "/messages")
+
+			// Résout la liste des destinataires.
+			emailsByRecipient := h.buildRecipientEmails(pd.Group.ID, now)
+			recipients := emailsByRecipient[recipientsValue]
+
+			if len(recipients) == 0 {
+				c.Redirect(http.StatusFound, "/messages?nrcpt=1")
+				return
+			}
+
+			sent, failed := 0, 0
+			for _, to := range recipients {
+				m := &mailer.Mail{
+					From:     h.cfg.DefaultEmail,
+					FromName: senderName,
+					ReplyTo:  senderEmail,
+					Subject:  subject,
+					HTMLBody: body,
+				}
+				m.AddRecipient(to, "")
+				if err := h.mailer.Send(m); err != nil {
+					failed++
+					fmt.Printf("[MAIL] /messages send failed to %s: %v\n", to, err)
+				} else {
+					sent++
+				}
+			}
+			fmt.Printf("[MAIL] /messages subject=%q sent=%d failed=%d\n", subject, sent, failed)
+
+			// Force le prochain affichage à requêter l'API Brevo plutôt que
+			// d'afficher le cache (sinon le compteur ne reflète pas l'envoi).
+			if sent > 0 {
+				InvalidateBrevoCache()
+			}
+
+			c.Redirect(http.StatusFound, fmt.Sprintf("/messages?sent=%d&failed=%d", sent, failed))
 			return
 		}
+	}
+
+	// Feedback d'envoi (PRG via query).
+	if v, err := strconv.Atoi(c.Query("sent")); err == nil {
+		data.SendSuccess = v
+	}
+	if v, err := strconv.Atoi(c.Query("failed")); err == nil {
+		data.SendFailed = v
+	}
+	if c.Query("nrcpt") == "1" {
+		data.SendNoRcpt = true
 	}
 
 	t, err := loadTemplates("base.html", "design.html", "messages.html")

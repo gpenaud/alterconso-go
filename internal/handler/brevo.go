@@ -29,6 +29,14 @@ var (
 	brevoCacheTTL = 5 * time.Minute
 )
 
+// InvalidateBrevoCache force le prochain FetchBrevoQuota à requêter l'API.
+// À appeler après un envoi de mails pour que le compteur se rafraîchisse.
+func InvalidateBrevoCache() {
+	brevoCacheMu.Lock()
+	brevoCache = BrevoQuota{}
+	brevoCacheMu.Unlock()
+}
+
 // FetchBrevoQuota interroge l'API Brevo et met en cache le résultat 5 minutes.
 // Si BrevoAPIKey est vide, retourne un quota vide avec une erreur.
 func FetchBrevoQuota(apiKey string) BrevoQuota {

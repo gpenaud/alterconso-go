@@ -147,5 +147,49 @@ func Migrate(db *gorm.DB) error {
 		&model.NotificationSent{},
 		&model.PasswordResetToken{},
 		&model.EmailVerifyToken{},
+		&model.TxpCategory{},
+		&model.TxpSubCategory{},
 	)
+}
+
+// SeedTxpCategories insère les 10 catégories taxonomiques par défaut si la
+// table est vide. Idempotent : ne fait rien si des catégories existent déjà.
+// Chaque catégorie reçoit une sous-catégorie "Tous" pour permettre au shop
+// legacy de fonctionner même quand les produits n'ont pas de subcategorie
+// assignée individuellement.
+func SeedTxpCategories(db *gorm.DB) error {
+	var count int64
+	if err := db.Model(&model.TxpCategory{}).Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
+	seeds := []struct {
+		Name         string
+		Image        string
+		DisplayOrder int
+	}{
+		{"Fruits et légumes", "fruits-legumes", 1},
+		{"Viande et charcuterie", "viande-charcuterie", 2},
+		{"Produits de la mer", "produits-mer", 3},
+		{"Boulangerie / pâtisserie", "boulangerie-patisserie", 4},
+		{"Crémerie", "cremerie", 5},
+		{"Desserts et plats préparés", "desserts-plats-prepares", 6},
+		{"Épicerie", "epicerie", 7},
+		{"Boissons", "boissons", 8},
+		{"Hygiène", "hygiene", 9},
+		{"Autres", "autres", 99},
+	}
+	for _, s := range seeds {
+		cat := model.TxpCategory{Name: s.Name, Image: s.Image, DisplayOrder: s.DisplayOrder}
+		if err := db.Create(&cat).Error; err != nil {
+			return err
+		}
+		sub := model.TxpSubCategory{Name: "Tous", CategoryID: cat.ID}
+		if err := db.Create(&sub).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -1,9 +1,72 @@
 {{define "content"}}
 <style>
   @media (min-width:992px) { .messages-side-offset { padding-top:48px; } }
+
+  .recipient-count-wrap { position: relative; display: inline-block; cursor: help; }
+  /* Pont invisible qui couvre le gap entre le compteur et le tooltip,
+     pour ne pas perdre le :hover quand la souris se dirige vers le tooltip. */
+  .recipient-count-wrap::before {
+    content: '';
+    position: absolute;
+    right: 100%;
+    top: 0;
+    width: 12px;
+    height: 100%;
+  }
+  .recipient-count-wrap .recipient-tooltip {
+    display: none;
+    position: absolute;
+    right: 100%;
+    top: 0;
+    margin-right: 10px;
+    width: 280px;
+    max-height: 300px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    padding: 8px 12px;
+    z-index: 30;
+    text-align: left;
+  }
+  .recipient-count-wrap:hover .recipient-tooltip { display: block; }
+  .recipient-tooltip-title {
+    font-weight: bold;
+    color: #555;
+    font-size: 0.82em;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #eee;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .recipient-tooltip ul { margin: 0; padding: 0; list-style: none; font-size: 0.82em; }
+  .recipient-tooltip li {
+    padding: 2px 0;
+    color: #555;
+    word-break: break-all;
+    border-bottom: 1px solid #f5f5f5;
+  }
+  .recipient-tooltip li:last-child { border-bottom: none; }
+  .recipient-tooltip .empty { color: #aaa; font-style: italic; }
 </style>
 <div class="col-md-9">
   <h2 style="margin:0 0 12px;padding:0 4px;">Envoyer un email</h2>
+
+  {{if or .SendSuccess .SendFailed}}
+  <div style="background:{{if .SendFailed}}#fff3cd{{else}}#dff0d8{{end}};
+              border:1px solid {{if .SendFailed}}#f0ad4e{{else}}#5a8a00{{end}};
+              color:#3c3c3c;padding:10px 14px;border-radius:4px;margin:0 0 12px;">
+    <strong>{{.SendSuccess}}</strong> email(s) envoyé(s){{if .SendFailed}}, <strong style="color:#c0392b;">{{.SendFailed}}</strong> échec(s){{end}}.
+  </div>
+  {{end}}
+  {{if .SendNoRcpt}}
+  <div style="background:#f2dede;border:1px solid #c0392b;color:#a94442;padding:10px 14px;border-radius:4px;margin:0 0 12px;">
+    Aucun destinataire pour la catégorie sélectionnée — message non envoyé (mais enregistré dans les archives).
+  </div>
+  {{end}}
+
   <div class="article" style="padding:24px 28px;">
     <form method="POST" action="/messages" id="msgForm">
       <div class="form-group row">
@@ -28,7 +91,7 @@
             <option value="managers" data-count="{{.CountManagers}}">Gestionnaires uniquement</option>
             <option value="members" data-count="{{.CountMembers}}">Membres uniquement</option>
             {{range .ActivityCategories}}
-            <option value="{{.Value}}" data-count="{{.Count}}">{{.Name}} ({{.Compact}})</option>
+            <option value="{{.Value}}" data-count="{{.Count}}" title="{{.Tooltip}}">{{.Name}}</option>
             {{end}}
           </select>
         </div>
@@ -80,9 +143,16 @@
     {{end}}
 
     <div style="font-size:0.85em;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Sera envoyé à</div>
-    <div id="recipientCount">
-      <span style="font-size:1.4em;font-weight:bold;color:#5a8a00;">{{.CountAll}}</span>
-      <span style="color:#888;"> destinataire(s)</span>
+    <div class="recipient-count-wrap">
+      <div id="recipientCount">
+        <span style="font-size:1.4em;font-weight:bold;color:#5a8a00;">{{.CountAll}}</span>
+        <span style="color:#888;"> destinataire(s)</span>
+      </div>
+      <div class="recipient-tooltip" id="recipientTooltip">
+        <div class="recipient-tooltip-title">Destinataires</div>
+        <ul id="recipientTooltipList"></ul>
+        <div class="empty" id="recipientTooltipEmpty" style="display:none;">Aucun destinataire</div>
+      </div>
     </div>
   </div>
 
@@ -107,28 +177,35 @@
 (function () {
   var sel = document.querySelector('select[name="recipients"]');
   var box = document.getElementById('recipientCount');
-  if (!sel || !box) return;
+  var ttList = document.getElementById('recipientTooltipList');
+  var ttEmpty = document.getElementById('recipientTooltipEmpty');
+  if (!sel || !box || !ttList || !ttEmpty) return;
+
+  var emailsByRecipient = {{.RecipientEmailsJSON}};
+
   function refresh() {
     var opt = sel.options[sel.selectedIndex];
     var n = opt ? (parseInt(opt.dataset.count, 10) || 0) : 0;
     box.innerHTML = '<span style="font-size:1.4em;font-weight:bold;color:#5a8a00;">' + n +
       '</span> <span style="color:#888;"> destinataire(s)</span>';
-  }
-  sel.addEventListener('change', refresh);
-})();
-</script>
 
-<script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
-<script>
-tinymce.init({
-  selector: '#msgBody',
-  language: 'fr_FR',
-  plugins: 'lists link image emoticons',
-  toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter | numlist bullist | link image emoticons | forecolor',
-  menubar: 'file edit insert view format',
-  height: 300,
-  branding: false,
-  promotion: false
-});
+    var key = opt ? opt.value : '';
+    var emails = emailsByRecipient[key] || [];
+    ttList.innerHTML = '';
+    if (emails.length === 0) {
+      ttEmpty.style.display = '';
+    } else {
+      ttEmpty.style.display = 'none';
+      emails.forEach(function (e) {
+        var li = document.createElement('li');
+        li.textContent = e;
+        ttList.appendChild(li);
+      });
+    }
+  }
+
+  sel.addEventListener('change', refresh);
+  refresh(); // état initial (= "all")
+})();
 </script>
 {{end}}

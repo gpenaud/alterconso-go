@@ -379,30 +379,80 @@ func productInfo(p model.Product) gin.H {
 			taxName = *p.Catalog.PercentageName
 		}
 	}
+	ref := ""
+	if p.Ref != nil {
+		ref = *p.Ref
+	}
+	desc := ""
+	if p.Description != nil {
+		desc = *p.Description
+	}
+	qt := 0.0
+	if p.Qt != nil {
+		qt = *p.Qt
+	}
 	return gin.H{
 		"id":            p.ID,
 		"name":          p.Name,
-		"ref":           "",
+		"ref":           ref,
 		"image":         nil,
 		"price":         p.Price,
 		"vat":           p.VAT,
 		"vatValue":      p.Price * p.VAT / 100,
-		"desc":          "",
+		"desc":          desc,
 		"categories":    []int{},
 		"subcategories": []int{},
 		"orderable":     true,
 		"stock":         p.Stock,
-		"hasFloatQt":    false,
-		"qt":            0,
+		"hasFloatQt":    p.HasFloatQt,
+		"qt":            qt,
 		"unitType":      normalizeUnitType(p.UnitType),
 		"organic":       p.Organic,
-		"variablePrice": false,
-		"wholesale":     false,
-		"active":        true,
+		"variablePrice": p.VariablePrice,
+		"wholesale":     p.MultiWeight,
+		"active":        p.Active,
 		"bulk":          false,
 		"catalogId":     p.CatalogID,
 		"catalogTax":    taxRate,
 		"catalogTaxName": taxName,
+		"vendorId":      p.Catalog.VendorID,
+	}
+}
+
+// vendorInfo construit la VendorInfos JSON attendue par le shop legacy.
+// Beaucoup de champs (profession, linkText, longDesc, …) n'existent pas
+// dans le modèle Go ; on retourne une chaîne vide pour préserver la forme.
+//
+// `image` est sérialisé null (pas "") quand le vendor n'a pas d'image, sinon
+// le composant Avatar de Material-UI affiche son fallback (icône personnage).
+func vendorInfo(v model.Vendor) gin.H {
+	desc := ""
+	if v.Description != nil {
+		desc = *v.Description
+	}
+	zip := ""
+	if v.ZipCode != nil {
+		zip = *v.ZipCode
+	}
+	city := ""
+	if v.City != nil {
+		city = *v.City
+	}
+	var image interface{} // nil → JSON null
+	if v.ImagePath != nil && *v.ImagePath != "" {
+		image = *v.ImagePath
+	}
+	return gin.H{
+		"id":         v.ID,
+		"name":       v.Name,
+		"desc":       desc,
+		"longDesc":   desc,
+		"image":      image,
+		"profession": "",
+		"zipCode":    zip,
+		"city":       city,
+		"linkText":   "",
+		"linkUrl":    "",
 	}
 }
 
@@ -482,19 +532,36 @@ func (h *CompatHandler) ShopInit(c *gin.Context) {
 	}
 
 	catalogs := make([]gin.H, 0)
+	vendors := make([]gin.H, 0)
+	seenVendor := make(map[uint]bool)
 	for _, d := range md.Distributions {
 		cat := d.Catalog
 		catalogs = append(catalogs, gin.H{
-			"id":        cat.ID,
-			"name":      cat.Name,
-			"vendorId":  cat.VendorID,
-			"vendor":    gin.H{"id": cat.Vendor.ID, "name": cat.Vendor.Name},
-			"canOrder":  d.CanOrderNow(),
+			"id":       cat.ID,
+			"name":     cat.Name,
+			"vendorId": cat.VendorID,
+			"vendor":   gin.H{"id": cat.Vendor.ID, "name": cat.Vendor.Name},
+			"canOrder": d.CanOrderNow(),
 		})
+		if !seenVendor[cat.VendorID] {
+			vendors = append(vendors, vendorInfo(cat.Vendor))
+			seenVendor[cat.VendorID] = true
+		}
 	}
 
+	// Champs au top-level attendus par CagetteStore.componentDidMount :
+	// place, distributionStartDate (parseable par Date.fromString), orderEndDates,
+	// vendors, paymentInfos. Si distributionStartDate est undefined, le Haxe
+	// throw → setState({vendors}) ne s'exécute jamais et la lookup vendor null.
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
+		"success":               true,
+		"place":                 placeInfos(md.Place),
+		"distributionStartDate": md.DistribStartDate.Format("2006-01-02 15:04:05"),
+		"distributionEndDate":   md.DistribEndDate.Format("2006-01-02 15:04:05"),
+		"orderEndDates":         []gin.H{},
+		"vendors":               vendors,
+		"paymentInfos":          "",
+		// Conservés pour ne pas casser un éventuel consommateur tiers.
 		"multiDistrib": gin.H{
 			"id":    md.ID,
 			"start": md.DistribStartDate,
@@ -503,6 +570,40 @@ func (h *CompatHandler) ShopInit(c *gin.Context) {
 		},
 		"catalogs": catalogs,
 	})
+}
+
+// placeInfos retourne la PlaceInfos JSON attendue par le shop legacy.
+func placeInfos(p model.Place) gin.H {
+	addr := ""
+	if p.Address != nil {
+		addr = *p.Address
+	}
+	zip := ""
+	if p.ZipCode != nil {
+		zip = *p.ZipCode
+	}
+	city := ""
+	if p.City != nil {
+		city = *p.City
+	}
+	lat := 0.0
+	if p.Lat != nil {
+		lat = *p.Lat
+	}
+	lng := 0.0
+	if p.Lng != nil {
+		lng = *p.Lng
+	}
+	return gin.H{
+		"id":        p.ID,
+		"name":      p.Name,
+		"address1":  addr,
+		"address2":  "",
+		"zipCode":   zip,
+		"city":      city,
+		"latitude":  lat,
+		"longitude": lng,
+	}
 }
 
 // ---- /api/shop/allProducts/:multiDistribId ----
@@ -530,12 +631,56 @@ func (h *CompatHandler) ShopAllProducts(c *gin.Context) {
 
 	var products []model.Product
 	if len(catalogIDs) > 0 {
-		h.db.Where("catalog_id IN ?", catalogIDs).Preload("Catalog").Find(&products)
+		h.db.Where("catalog_id IN ? AND active = ?", catalogIDs, true).
+			Preload("Catalog").
+			Preload("TxpSubCategory").
+			Preload("Image").
+			Order("name").
+			Find(&products)
+	}
+
+	// Charge toutes les catégories pour :
+	//   - identifier la catégorie de fallback "Autres / Tous"
+	//   - construire les maps id → image utilisées pour le fallback d'image
+	//     produit (l'icône de catégorie remplace l'absence de visuel produit)
+	var allCats []model.TxpCategory
+	h.db.Preload("SubCategories").Find(&allCats)
+	catImageByID := make(map[uint]string, len(allCats))
+	for _, c := range allCats {
+		catImageByID[c.ID] = c.Image
+	}
+	var fallback model.TxpCategory
+	for _, c := range allCats {
+		if c.Image == "autres" {
+			fallback = c
+			break
+		}
+	}
+	fallbackCatID := fallback.ID
+	var fallbackSubID uint
+	if len(fallback.SubCategories) > 0 {
+		fallbackSubID = fallback.SubCategories[0].ID
 	}
 
 	out := make([]gin.H, 0, len(products))
 	for _, p := range products {
-		out = append(out, shopProductInfo(p))
+		info := shopProductInfo(p)
+		catID, subID := fallbackCatID, fallbackSubID
+		if p.TxpSubCategory != nil {
+			subID = p.TxpSubCategory.ID
+			catID = p.TxpSubCategory.CategoryID
+		}
+		info["categories"] = []uint{catID}
+		info["subcategories"] = []uint{subID}
+		// Image : préférence à l'image du produit ; sinon illustration de la
+		// catégorie (les fichiers sous /img/taxo/grey/ sont les illustrations
+		// 300×300 — le dossier est mal nommé, ce ne sont pas des grises).
+		if p.Image != nil {
+			info["image"] = FileURL(p.Image.ID, h.cfg.Key, p.Image.Name)
+		} else if img, ok := catImageByID[catID]; ok && img != "" {
+			info["image"] = "/img/taxo/grey/" + img + ".png"
+		}
+		out = append(out, info)
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true, "products": out})
 }
@@ -543,8 +688,24 @@ func (h *CompatHandler) ShopAllProducts(c *gin.Context) {
 // ---- /api/shop/categories ----
 
 func (h *CompatHandler) ShopCategories(c *gin.Context) {
-	// Categories are not implemented in this version; return empty list
-	c.JSON(http.StatusOK, gin.H{"success": true, "categories": []gin.H{}})
+	var cats []model.TxpCategory
+	h.db.Preload("SubCategories").Order("display_order").Find(&cats)
+
+	out := make([]gin.H, 0, len(cats))
+	for _, cat := range cats {
+		subs := make([]gin.H, 0, len(cat.SubCategories))
+		for _, sub := range cat.SubCategories {
+			subs = append(subs, gin.H{"id": sub.ID, "name": sub.Name})
+		}
+		out = append(out, gin.H{
+			"id":            cat.ID,
+			"name":          cat.Name,
+			"image":         "/img/taxo/" + cat.Image + ".png",
+			"displayOrder":  cat.DisplayOrder,
+			"subcategories": subs,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "categories": out})
 }
 
 // ---- /api/product/categories ----

@@ -7,19 +7,46 @@ import (
 	"gorm.io/gorm"
 )
 
-// UserCategoryScores retourne le score par membre du groupe pour la catégorie
-// donnée. Le score se passe ensuite à cat.Match.
+// UserCategoryScores retourne, pour chaque membre, un slice de scores — un
+// par condition de la catégorie, dans le même ordre que cat.Conditions.
 //
-// Sémantique selon le mode :
-//   - mode total : score = nombre total de commandes (distributions distinctes)
-//     sur la fenêtre glissante de Tm * 30 jours.
-//   - mode per-month : score = nombre de mois calendaires (sur les T derniers,
-//     mois courant inclus) où le user satisfait la règle par-mois.
-func UserCategoryScores(db *gorm.DB, groupID uint, memberIDs []uint, now time.Time, cat config.RecipientCategory) map[uint]int {
-	if cat.PerMonth {
-		return userMonthScores(db, groupID, memberIDs, now, cat)
+// Le score se passe ensuite à cat.Match(scores[uid]).
+func UserCategoryScores(db *gorm.DB, groupID uint, memberIDs []uint, now time.Time, cat config.RecipientCategory) map[uint][]int {
+	out := make(map[uint][]int, len(memberIDs))
+	for _, uid := range memberIDs {
+		out[uid] = make([]int, len(cat.Conditions))
 	}
-	return userTotalCounts(db, groupID, now.Add(-cat.Window))
+
+	// Cache : éviter de relancer la même requête pour deux conditions identiques
+	// dans une catégorie multi-conditions.
+	cache := make(map[string]map[uint]int)
+
+	for ci, cond := range cat.Conditions {
+		key := condCacheKey(cond)
+		scores, ok := cache[key]
+		if !ok {
+			scores = scoreCondition(db, groupID, memberIDs, now, cond)
+			cache[key] = scores
+		}
+		for _, uid := range memberIDs {
+			out[uid][ci] = scores[uid]
+		}
+	}
+	return out
+}
+
+func condCacheKey(p config.ParsedRecipientPattern) string {
+	return p.Raw
+}
+
+func scoreCondition(db *gorm.DB, groupID uint, memberIDs []uint, now time.Time, p config.ParsedRecipientPattern) map[uint]int {
+	if p.IsEmailMatch {
+		return userEmailMatch(db, groupID, p.Email)
+	}
+	if p.PerMonth {
+		return userMonthScores(db, groupID, memberIDs, now, p)
+	}
+	return userTotalCounts(db, groupID, now.Add(-p.Window))
 }
 
 // FindCategoryByName retourne la catégorie portant ce nom dans la liste,
@@ -33,24 +60,108 @@ func FindCategoryByName(cats []config.RecipientCategory, name string) *config.Re
 	return nil
 }
 
-// EligibleUsersForCategory retourne les IDs des membres du groupe dont le
-// score satisfait la règle de la catégorie. Pure correspondance par pattern,
-// sans logique d'exclusivité mutuelle (contrairement aux buckets de la page
-// /messages). Utilisé pour filtrer les destinataires des notifications cron.
-func EligibleUsersForCategory(db *gorm.DB, groupID uint, now time.Time, cat config.RecipientCategory) []uint {
+// BuildCategorySets retourne, pour chaque catégorie (par index), l'ensemble
+// final des userIDs qui en font partie :
+//
+//   set(C) = primary(C) ∪ ⋃ primary(I) pour I ∈ C.Includes
+//
+// Où primary(X) = users dont la PREMIÈRE catégorie matchant (dans l'ordre du
+// fichier) est X. Cette primary attribution est mutuellement exclusive entre
+// catégories — c'est le comportement par défaut : un user matchant plusieurs
+// patterns est primaire d'une seule catégorie. La directive `includes` permet
+// à une catégorie d'agréger d'autres primaires explicitement.
+//
+// L'inclusion n'est pas récursive : seuls les primaires des catégories listées
+// sont ajoutés. Les noms invalides dans Includes sont ignorés silencieusement
+// (déjà loggés au boot).
+func BuildCategorySets(db *gorm.DB, groupID uint, memberIDs []uint, now time.Time, cats []config.RecipientCategory) []map[uint]bool {
+	nameToIdx := make(map[string]int, len(cats))
+
+	// Phase 1 : own matchers par catégorie (qui matche le pattern brut).
+	ownByIdx := make([]map[uint]bool, len(cats))
+	for i, cat := range cats {
+		nameToIdx[cat.Name] = i
+		scores := UserCategoryScores(db, groupID, memberIDs, now, cat)
+		own := make(map[uint]bool)
+		for _, uid := range memberIDs {
+			if cat.Match(scores[uid]) {
+				own[uid] = true
+			}
+		}
+		ownByIdx[i] = own
+	}
+
+	// Phase 2 : primary par catégorie (premier match gagne, mutuelle exclusivité).
+	primaryByIdx := make([]map[uint]bool, len(cats))
+	for i := range cats {
+		primaryByIdx[i] = make(map[uint]bool)
+	}
+	for _, uid := range memberIDs {
+		for i := range cats {
+			if ownByIdx[i][uid] {
+				primaryByIdx[i][uid] = true
+				break
+			}
+		}
+	}
+
+	// Phase 3 : ensemble final = primary ∪ primaires des catégories incluses.
+	out := make([]map[uint]bool, len(cats))
+	for i, cat := range cats {
+		final := make(map[uint]bool, len(primaryByIdx[i]))
+		for uid := range primaryByIdx[i] {
+			final[uid] = true
+		}
+		for _, incName := range cat.Includes {
+			if incIdx, ok := nameToIdx[incName]; ok {
+				for uid := range primaryByIdx[incIdx] {
+					final[uid] = true
+				}
+			}
+		}
+		out[i] = final
+	}
+	return out
+}
+
+// EligibleUsersForCategory retourne les IDs des membres du groupe inclus
+// dans l'ensemble final de la catégorie nommée — propres matchers + matchers
+// des catégories listées dans Includes. Utilisé pour filtrer les destinataires
+// des notifications cron.
+func EligibleUsersForCategory(db *gorm.DB, groupID uint, now time.Time, allCats []config.RecipientCategory, target config.RecipientCategory) []uint {
 	var memberIDs []uint
 	db.Table("user_groups").Where("group_id = ?", groupID).Pluck("user_id", &memberIDs)
 	if len(memberIDs) == 0 {
 		return nil
 	}
-	scores := UserCategoryScores(db, groupID, memberIDs, now, cat)
-	out := make([]uint, 0, len(memberIDs))
-	for _, uid := range memberIDs {
-		if cat.Match(scores[uid]) {
-			out = append(out, uid)
+	sets := BuildCategorySets(db, groupID, memberIDs, now, allCats)
+	for i, cat := range allCats {
+		if cat.Name == target.Name {
+			out := make([]uint, 0, len(sets[i]))
+			for uid := range sets[i] {
+				out = append(out, uid)
+			}
+			return out
 		}
 	}
-	return out
+	return nil
+}
+
+// userEmailMatch : map { user_id_du_membre_qui_matche : 1 }, vide sinon.
+func userEmailMatch(db *gorm.DB, groupID uint, email string) map[uint]int {
+	if email == "" {
+		return map[uint]int{}
+	}
+	var userID uint
+	db.Table("user_groups AS ug").
+		Select("ug.user_id").
+		Joins("JOIN users u ON u.id = ug.user_id").
+		Where("ug.group_id = ? AND LOWER(u.email) = ?", groupID, email).
+		Scan(&userID)
+	if userID == 0 {
+		return map[uint]int{}
+	}
+	return map[uint]int{userID: 1}
 }
 
 // userTotalCounts : map user_id → nombre total de commandes depuis `since`.
@@ -77,8 +188,8 @@ func userTotalCounts(db *gorm.DB, groupID uint, since time.Time) map[uint]int {
 
 // userMonthScores : map user_id → nombre de mois qualifiants sur les T mois
 // calendaires (mois courant inclus) à partir d'aujourd'hui.
-func userMonthScores(db *gorm.DB, groupID uint, memberIDs []uint, now time.Time, cat config.RecipientCategory) map[uint]int {
-	windowMonths := cat.WindowMonths()
+func userMonthScores(db *gorm.DB, groupID uint, memberIDs []uint, now time.Time, p config.ParsedRecipientPattern) map[uint]int {
+	windowMonths := p.WindowMonths()
 	if windowMonths <= 0 {
 		return map[uint]int{}
 	}
@@ -127,7 +238,7 @@ func userMonthScores(db *gorm.DB, groupID uint, memberIDs []uint, now time.Time,
 			if monthMap != nil {
 				cnt = monthMap[ym]
 			}
-			if cat.MatchPerMonthCount(cnt) {
+			if p.MatchPerMonthCount(cnt) {
 				n++
 			}
 		}

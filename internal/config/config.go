@@ -104,18 +104,32 @@ func Load() (*Config, error) {
 		cfg.Messages.RecipientCategories = defaultRecipientCategories()
 	}
 
-	// Compile les patterns en place. Les catégories invalides sont ignorées avec un log.
+	// Compile les conditions de chaque catégorie. Les catégories invalides
+	// sont ignorées avec un log.
 	parsed := cfg.Messages.RecipientCategories[:0]
 	for _, cat := range cfg.Messages.RecipientCategories {
-		op, threshold, window, perMonth, err := ParseRecipientPattern(cat.Pattern)
-		if err != nil {
+		if err := cat.CompileConditions(); err != nil {
 			log.Printf("warning: catégorie destinataire %q ignorée: %v", cat.Name, err)
 			continue
 		}
-		cat.Op, cat.Threshold, cat.Window, cat.PerMonth = op, threshold, window, perMonth
 		parsed = append(parsed, cat)
 	}
 	cfg.Messages.RecipientCategories = parsed
+
+	// Valide les références dans `includes` : chaque nom doit pointer vers
+	// une catégorie existante. Sinon warning au log et la référence est
+	// silencieusement ignorée à l'évaluation.
+	known := make(map[string]bool, len(cfg.Messages.RecipientCategories))
+	for _, cat := range cfg.Messages.RecipientCategories {
+		known[cat.Name] = true
+	}
+	for _, cat := range cfg.Messages.RecipientCategories {
+		for _, inc := range cat.Includes {
+			if !known[inc] {
+				log.Printf("warning: catégorie %q inclut %q qui n'existe pas — inclusion ignorée", cat.Name, inc)
+			}
+		}
+	}
 
 	// notifications.recipient_category est obligatoire et doit pointer vers
 	// une messages.recipient_categories existante.

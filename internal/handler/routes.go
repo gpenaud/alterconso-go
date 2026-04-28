@@ -27,10 +27,14 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	})
 
 	// ---- Static assets (original www/) ----
-	r.Static("/css", "www/css")
-	r.Static("/js", "www/js")
-	r.Static("/font", "www/font")
-	r.Static("/img", "www/img")
+	// Sert les variantes pré-compressées (.br / .gz) générées au build Docker
+	// quand le client les annonce dans Accept-Encoding ; sinon sert le fichier
+	// original (cas des images binaires non pré-compressées).
+	r.GET("/css/*filepath", StaticPrecompressed("/css", "www/css"))
+	r.GET("/js/*filepath", StaticPrecompressed("/js", "www/js"))
+	r.GET("/font/*filepath", StaticPrecompressed("/font", "www/font"))
+	r.GET("/img/*filepath", StaticPrecompressed("/img", "www/img"))
+	r.GET("/locales/*filepath", StaticPrecompressed("/locales", "www/locales"))
 	fileH := NewFileHandler(db, cfg)
 	r.GET("/file/:sign", fileH.ServeFile)
 

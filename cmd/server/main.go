@@ -52,6 +52,9 @@ func main() {
 	if err := db.EnsureSuperAdmin(database, cfg); err != nil {
 		log.Printf("warning: EnsureSuperAdmin: %v", err)
 	}
+	if err := db.SeedTxpCategories(database); err != nil {
+		log.Printf("warning: SeedTxpCategories: %v", err)
+	}
 	if err := db.EnsureLegalRepAdmins(database); err != nil {
 		log.Printf("warning: EnsureLegalRepAdmins: %v", err)
 	}
@@ -63,6 +66,17 @@ func main() {
 	// Utile pour préparer un import (création des tables GORM avant transformation Haxe).
 	if len(os.Args) > 1 && os.Args[1] == "migrate" {
 		log.Println("[MIGRATE] schema GORM appliqué.")
+		return
+	}
+
+	// Subcommand "categorize-products" : auto-classifie les produits sans
+	// taxonomie en se basant sur des mots-clés du nom du produit. Idempotent.
+	if len(os.Args) > 1 && os.Args[1] == "categorize-products" {
+		n, err := db.AutoCategorizeProducts(database)
+		if err != nil {
+			log.Fatalf("[CATEGORIZE] %v", err)
+		}
+		log.Printf("[CATEGORIZE] %d produit(s) classé(s).", n)
 		return
 	}
 
