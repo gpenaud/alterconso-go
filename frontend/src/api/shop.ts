@@ -23,6 +23,25 @@ export function fetchShopMe() {
   return api.get<ShopMe>("/user/me").then((r) => r.data);
 }
 
+/** Une ligne de commande existante telle que retournée par /api/order/get. */
+export interface ExistingOrder {
+  id: number;
+  product: { id: number; name: string; price: number };
+  quantity: number;
+  catalogId: number;
+}
+
+/** Commandes déjà passées par l'utilisateur pour un MultiDistrib donné.
+ * Sert au pré-remplissage du panier shop quand on rouvre une distribution
+ * sur laquelle on a déjà commandé. */
+export function fetchExistingOrders(userId: number, multiDistribId: number) {
+  return api
+    .get<{ orders: ExistingOrder[] }>(`/order/get/${userId}`, {
+      params: { multiDistrib: multiDistribId },
+    })
+    .then((r) => r.data.orders);
+}
+
 export function fetchShopInit(multiDistribId: number) {
   return api
     .get<ShopInitResponse>("/shop/init", { params: { multiDistrib: multiDistribId } })

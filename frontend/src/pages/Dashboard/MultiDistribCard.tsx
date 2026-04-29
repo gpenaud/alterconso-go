@@ -57,21 +57,13 @@ export function MultiDistribCard({ md }: { md: MultiDistribView }) {
         </div>
       )}
 
-      {/* Ma commande */}
-      {md.userOrders && md.userOrders.length > 0 && (
-        <div className="text-center px-4 py-2">
-          <button
-            type="button"
-            onClick={() => setOrderOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
-          >
-            <i className="icon-basket" aria-hidden="true" />
-            Ma commande : {Math.round(md.userOrderTotal)} €
-          </button>
-        </div>
-      )}
-
-      {/* État de commande */}
+      {/* État de commande
+          - canOrder       : un seul bouton ; "Ma commande : X €" si déjà
+                              commandé, sinon "Commander". Le clic ouvre la
+                              shop, qui pré-remplit le panier avec la commande
+                              existante si elle existe.
+          - !canOrder + userOrders : modale détail (lecture seule).
+          - orderNotYetOpen / closed : message texte. */}
       {md.distributions && (
         <div className="text-center px-4 py-3">
           {md.canOrder ? (
@@ -80,8 +72,10 @@ export function MultiDistribCard({ md }: { md: MultiDistribView }) {
                 to={`/shop/${md.id}`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-base font-semibold bg-ac-green hover:bg-ac-green-dark text-white transition-colors"
               >
-                <i className="icon-chevron-right" aria-hidden="true" />
-                Commander
+                <i className="icon-basket" aria-hidden="true" />
+                {md.userOrders && md.userOrders.length > 0
+                  ? `Ma commande : ${Math.round(md.userOrderTotal)} €`
+                  : "Commander"}
               </Link>
               {md.orderEndDate && (
                 <div className="text-gray-500 text-sm mt-3">
@@ -89,14 +83,28 @@ export function MultiDistribCard({ md }: { md: MultiDistribView }) {
                 </div>
               )}
             </>
-          ) : md.orderNotYetOpen ? (
-            <span className="text-gray-400 text-base block py-2">
-              <i className="icon-clock" aria-hidden="true" /> La commande ouvrira {md.orderStartDate}
-            </span>
           ) : (
-            <span className="text-gray-400 text-sm">
-              <i className="icon-clock" aria-hidden="true" /> Commandes fermées
-            </span>
+            <>
+              {md.userOrders && md.userOrders.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setOrderOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 mb-3 rounded-md text-sm font-medium border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  <i className="icon-basket" aria-hidden="true" />
+                  Ma commande : {Math.round(md.userOrderTotal)} €
+                </button>
+              )}
+              {md.orderNotYetOpen ? (
+                <span className="text-gray-400 text-base block py-2">
+                  <i className="icon-clock" aria-hidden="true" /> La commande ouvrira {md.orderStartDate}
+                </span>
+              ) : (
+                <span className="text-gray-400 text-sm block">
+                  <i className="icon-clock" aria-hidden="true" /> Commandes fermées
+                </span>
+              )}
+            </>
           )}
         </div>
       )}

@@ -25,6 +25,7 @@ interface CartState {
   setQuantity: (productId: number, qty: number) => void;
   remove: (productId: number) => void;
   clear: () => void;
+  replace: (items: CartItem[]) => void;
 
   count: () => number;
   total: () => number;
@@ -83,6 +84,8 @@ export const useCartStore = create<CartState>()(
         set({ items: get().items.filter((it) => it.productId !== productId) }),
 
       clear: () => set({ items: [] }),
+
+      replace: (items) => set({ items }),
 
       count: () => get().items.reduce((n, it) => n + it.quantity, 0),
       total: () =>

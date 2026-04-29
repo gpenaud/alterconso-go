@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { useShopData, useShopMe } from "../hooks/useShop";
-import { useCartStore } from "../store/cart";
+import { useShopData, useShopMe, useExistingOrders } from "../hooks/useShop";
+import { useCartStore, type CartItem } from "../store/cart";
 import { parseDateTime } from "../utils/format";
 import type { ProductInfo, VendorInfo } from "../types/shop";
 import { ShopTopBar } from "./Shop/ShopTopBar";
@@ -25,9 +25,13 @@ export function ShopPage() {
     return Number.isFinite(n) && n > 0 ? n : undefined;
   }, [searchParams]);
 
-  const { isLoading, error, init, categories, catalog } = useShopData(multiDistribId);
+  const { isLoading, error, init, categories, catalog, products } = useShopData(multiDistribId);
   const { data: me } = useShopMe();
+  const { data: existingOrders } = useExistingOrders(me?.id, multiDistribId);
   const setMd = useCartStore((s) => s.setMultiDistrib);
+  const replaceCart = useCartStore((s) => s.replace);
+  const cartItemsCount = useCartStore((s) => s.items.length);
+  const cartMd = useCartStore((s) => s.multiDistribId);
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
   const [activeSubcategory, setActiveSubcategory] = useState<number | null>(null);
   const [search, setSearch] = useState("");
@@ -74,6 +78,32 @@ export function ShopPage() {
       setMd(multiDistribId);
     }
   }, [multiDistribId, setMd]);
+
+  // Pré-remplit le panier avec la commande existante quand on (re)visite un
+  // shop sur lequel l'utilisateur a déjà commandé. On ne touche pas au panier
+  // s'il contient déjà des articles (panier local en cours d'édition).
+  useEffect(() => {
+    if (!existingOrders || existingOrders.length === 0) return;
+    if (!products || products.length === 0) return;
+    if (cartMd !== multiDistribId) return; // setMd pas encore aligné
+    if (cartItemsCount > 0) return;
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const items: CartItem[] = existingOrders.map((o) => {
+      const p = byId.get(o.product.id);
+      return {
+        productId: o.product.id,
+        quantity: o.quantity,
+        name: p?.name ?? o.product.name,
+        price: p?.price ?? o.product.price,
+        image: p?.image ?? null,
+        vendorId: p?.vendorId,
+        catalogId: p?.catalogId ?? o.catalogId,
+        qt: p?.qt ?? null,
+        unitType: p?.unitType ?? null,
+      };
+    });
+    replaceCart(items);
+  }, [existingOrders, products, cartMd, multiDistribId, cartItemsCount, replaceCart]);
 
   const startDate = useMemo(
     () => (init ? parseDateTime(init.distributionStartDate) : null),
