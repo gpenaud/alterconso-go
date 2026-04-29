@@ -38,6 +38,14 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	fileH := NewFileHandler(db, cfg)
 	r.GET("/file/:sign", fileH.ServeFile)
 
+	// ---- Nouvelle SPA React (montée côte-à-côte du shop legacy Haxe) ----
+	// Sert frontend/dist sous /shop2/, avec fallback index.html pour les
+	// routes gérées par React Router. L'auth est portée par le cookie JWT
+	// "token" déjà partagé avec les autres pages — pas de middleware ici,
+	// les appels API sous /api restent protégés par middleware.Auth.
+	r.GET("/shop2", func(c *gin.Context) { c.Redirect(302, "/shop2/") })
+	r.GET("/shop2/*filepath", SPAFallback("/shop2", "frontend/dist"))
+
 	// ---- Frontend pages (original Haxe UI) ----
 	pagesH := NewPagesHandler(db, cfg)
 	r.GET("/", func(c *gin.Context) { c.Redirect(302, "/home") })
@@ -46,7 +54,11 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/user/choose", pageAuth, pagesH.ChoosePage)
 	r.GET("/home", pageAuth, pagesH.HomePage)
 	r.GET("/contract/view/:id", pageAuth, pagesH.ContractViewPage)
-	r.GET("/shop/:multiDistribId", pageAuth, pagesH.ShopPage)
+	// /shop/:id était servi par un template qui chargeait l'app Haxe ; il
+	// renvoie désormais sur la SPA React sous /shop2/.
+	r.GET("/shop/:multiDistribId", func(c *gin.Context) {
+		c.Redirect(302, "/shop2/shop/"+c.Param("multiDistribId"))
+	})
 	r.GET("/account", pageAuth, pagesH.AccountPage)
 	r.GET("/account/edit", pageAuth, pagesH.AccountEditPage)
 	r.POST("/account/update", pageAuth, pagesH.AccountUpdate)

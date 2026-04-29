@@ -727,7 +727,9 @@ func (h *CompatHandler) ShopSubmit(c *gin.Context) {
 
 	var body struct {
 		CatalogID uint `json:"catalogId"`
-		Orders    []struct {
+		// userId : un admin du groupe peut passer commande pour un membre.
+		UserID uint `json:"userId"`
+		Orders []struct {
 			ProductID uint    `json:"productId"`
 			Qt        float64 `json:"qt"`
 		} `json:"orders"`
@@ -739,14 +741,27 @@ func (h *CompatHandler) ShopSubmit(c *gin.Context) {
 
 	// Find the distribution for this multiDistrib + catalog
 	var distrib model.Distribution
-	if err := h.db.Where("multi_distrib_id = ? AND catalog_id = ?", mdID, body.CatalogID).
+	if err := h.db.Preload("Catalog").
+		Where("multi_distrib_id = ? AND catalog_id = ?", mdID, body.CatalogID).
 		First(&distrib).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "distribution not found"})
 		return
 	}
 
+	// Résolution du destinataire : par défaut l'utilisateur courant ; si userId
+	// est fourni et différent, vérifier que l'appelant est gestionnaire du groupe.
+	targetID := claims.UserID
+	if body.UserID != 0 && body.UserID != claims.UserID {
+		ug := loadGroupAccess(h.db, claims.UserID, distrib.Catalog.GroupID)
+		if ug == nil || !ug.IsGroupManager() {
+			c.JSON(http.StatusForbidden, gin.H{"error": "only group admins can edit orders for other users"})
+			return
+		}
+		targetID = body.UserID
+	}
+
 	// Delete existing orders for this user + distribution
-	h.db.Where("user_id = ? AND distribution_id = ?", claims.UserID, distrib.ID).
+	h.db.Where("user_id = ? AND distribution_id = ?", targetID, distrib.ID).
 		Delete(&model.UserOrder{})
 
 	out := make([]gin.H, 0)
@@ -763,7 +778,7 @@ func (h *CompatHandler) ShopSubmit(c *gin.Context) {
 			feesRate = *product.Catalog.PercentageFees
 		}
 		o := model.UserOrder{
-			UserID:         claims.UserID,
+			UserID:         targetID,
 			ProductID:      item.ProductID,
 			Quantity:       item.Qt,
 			ProductPrice:   product.Price,

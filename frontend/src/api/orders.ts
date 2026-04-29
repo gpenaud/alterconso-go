@@ -31,6 +31,6 @@ export const getOrders = (distributionId: number, catalogId?: number, userId?: n
 export const saveOrders = (payload: {
   distributionId: number
   catalogId?: number
-  userId?: number
+  userId?: number // admin commandant pour un autre membre
   orders: OrderData[]
 }) => api.post<{ orders: Order[] }>('/orders', payload).then((r) => r.data.orders)

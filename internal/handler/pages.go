@@ -187,41 +187,41 @@ func (pd *PageData) CanManageCatalog(catalogID uint) bool {
 }
 
 type MultiDistribView struct {
-	ID              uint
-	Place           string
-	PlaceAddress    string
-	DayOfWeek       string
-	Day             string
-	Month           string
-	StartHour       string
-	EndHour         string
-	DayLabelFull    string
-	Active          bool
-	Past            bool
-	CanOrder        bool
-	OrderNotYetOpen bool
-	OrderStartDate  string
-	OrderEndDate    string
-	Distributions   bool
-	UserOrders      []UserOrderView
-	UserOrderTotal  float64
-	ProductImages   []ProductImageView
-	VolunteerNeeded int
-	VolunteerRoles  []string
+	ID              uint               `json:"id"`
+	Place           string             `json:"place"`
+	PlaceAddress    string             `json:"placeAddress"`
+	DayOfWeek       string             `json:"dayOfWeek"`
+	Day             string             `json:"day"`
+	Month           string             `json:"month"`
+	StartHour       string             `json:"startHour"`
+	EndHour         string             `json:"endHour"`
+	DayLabelFull    string             `json:"dayLabelFull"`
+	Active          bool               `json:"active"`
+	Past            bool               `json:"past"`
+	CanOrder        bool               `json:"canOrder"`
+	OrderNotYetOpen bool               `json:"orderNotYetOpen"`
+	OrderStartDate  string             `json:"orderStartDate,omitempty"`
+	OrderEndDate    string             `json:"orderEndDate,omitempty"`
+	Distributions   bool               `json:"distributions"`
+	UserOrders      []UserOrderView    `json:"userOrders,omitempty"`
+	UserOrderTotal  float64            `json:"userOrderTotal"`
+	ProductImages   []ProductImageView `json:"productImages,omitempty"`
+	VolunteerNeeded int                `json:"volunteerNeeded"`
+	VolunteerRoles  []string           `json:"volunteerRoles,omitempty"`
 }
 
 type UserOrderView struct {
-	ProductName string
-	SmartQty    string
-	UnitPrice   float64
-	SubTotal    float64
-	Fees        float64
-	Total       float64
+	ProductName string  `json:"productName"`
+	SmartQty    string  `json:"smartQty"`
+	UnitPrice   float64 `json:"unitPrice"`
+	SubTotal    float64 `json:"subTotal"`
+	Fees        float64 `json:"fees"`
+	Total       float64 `json:"total"`
 }
 
 type ProductImageView struct {
-	URL  string
-	Name string
+	URL  string `json:"url"`
+	Name string `json:"name"`
 }
 
 type DistribView struct {
@@ -768,39 +768,6 @@ func (h *PagesHandler) ContractViewPage(c *gin.Context) {
 	pd.Distribs = distribViews
 
 	t, err := loadTemplates("base.html", "design.html", "contract_view.html")
-	if err != nil {
-		c.String(http.StatusInternalServerError, "template error: %v", err)
-		return
-	}
-	if err := t.ExecuteTemplate(c.Writer, "base", pd); err != nil {
-		c.String(http.StatusInternalServerError, "render error: %v", err)
-	}
-}
-
-// ---- Shop page ----
-
-func (h *PagesHandler) ShopPage(c *gin.Context) {
-	pd := h.buildPageData(c)
-	if pd.User == nil || pd.Group == nil {
-		c.Redirect(http.StatusFound, "/user/choose")
-		return
-	}
-
-	id, err := strconv.ParseUint(c.Param("multiDistribId"), 10, 64)
-	if err != nil {
-		c.String(http.StatusBadRequest, "id invalide")
-		return
-	}
-
-	pd.Title = "Boutique"
-	pd.MultiDistribID = uint(id)
-	if uidStr := c.Query("userId"); uidStr != "" {
-		if uid, err2 := strconv.ParseUint(uidStr, 10, 64); err2 == nil {
-			pd.TargetUserID = uint(uid)
-		}
-	}
-
-	t, err := loadTemplates("base.html", "design.html", "shop.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return

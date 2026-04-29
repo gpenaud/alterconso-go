@@ -10,6 +10,7 @@ import { MembersPage } from './pages/MembersPage'
 import { CatalogsPage } from './pages/CatalogsPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { AdminPage } from './pages/AdminPage'
+import { ShopPage } from './pages/ShopPage'
 import { useAuthStore } from './store/auth'
 
 const queryClient = new QueryClient({
@@ -24,7 +25,7 @@ function Protected({ children }: { children: React.ReactElement }) {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter basename="/shop2">
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/groups" element={<Protected><GroupsPage /></Protected>} />
@@ -36,6 +37,9 @@ export default function App() {
           <Route path="/groups/:groupId/members" element={<Protected><MembersPage /></Protected>} />
           <Route path="/groups/:groupId/catalogs" element={<Protected><CatalogsPage /></Protected>} />
           <Route path="/groups/:groupId/admin" element={<Protected><AdminPage /></Protected>} />
+          {/* Shop accessible directement : l'auth API se fait via le cookie de
+              session JWT déjà en place (middleware Auth accepte cookie OU Bearer). */}
+          <Route path="/shop/:multiDistribId" element={<ShopPage />} />
           <Route path="*" element={<Navigate to="/groups" replace />} />
         </Routes>
       </BrowserRouter>
