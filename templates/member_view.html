@@ -17,7 +17,7 @@
         {{if .Member.LastLogin}}{{.Member.LastLogin.Format "02/01/2006 15:04"}}{{else}}<b>Jamais connecté</b>{{end}}<br/>
         Inscrit le : {{.Member.CreatedAt.Format "02/01/2006"}}
       </p>
-      <p style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+      <p style="display:flex;gap:6px;flex-wrap:nowrap;align-items:center;white-space:nowrap;">
         <a href="/member/edit/{{.Member.ID}}" class="btn btn-default btn-xs"><i class="icon icon-edit"></i> Modifier</a>
         <a href="/member/delete/{{.Member.ID}}" class="btn btn-default btn-xs"
           onclick="return confirm('Retirer ce membre du groupe ?')">
