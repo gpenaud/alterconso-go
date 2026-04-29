@@ -1114,10 +1114,24 @@ type MessagesData struct {
 	// RecipientEmailsJSON : objet JS littéral { "all": [...], "managers": [...], ... }
 	// inliné brut dans un <script> via template.JS (pas de re-encodage).
 	RecipientEmailsJSON template.JS
+	// TempRecipient : destinataire éphémère injecté via query string, non
+	// persistant. Disparaît dès qu'on recharge /messages sans le param.
+	// Cas d'usage actuel : ?distribOrders=YYYY-MM-DD pour les clients d'une
+	// distribution donnée.
+	TempRecipient *RecipientOption
 	// Feedback d'envoi affiché après un POST réussi (PRG via query params).
 	SendSuccess  int
 	SendFailed   int
 	SendNoRcpt   bool
+}
+
+// RecipientOption décrit une option ajoutée dynamiquement au select des
+// destinataires (clé d'identification, label affiché, compteur, tooltip).
+type RecipientOption struct {
+	Value   string
+	Name    string
+	Tooltip string
+	Count   int
 }
 
 // ActivityCategoryView est une catégorie d'activité prête à afficher.
@@ -1140,6 +1154,24 @@ type MessageView struct {
 // buildRecipientEmails retourne les emails par valeur de destinataire :
 // "all", "managers", "members" pour les catégories fixes (rôle), et
 // "activity-N" pour chaque catégorie d'activité (mutuellement exclusives).
+// distribOrdersEmails retourne les emails (uniques, non vides) des membres
+// du groupe ayant commandé sur une distribution programmée au jour donné.
+// Utilisé pour le destinataire éphémère "Clients de la commande du DD/MM/YYYY".
+func (h *PagesHandler) distribOrdersEmails(groupID uint, day time.Time) []string {
+	dayStr := day.Format("2006-01-02")
+	var emails []string
+	h.db.Raw(`
+		SELECT DISTINCT u.email
+		FROM users u
+		JOIN user_orders uo ON uo.user_id = u.id
+		JOIN distributions d ON d.id = uo.distribution_id
+		JOIN multi_distribs md ON md.id = d.multi_distrib_id
+		WHERE md.group_id = ? AND DATE(md.distrib_start_date) = ? AND u.email <> ''
+		ORDER BY u.last_name, u.first_name
+	`, groupID, dayStr).Scan(&emails)
+	return emails
+}
+
 // Utilisé pour alimenter le tooltip de la page /messages.
 func (h *PagesHandler) buildRecipientEmails(groupID uint, now time.Time) map[string][]string {
 	var ugs []model.UserGroup
@@ -1297,6 +1329,25 @@ func (h *PagesHandler) MessagesPage(c *gin.Context) {
 
 	// Emails par valeur de destinataire — alimente le tooltip côté UI.
 	emailsByRecipient := h.buildRecipientEmails(pd.Group.ID, now)
+
+	// Destinataire éphémère : ?distribOrders=YYYY-MM-DD → tous les membres
+	// ayant commandé pour une distribution de cette date dans ce groupe.
+	if dateStr := c.Query("distribOrders"); dateStr != "" {
+		if d, err := time.Parse("2006-01-02", dateStr); err == nil {
+			emails := h.distribOrdersEmails(pd.Group.ID, d)
+			key := "distribOrders-" + dateStr
+			emailsByRecipient[key] = emails
+			label := fmt.Sprintf("Clients de la commande du %02d/%02d/%d",
+				d.Day(), int(d.Month()), d.Year())
+			data.TempRecipient = &RecipientOption{
+				Value:   key,
+				Name:    label,
+				Tooltip: label,
+				Count:   len(emails),
+			}
+		}
+	}
+
 	if b, err := json.Marshal(emailsByRecipient); err == nil {
 		data.RecipientEmailsJSON = template.JS(string(b))
 	} else {

@@ -22,6 +22,9 @@
   <a href="/contractAdmin/vendorsByDate/{{.DateISO}}/{{.Group.ID}}" class="btn btn-default btn-sm">
     Totaux par producteur
   </a>
+  <a href="/messages?distribOrders={{.DateISO}}" class="btn btn-default btn-sm">
+    <i class="icon icon-mail"></i> Envoyer un message aux clients
+  </a>
 </div>
 
 {{if .Members}}

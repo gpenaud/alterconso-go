@@ -87,6 +87,9 @@
         <label class="col-sm-3 control-label">Destinataires *</label>
         <div class="col-sm-9">
           <select name="recipients" class="form-control">
+            {{if .TempRecipient}}
+            <option value="{{.TempRecipient.Value}}" data-count="{{.TempRecipient.Count}}" title="{{.TempRecipient.Tooltip}}" selected>{{.TempRecipient.Name}}</option>
+            {{end}}
             <option value="all" data-count="{{.CountAll}}">Tout le monde</option>
             <option value="managers" data-count="{{.CountManagers}}">Gestionnaires uniquement</option>
             <option value="members" data-count="{{.CountMembers}}">Membres uniquement</option>
