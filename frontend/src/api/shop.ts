@@ -28,6 +28,11 @@ export interface ExistingOrder {
   id: number;
   product: { id: number; name: string; price: number };
   quantity: number;
+  /** Prix unitaire au moment du submit (snapshot) — différent du product.price
+   *  si le catalogue a changé depuis. */
+  productPrice: number;
+  /** Frais en % snapshotté sur l'order au submit (= UserOrder.FeesRate). */
+  feesRate: number;
   catalogId: number;
 }
 

@@ -101,13 +101,17 @@ export function ShopPage() {
         productId: o.product.id,
         quantity: o.quantity,
         name: p?.name ?? o.product.name,
-        price: p?.price ?? o.product.price,
+        // productPrice / feesRate viennent de l'order lui-même : c'est le
+        // snapshot au moment du submit, garantit l'égalité avec /home même
+        // si le produit n'est plus dans le catalogue actif (inactive,
+        // supprimé) ou si le catalogue a changé de tarification.
+        price: o.productPrice ?? p?.price ?? o.product.price,
         image: p?.image ?? null,
         vendorId: p?.vendorId,
-        catalogId: p?.catalogId ?? o.catalogId,
+        catalogId: o.catalogId ?? p?.catalogId,
         qt: p?.qt ?? null,
         unitType: p?.unitType ?? null,
-        feesRate: p?.catalogTax ?? null,
+        feesRate: o.feesRate ?? p?.catalogTax ?? null,
       };
     });
     populatedFor.current = multiDistribId;
