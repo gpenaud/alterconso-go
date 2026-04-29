@@ -316,8 +316,9 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	api.GET("/orders", orderH.GetForUser)
 	api.POST("/orders", orderH.CreateOrUpdate)
 
-	// Home (JSON pour la future page d'accueil React).
+	// Home + Account (JSON pour les pages React).
 	api.GET("/home", pagesH.HomeJSON)
+	api.GET("/account", pagesH.AccountJSON)
 
 	// ---- Fallback SPA ----
 	// Pour toute route non matchée par les pages Go ou l'API, on sert
