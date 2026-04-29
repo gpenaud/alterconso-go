@@ -17,7 +17,6 @@
       </p>
       <p style="display:flex;gap:6px;flex-wrap:wrap;">
         <a href="/member/edit/{{.Member.ID}}" class="btn btn-default btn-sm"><i class="icon icon-edit"></i> Modifier</a>
-        <a href="/member/payments/{{.Member.ID}}" class="btn btn-default btn-sm"><i class="icon icon-payment-type"></i> Paiements</a>
         <a href="/member/delete/{{.Member.ID}}" class="btn btn-default btn-sm"
           onclick="return confirm('Retirer ce membre du groupe ?')">
           <i class="icon icon-delete"></i> Retirer du groupe
@@ -96,7 +95,7 @@
       <h5>Distribution du {{.Date}}</h5>
       <table class="table table-bordered table-condensed">
         <tr class="greyhead">
-          <th>Qté</th><th>Produit</th><th>P.U.</th><th>Sous-total</th><th>Frais</th><th>Total</th><th>Catalogue</th><th>Payé</th>
+          <th>Qté</th><th>Produit</th><th>P.U.</th><th>Sous-total</th><th>Frais</th><th>Total</th><th>Catalogue</th>
         </tr>
         {{range .Orders}}
         <tr>
@@ -107,13 +106,12 @@
           <td>{{printf "%.2f" .Fees}} €</td>
           <td>{{printf "%.2f" .Total}} €</td>
           <td><a href="/contract/view/{{.CatalogID}}">{{.CatalogName}}</a></td>
-          <td>{{if .Paid}}<i class="icon icon-check"></i>{{else}}<i class="icon icon-delete"></i>{{end}}</td>
         </tr>
         {{end}}
         <tr>
           <td colspan="5"></td>
           <td><b>{{printf "%.2f" .Total}} €</b></td>
-          <td colspan="2"></td>
+          <td></td>
         </tr>
       </table>
       {{end}}
