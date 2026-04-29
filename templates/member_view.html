@@ -31,18 +31,6 @@
         </form>
         {{end}}
       </p>
-      <p>
-        Solde :
-        {{if lt .MemberUG.Balance 0.0}}
-          <span style="color:#C00;font-weight:bold;">{{printf "%.2f" .MemberUG.Balance}} €</span>
-        {{else}}
-          <span style="color:#080;font-weight:bold;">{{printf "%.2f" .MemberUG.Balance}} €</span>
-        {{end}}
-        <a href="/transaction/insertPayment/{{.Member.ID}}" class="btn btn-default btn-xs" style="margin-left:8px;">
-          <i class="icon icon-plus"></i> Saisir paiement
-        </a>
-      </p>
-
       {{if .Group.HasMembership}}
       <hr/>
       <p style="margin-bottom:6px;">
