@@ -21,7 +21,7 @@
         <a href="/member/edit/{{.Member.ID}}" class="btn btn-default btn-xs" style="padding:5px 10px;"><i class="icon icon-edit"></i> Modifier</a>
         <a href="/member/delete/{{.Member.ID}}" class="btn btn-default btn-xs" style="padding:5px 10px;"
           onclick="return confirm('Retirer ce membre du groupe ?')">
-          <i class="icon icon-delete"></i> Retirer
+          <i class="icon icon-delete"></i> Retirer du groupe
         </a>
         {{if .IsGroupManager}}
         <form method="POST" action="/member/fullDelete/{{.Member.ID}}" style="margin:0;padding:0;display:inline-block;"
