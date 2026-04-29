@@ -49,6 +49,10 @@ export function ProductCard({ product, vendor, onClick }: Props) {
             <img
               src={product.image}
               alt=""
+              loading="lazy"
+              decoding="async"
+              width={600}
+              height={600}
               className="block w-full h-[120px] md:h-[240px] object-cover"
             />
           ) : (
@@ -62,6 +66,10 @@ export function ProductCard({ product, vendor, onClick }: Props) {
               src={farmerAvatar}
               alt={vendor?.name ?? ""}
               title={vendor?.name}
+              loading="lazy"
+              decoding="async"
+              width={60}
+              height={60}
               className="hidden sm:block absolute object-cover"
               style={{
                 width: 60,

@@ -76,7 +76,12 @@ func (h *FileHandler) ServeFile(c *gin.Context) {
 		contentType = "application/pdf"
 	}
 
-	c.Header("Cache-Control", "public, max-age=86400")
+	// L'URL contient un hash signé (id + HMAC). Quand un fichier est remplacé,
+	// un nouveau row File est créé avec un nouvel ID → nouvelle URL. L'URL est
+	// donc content-immutable : on peut la cacher 1 an sans revalidation.
+	// `immutable` interdit au navigateur d'envoyer If-None-Match pendant la
+	// durée de vie du cache (sinon round-trip inutile).
+	c.Header("Cache-Control", "public, max-age=31536000, immutable")
 	if contentType == "application/pdf" {
 		c.Header("Content-Disposition", "inline; filename=\""+file.Name+"\"")
 	}

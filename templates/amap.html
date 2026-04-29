@@ -26,7 +26,7 @@
           <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
             {{range .ProductImages}}
             <div title="{{.Name}}" style="width:64px;height:64px;border:1px solid #ddd;border-radius:4px;overflow:hidden;background:#f5f0e8;flex-shrink:0;">
-              <img src="{{.URL}}" style="width:100%;height:100%;object-fit:cover;" />
+              <img src="{{.URL}}" loading="lazy" decoding="async" width="64" height="64" style="width:100%;height:100%;object-fit:cover;" />
             </div>
             {{end}}
           </div>
