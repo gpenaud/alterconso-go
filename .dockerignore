@@ -29,8 +29,13 @@ config.local.yaml
 
 # Sous-dépôts non packagés dans l'image serveur
 deploy/
-frontend/
 tools/
+
+# Frontend : on garde les sources et package*.json pour le build Docker,
+# mais on exclut les artefacts générés (le stage frontend les produit).
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
 
 # Documentation utilisateur (le package Go `docs/` est OK car non matché ici)
 *.md
