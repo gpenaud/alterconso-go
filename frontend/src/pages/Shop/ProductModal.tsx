@@ -141,6 +141,17 @@ export function ProductModal({ product, vendor, onClose }: Props) {
               }}
             >
               {vendor.name}
+              {product.resaleFrom && (
+                <>
+                  <i
+                    className="icon-refresh"
+                    title="Produit revendu"
+                    aria-label="Produit revendu"
+                    style={{ margin: "0 6px", fontSize: 12 }}
+                  />
+                  <span>{product.resaleFrom}</span>
+                </>
+              )}
             </span>
 
             <h2
@@ -159,23 +170,6 @@ export function ProductModal({ product, vendor, onClose }: Props) {
             <div style={{ marginLeft: -3 }}>
               <ProductLabels product={product} />
             </div>
-
-            {product.resaleFrom && (
-              <div
-                style={{
-                  backgroundColor: "#fff8e6",
-                  border: "1px solid #f0d99a",
-                  borderRadius: 6,
-                  padding: "10px 12px",
-                  fontSize: "0.9rem",
-                  color: "#7a5b00",
-                }}
-              >
-                <i className="icon-refresh" aria-hidden="true" style={{ marginRight: 6 }} />
-                <b>Produit revendu</b> — provient de{" "}
-                <span style={{ fontStyle: "italic" }}>{product.resaleFrom}</span>
-              </div>
-            )}
 
             {product.desc && (
               <div
