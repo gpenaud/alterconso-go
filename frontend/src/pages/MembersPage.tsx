@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { getMembers } from '../api/members'
@@ -9,10 +9,21 @@ export function MembersPage() {
   const { groupId } = useParams<{ groupId: string }>()
   const id = Number(groupId)
   const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  // Debounce 250ms : évite un appel API par frappe.
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setDebouncedSearch(search.trim())
+      setPage(1) // toute nouvelle recherche repart à la page 1
+    }, 250)
+    return () => window.clearTimeout(t)
+  }, [search])
 
   const { data, isLoading } = useQuery({
-    queryKey: ['members', id, page],
-    queryFn: () => getMembers(id, page),
+    queryKey: ['members', id, page, debouncedSearch],
+    queryFn: () => getMembers(id, page, debouncedSearch || undefined),
     placeholderData: (prev) => prev,
   })
 
@@ -28,10 +39,22 @@ export function MembersPage() {
               title="Membres du groupe"
               subtitle={data ? `${data.total} membre(s)` : undefined}
             />
+            <div className="px-6 py-3 border-b border-gray-100">
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Rechercher par nom, prénom ou email…"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                  focus:outline-none focus:ring-2 focus:ring-ac-green focus:border-transparent"
+              />
+            </div>
             {isLoading ? (
               <p className="px-6 py-4 text-sm text-gray-500">Chargement…</p>
             ) : members.length === 0 ? (
-              <p className="px-6 py-4 text-sm text-gray-500">Aucun membre.</p>
+              <p className="px-6 py-4 text-sm text-gray-500">
+                {debouncedSearch ? "Aucun résultat." : "Aucun membre."}
+              </p>
             ) : (
               <div className="divide-y divide-gray-100">
                 {members.map((m) => {

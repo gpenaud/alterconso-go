@@ -20,8 +20,10 @@ export interface MembersResponse {
   waitingListCount: number
 }
 
-export function getMembers(groupId: number, page = 1) {
+export function getMembers(groupId: number, page = 1, q?: string) {
   return api
-    .get<MembersResponse>(`/groups/${groupId}/members`, { params: { page } })
+    .get<MembersResponse>(`/groups/${groupId}/members`, {
+      params: q ? { page, q } : { page },
+    })
     .then((r) => r.data)
 }

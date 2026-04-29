@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gpenaud/alterconso/internal/middleware"
@@ -38,19 +39,30 @@ func (h *MemberHandler) List(c *gin.Context) {
 	if perPage < 1 || perPage > 200 {
 		perPage = 10
 	}
+	q := strings.TrimSpace(c.Query("q"))
+
+	// Construit la requête de base, partagée pour le COUNT et le SELECT.
+	base := h.db.Model(&model.User{}).
+		Joins("JOIN user_groups ON user_groups.user_id = users.id").
+		Where("user_groups.group_id = ?", groupID)
+	if q != "" {
+		like := "%" + q + "%"
+		base = base.Where(
+			"users.first_name LIKE ? OR users.last_name LIKE ? OR users.email LIKE ?",
+			like, like, like,
+		)
+	}
 
 	var total int64
-	h.db.Model(&model.UserGroup{}).Where("group_id = ?", groupID).Count(&total)
+	base.Count(&total)
 
 	var rows []struct {
 		model.User
 		Balance float64
 		Rights  string
 	}
-	h.db.Model(&model.User{}).
+	base.
 		Select("users.*, user_groups.balance, user_groups.rights").
-		Joins("JOIN user_groups ON user_groups.user_id = users.id").
-		Where("user_groups.group_id = ?", groupID).
 		Order("users.last_name").
 		Offset((page - 1) * perPage).
 		Limit(perPage).
