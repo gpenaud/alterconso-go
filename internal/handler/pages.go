@@ -126,6 +126,7 @@ type PageData struct {
 	// home page
 	Groups        []model.Group
 	MultiDistribs []MultiDistribView
+	OpenCatalogs  []model.Catalog
 	// contract_view page
 	Catalog      *model.Catalog
 	Products     []model.Product
@@ -472,6 +473,213 @@ func (h *PagesHandler) ChoosePage(c *gin.Context) {
 		Groups:  groups,
 		HideNav: true,
 		LogoURL: logoURL,
+	}
+	if err := t.ExecuteTemplate(c.Writer, "base", pd); err != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err)
+	}
+}
+
+// ---- Home page ----
+
+func (h *PagesHandler) HomePage(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil {
+		c.Redirect(http.StatusFound, "/user/login?__redirect=/home")
+		return
+	}
+	if pd.Group == nil {
+		c.Redirect(http.StatusFound, "/user/choose")
+		return
+	}
+	pd.Title = "Accueil"
+	pd.Category = "home"
+	pd.Breadcrumb = []BreadcrumbItem{{Name: "Commandes", Link: "/home"}}
+
+	claims := middleware.GetClaims(c)
+
+	// Period navigation
+	offsetStr := c.DefaultQuery("offset", "0")
+	offsetWeeks, _ := strconv.Atoi(offsetStr)
+
+	frMonthsFull := [...]string{"", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"}
+	frDaysFull := [...]string{"Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"}
+	frDays := [...]string{"Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"}
+
+	now := time.Now()
+	// 2-week window starting on last Saturday
+	weekday := int(now.Weekday()) // 0=Sun
+	daysSinceSat := (weekday + 1) % 7
+	periodStart := now.AddDate(0, 0, -daysSinceSat+offsetWeeks*14)
+	periodStart = time.Date(periodStart.Year(), periodStart.Month(), periodStart.Day(), 0, 0, 0, 0, periodStart.Location())
+	periodEnd := periodStart.AddDate(0, 0, 14)
+	pd.PeriodLabel = fmt.Sprintf("Du %s %d %s %d au %s %d %s %d",
+		frDays[periodStart.Weekday()], periodStart.Day(), frMonthsFull[periodStart.Month()], periodStart.Year(),
+		frDays[periodEnd.Weekday()], periodEnd.Day(), frMonthsFull[periodEnd.Month()], periodEnd.Year(),
+	)
+
+	// Load upcoming MultiDistribs
+	var distribs []model.MultiDistrib
+	h.db.Where("group_id = ? AND distrib_start_date BETWEEN ? AND ?", pd.Group.ID, periodStart, periodEnd).
+		Preload("Place").
+		Preload("Distributions").
+		Preload("Distributions.Catalog").
+		Order("distrib_start_date ASC").
+		Find(&distribs)
+
+	// Load all volunteer roles for the group
+	var volRoles []model.VolunteerRole
+	h.db.Where("group_id = ?", pd.Group.ID).Find(&volRoles)
+
+	views := make([]MultiDistribView, 0, len(distribs))
+	for _, md := range distribs {
+		start := md.DistribStartDate
+		end := md.DistribEndDate
+
+		placeAddr := ""
+		if md.Place.Address != nil {
+			placeAddr = *md.Place.Address
+		}
+		if md.Place.ZipCode != nil {
+			if placeAddr != "" {
+				placeAddr += " "
+			}
+			placeAddr += *md.Place.ZipCode
+		}
+		if md.Place.City != nil {
+			if placeAddr != "" {
+				placeAddr += " "
+			}
+			placeAddr += *md.Place.City
+		}
+
+		view := MultiDistribView{
+			ID:           md.ID,
+			Place:        md.Place.Name,
+			PlaceAddress: placeAddr,
+			DayOfWeek:    frDaysFull[start.Weekday()],
+			Day:          fmt.Sprintf("%d", start.Day()),
+			Month:        frMonthsFull[start.Month()],
+			StartHour:    fmt.Sprintf("%02d:%02d", start.Hour(), start.Minute()),
+			EndHour:      fmt.Sprintf("%02d:%02d", end.Hour(), end.Minute()),
+			DayLabelFull: fmt.Sprintf("%s %d %s à %02d:%02d", frDaysFull[start.Weekday()], start.Day(), frMonthsFull[start.Month()], start.Hour(), start.Minute()),
+			Active:       now.After(start) && now.Before(end),
+			Past:         !now.Before(time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())),
+		}
+
+		// Product images from all catalogs in this distribution (max 8)
+		for _, d := range md.Distributions {
+			if len(view.ProductImages) >= 8 {
+				break
+			}
+			remaining := 8 - len(view.ProductImages)
+			var prods []model.Product
+			h.db.Where("catalog_id = ?", d.Catalog.ID).
+				Preload("Image").Limit(remaining).Find(&prods)
+			for _, p := range prods {
+				url := "/img/taxo/grey/fruits-legumes.png"
+				if p.Image != nil {
+					url = FileURL(p.Image.ID, h.cfg.Key, p.Image.Name)
+				}
+				view.ProductImages = append(view.ProductImages, ProductImageView{URL: url, Name: p.Name})
+			}
+		}
+
+		// Determine order state from first distribution
+		if len(md.Distributions) > 0 {
+			view.Distributions = true
+			d := md.Distributions[0]
+			orderEnd := md.OrderEndDate
+			orderStart := md.OrderStartDate
+			if orderEnd == nil {
+				orderEnd = d.OrderEndDate
+				orderStart = d.OrderStartDate
+			}
+			if orderEnd == nil {
+				view.CanOrder = d.Catalog.UsersCanOrder()
+			} else {
+				if orderStart != nil && now.Before(*orderStart) {
+					view.OrderNotYetOpen = true
+					view.OrderStartDate = fmt.Sprintf("%s %d %s à %02d:%02d",
+						frDays[orderStart.Weekday()], orderStart.Day(),
+						frMonthsFull[orderStart.Month()], orderStart.Hour(), orderStart.Minute())
+				} else if now.Before(*orderEnd) {
+					view.CanOrder = true
+					view.OrderEndDate = fmt.Sprintf("%s %d %s à %02d:%02d",
+						frDays[orderEnd.Weekday()], orderEnd.Day(),
+						frMonthsFull[orderEnd.Month()], orderEnd.Hour(), orderEnd.Minute())
+				}
+			}
+		}
+
+		// Volunteer needs: count registered vs roles defined for this distrib's catalogs
+		var nbRegistered int64
+		h.db.Model(&model.Volunteer{}).Where("multi_distrib_id = ?", md.ID).Count(&nbRegistered)
+		catalogIDs := make([]uint, 0, len(md.Distributions))
+		for _, d := range md.Distributions {
+			catalogIDs = append(catalogIDs, d.Catalog.ID)
+		}
+		rolesNeeded := make([]string, 0)
+		for _, vr := range volRoles {
+			if vr.CatalogID == nil {
+				// Global role counts for this distrib
+				rolesNeeded = append(rolesNeeded, vr.Name)
+			} else {
+				for _, cid := range catalogIDs {
+					if *vr.CatalogID == cid {
+						rolesNeeded = append(rolesNeeded, vr.Name)
+						break
+					}
+				}
+			}
+		}
+		nbNeeded := len(rolesNeeded)
+		if nbNeeded > int(nbRegistered) {
+			view.VolunteerNeeded = nbNeeded - int(nbRegistered)
+			view.VolunteerRoles = rolesNeeded
+		}
+
+		// Load user's orders for this MultiDistrib
+		var orders []model.UserOrder
+		h.db.Joins("JOIN distributions ON distributions.id = user_orders.distribution_id").
+			Joins("JOIN multi_distribs ON multi_distribs.id = distributions.multi_distrib_id").
+			Where("user_orders.user_id = ? AND multi_distribs.id = ?", claims.UserID, md.ID).
+			Preload("Product").
+			Find(&orders)
+
+		for _, o := range orders {
+			subTotal := o.Quantity * o.ProductPrice
+			total := o.TotalPrice()
+			view.UserOrders = append(view.UserOrders, UserOrderView{
+				ProductName: o.Product.Name,
+				SmartQty:    formatQty(o.Quantity, o.Product.UnitType),
+				UnitPrice:   o.ProductPrice,
+				SubTotal:    subTotal,
+				Fees:        total - subTotal,
+				Total:       total,
+			})
+			view.UserOrderTotal += total
+		}
+
+		views = append(views, view)
+	}
+	pd.MultiDistribs = views
+
+	// Load open variable-order catalogs
+	var catalogs []model.Catalog
+	h.db.Where("group_id = ? AND (end_date IS NULL OR end_date > ?) AND (start_date IS NULL OR start_date <= ?)",
+		pd.Group.ID, time.Now(), time.Now()).
+		Preload("Vendor").
+		Find(&catalogs)
+	for _, cat := range catalogs {
+		if cat.Type == model.CatalogTypeVarOrder && cat.UsersCanOrder() {
+			pd.OpenCatalogs = append(pd.OpenCatalogs, cat)
+		}
+	}
+
+	t, err := loadTemplates("base.html", "design.html", "home.html")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err)
+		return
 	}
 	if err := t.ExecuteTemplate(c.Writer, "base", pd); err != nil {
 		c.String(http.StatusInternalServerError, "render error: %v", err)
