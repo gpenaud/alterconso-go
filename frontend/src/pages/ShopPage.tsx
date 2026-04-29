@@ -137,8 +137,6 @@ export function ShopPage() {
   }
   if (!init || !catalog) return null;
 
-  const userName = me ? `${me.firstName} ${me.lastName}`.trim() : undefined;
-
   return (
     <div
       className="min-h-screen"
@@ -148,7 +146,7 @@ export function ShopPage() {
         color: "#333",
       }}
     >
-      <ShopTopBar groupName={init.group.name} userName={userName} />
+      <ShopTopBar groupName={init.group.name} user={me} />
 
       <div
         style={{

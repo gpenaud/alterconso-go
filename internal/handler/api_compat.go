@@ -80,7 +80,17 @@ func (h *CompatHandler) UserMe(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
-	c.JSON(http.StatusOK, userInfo(user))
+	out := userInfo(user)
+	out["isAdmin"] = user.IsAdmin()
+	// hasDatabaseAdmin : droit gating de l'accès à /admin/db. Calé sur la même
+	// logique que PageData.HasDatabaseAdmin (cf. pages.go::buildPageData).
+	if claims.GroupID != 0 {
+		ug := loadGroupAccess(h.db, claims.UserID, claims.GroupID)
+		if ug != nil {
+			out["hasDatabaseAdmin"] = ug.IsGroupManager() || ug.HasRight(model.RightDatabaseAdmin)
+		}
+	}
+	c.JSON(http.StatusOK, out)
 }
 
 // ---- /api/user/getFromGroup/ ----

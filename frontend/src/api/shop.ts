@@ -15,6 +15,8 @@ export interface ShopMe {
   firstName: string;
   lastName: string;
   email: string;
+  isAdmin?: boolean;
+  hasDatabaseAdmin?: boolean;
 }
 
 export function fetchShopMe() {
