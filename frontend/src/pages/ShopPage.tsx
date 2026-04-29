@@ -107,6 +107,7 @@ export function ShopPage() {
         catalogId: p?.catalogId ?? o.catalogId,
         qt: p?.qt ?? null,
         unitType: p?.unitType ?? null,
+        feesRate: p?.catalogTax ?? null,
       };
     });
     populatedFor.current = multiDistribId;

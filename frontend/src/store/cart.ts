@@ -14,6 +14,11 @@ export interface CartItem {
   // Champs unitaires conservés pour afficher la qté totale (qt × quantity).
   qt?: number | null;
   unitType?: import("../types/shop").Unit | number | null;
+  // Frais en % appliqués au total. Hérité du Catalog.PercentageFees au
+  // moment de l'ajout — UserOrder.FeesRate côté serveur est snapshotté de
+  // la même manière, donc le calcul du panier reflète exactement ce que
+  // /home (UserOrder.TotalPrice) affichera après submit.
+  feesRate?: number | null;
 }
 
 interface CartState {
@@ -28,6 +33,11 @@ interface CartState {
   replace: (items: CartItem[]) => void;
 
   count: () => number;
+  /** Sous-total HT/HF — somme price×quantity sans frais. */
+  subtotal: () => number;
+  /** Total des frais (% Catalog.PercentageFees appliqué ligne par ligne). */
+  feesTotal: () => number;
+  /** Total à payer = subtotal + feesTotal. C'est ce qu'affichera /home. */
   total: () => number;
   quantityOf: (productId: number) => number;
 }
@@ -63,6 +73,7 @@ export const useCartStore = create<CartState>()(
             catalogId: product.catalogId,
             qt: product.qt ?? null,
             unitType: product.unitType ?? null,
+            feesRate: product.catalogTax ?? null,
           });
         }
         set({ items });
@@ -88,8 +99,18 @@ export const useCartStore = create<CartState>()(
       replace: (items) => set({ items }),
 
       count: () => get().items.reduce((n, it) => n + it.quantity, 0),
-      total: () =>
+      subtotal: () =>
         get().items.reduce((s, it) => s + it.price * it.quantity, 0),
+      feesTotal: () =>
+        get().items.reduce(
+          (s, it) => s + it.price * it.quantity * ((it.feesRate ?? 0) / 100),
+          0,
+        ),
+      total: () =>
+        get().items.reduce(
+          (s, it) => s + it.price * it.quantity * (1 + (it.feesRate ?? 0) / 100),
+          0,
+        ),
       quantityOf: (productId) => {
         const it = get().items.find((it) => it.productId === productId);
         return it ? it.quantity : 0;

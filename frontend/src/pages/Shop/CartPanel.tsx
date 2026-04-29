@@ -25,6 +25,8 @@ interface Props {
  */
 export function CartPanel({ onClose, targetUserId, existingCatalogIds = [] }: Props) {
   const items = useCartStore((s) => s.items);
+  const subtotal = useCartStore((s) => s.subtotal());
+  const feesTotal = useCartStore((s) => s.feesTotal());
   const total = useCartStore((s) => s.total());
   const setQuantity = useCartStore((s) => s.setQuantity);
   const remove = useCartStore((s) => s.remove);
@@ -342,22 +344,42 @@ export function CartPanel({ onClose, targetUserId, existingCatalogIds = [] }: Pr
             }}
           >
             {items.length > 0 && (
-              <div
-                className="flex items-center justify-between"
-                style={{ marginBottom: 12 }}
-              >
-                <span style={{ fontSize: "0.95rem", color: COLORS.darkGrey }}>
-                  Total
-                </span>
-                <span
-                  style={{
-                    fontSize: "1.4rem",
-                    fontWeight: 700,
-                    color: COLORS.third,
-                  }}
+              <div style={{ marginBottom: 12 }}>
+                {feesTotal > 0 && (
+                  <>
+                    <div
+                      className="flex items-center justify-between"
+                      style={{ fontSize: "0.85rem", color: COLORS.mediumGrey }}
+                    >
+                      <span>Sous-total</span>
+                      <span>{formatPrice(subtotal)}</span>
+                    </div>
+                    <div
+                      className="flex items-center justify-between"
+                      style={{ fontSize: "0.85rem", color: COLORS.mediumGrey, marginTop: 2 }}
+                    >
+                      <span>Frais</span>
+                      <span>{formatPrice(feesTotal)}</span>
+                    </div>
+                  </>
+                )}
+                <div
+                  className="flex items-center justify-between"
+                  style={{ marginTop: feesTotal > 0 ? 6 : 0 }}
                 >
-                  {formatPrice(total)}
-                </span>
+                  <span style={{ fontSize: "0.95rem", color: COLORS.darkGrey }}>
+                    Total
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "1.4rem",
+                      fontWeight: 700,
+                      color: COLORS.third,
+                    }}
+                  >
+                    {formatPrice(total)}
+                  </span>
+                </div>
               </div>
             )}
             {submitError && (
