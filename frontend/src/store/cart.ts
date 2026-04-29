@@ -1,6 +1,10 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import type { ProductInfo } from "../types/shop";
+
+// Pas de persistance localStorage : un panier représente une session
+// d'édition transitoire. Quitter le shop sans valider doit perdre le panier
+// (cf. ShopPage : cleanup d'unmount qui appelle clear()). Au retour dans le
+// shop, le pre-fill réinitialise depuis les commandes serveur.
 
 export interface CartItem {
   productId: number;
@@ -42,83 +46,75 @@ interface CartState {
   quantityOf: (productId: number) => number;
 }
 
-export const useCartStore = create<CartState>()(
-  persist(
-    (set, get) => ({
-      multiDistribId: null,
-      items: [],
+export const useCartStore = create<CartState>()((set, get) => ({
+  multiDistribId: null,
+  items: [],
 
-      setMultiDistrib: (id) => {
-        // Si le shop change de MultiDistrib, on remet à zéro le panier — un
-        // panier appartient à une distribution donnée.
-        const prev = get().multiDistribId;
-        if (prev !== id) {
-          set({ multiDistribId: id, items: [] });
-        }
-      },
+  setMultiDistrib: (id) => {
+    // Si le shop change de MultiDistrib, on remet à zéro le panier — un
+    // panier appartient à une distribution donnée.
+    const prev = get().multiDistribId;
+    if (prev !== id) {
+      set({ multiDistribId: id, items: [] });
+    }
+  },
 
-      add: (product, qty = 1) => {
-        const items = get().items.slice();
-        const idx = items.findIndex((it) => it.productId === product.id);
-        if (idx >= 0) {
-          items[idx] = { ...items[idx], quantity: items[idx].quantity + qty };
-        } else {
-          items.push({
-            productId: product.id,
-            quantity: qty,
-            name: product.name,
-            price: product.price,
-            image: product.image ?? null,
-            vendorId: product.vendorId,
-            catalogId: product.catalogId,
-            qt: product.qt ?? null,
-            unitType: product.unitType ?? null,
-            feesRate: product.catalogTax ?? null,
-          });
-        }
-        set({ items });
-      },
+  add: (product, qty = 1) => {
+    const items = get().items.slice();
+    const idx = items.findIndex((it) => it.productId === product.id);
+    if (idx >= 0) {
+      items[idx] = { ...items[idx], quantity: items[idx].quantity + qty };
+    } else {
+      items.push({
+        productId: product.id,
+        quantity: qty,
+        name: product.name,
+        price: product.price,
+        image: product.image ?? null,
+        vendorId: product.vendorId,
+        catalogId: product.catalogId,
+        qt: product.qt ?? null,
+        unitType: product.unitType ?? null,
+        feesRate: product.catalogTax ?? null,
+      });
+    }
+    set({ items });
+  },
 
-      setQuantity: (productId, qty) => {
-        if (qty <= 0) {
-          set({ items: get().items.filter((it) => it.productId !== productId) });
-          return;
-        }
-        set({
-          items: get().items.map((it) =>
-            it.productId === productId ? { ...it, quantity: qty } : it,
-          ),
-        });
-      },
+  setQuantity: (productId, qty) => {
+    if (qty <= 0) {
+      set({ items: get().items.filter((it) => it.productId !== productId) });
+      return;
+    }
+    set({
+      items: get().items.map((it) =>
+        it.productId === productId ? { ...it, quantity: qty } : it,
+      ),
+    });
+  },
 
-      remove: (productId) =>
-        set({ items: get().items.filter((it) => it.productId !== productId) }),
+  remove: (productId) =>
+    set({ items: get().items.filter((it) => it.productId !== productId) }),
 
-      clear: () => set({ items: [] }),
+  clear: () => set({ items: [] }),
 
-      replace: (items) => set({ items }),
+  replace: (items) => set({ items }),
 
-      count: () => get().items.reduce((n, it) => n + it.quantity, 0),
-      subtotal: () =>
-        get().items.reduce((s, it) => s + it.price * it.quantity, 0),
-      feesTotal: () =>
-        get().items.reduce(
-          (s, it) => s + it.price * it.quantity * ((it.feesRate ?? 0) / 100),
-          0,
-        ),
-      total: () =>
-        get().items.reduce(
-          (s, it) => s + it.price * it.quantity * (1 + (it.feesRate ?? 0) / 100),
-          0,
-        ),
-      quantityOf: (productId) => {
-        const it = get().items.find((it) => it.productId === productId);
-        return it ? it.quantity : 0;
-      },
-    }),
-    {
-      name: "alterconso-cart",
-      partialize: (s) => ({ multiDistribId: s.multiDistribId, items: s.items }),
-    },
-  ),
-);
+  count: () => get().items.reduce((n, it) => n + it.quantity, 0),
+  subtotal: () =>
+    get().items.reduce((s, it) => s + it.price * it.quantity, 0),
+  feesTotal: () =>
+    get().items.reduce(
+      (s, it) => s + it.price * it.quantity * ((it.feesRate ?? 0) / 100),
+      0,
+    ),
+  total: () =>
+    get().items.reduce(
+      (s, it) => s + it.price * it.quantity * (1 + (it.feesRate ?? 0) / 100),
+      0,
+    ),
+  quantityOf: (productId) => {
+    const it = get().items.find((it) => it.productId === productId);
+    return it ? it.quantity : 0;
+  },
+}));

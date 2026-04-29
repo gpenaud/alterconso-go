@@ -34,6 +34,7 @@ export function ShopPage() {
   );
   const setMd = useCartStore((s) => s.setMultiDistrib);
   const replaceCart = useCartStore((s) => s.replace);
+  const clearCart = useCartStore((s) => s.clear);
   const cartItemsCount = useCartStore((s) => s.items.length);
   const cartMd = useCartStore((s) => s.multiDistribId);
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
@@ -82,6 +83,15 @@ export function ShopPage() {
       setMd(multiDistribId);
     }
   }, [multiDistribId, setMd]);
+
+  // Au démontage du shop : on efface tout panier non validé. Un panier ne
+  // doit pas survivre à une navigation hors shop ; au retour, le pre-fill
+  // restaure l'état serveur (la commande validée si elle existe).
+  useEffect(() => {
+    return () => {
+      clearCart();
+    };
+  }, [clearCart]);
 
   // Pré-remplit le panier avec la commande existante au PREMIER chargement
   // pour ce multiDistribId — pas après un submit (on a juste vidé le panier
