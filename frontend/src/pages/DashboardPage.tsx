@@ -49,46 +49,66 @@ export function DashboardPage() {
           </div>
         </Card>
 
-        {/* Distributions à venir */}
-        <section>
-          {homeLoading ? (
-            <p className="text-sm text-gray-500 py-8 text-center">Chargement…</p>
-          ) : home && home.multiDistribs.length > 0 ? (
-            <div className="space-y-4">
-              {home.multiDistribs.map((md) => (
+        {/* Section home : 2 colonnes (distribs à gauche, infos groupe à droite) */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 space-y-4">
+            {homeLoading ? (
+              <p className="text-sm text-gray-500 py-8 text-center">Chargement…</p>
+            ) : home && home.multiDistribs.length > 0 ? (
+              home.multiDistribs.map((md) => (
                 <MultiDistribCard key={md.id} md={md} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500 py-8 text-center">
-              Il n'y a pas de distribution prévue pour le moment.
-            </p>
-          )}
+              ))
+            ) : (
+              <p className="text-sm text-gray-500 py-8 text-center">
+                Il n'y a pas de distribution prévue pour le moment.
+              </p>
+            )}
 
-          {/* Navigation période */}
-          {home && (
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <button
-                type="button"
-                onClick={() => setOffset((v) => v - 1)}
-                className="px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
-                aria-label="Période précédente"
-              >
-                <i className="icon-chevron-left" aria-hidden="true" />
-              </button>
-              <span className="px-3 py-1.5 text-sm text-gray-600 select-none">
-                {home.periodLabel}
-              </span>
-              <button
-                type="button"
-                onClick={() => setOffset((v) => v + 1)}
-                className="px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
-                aria-label="Période suivante"
-              >
-                <i className="icon-chevron-right" aria-hidden="true" />
-              </button>
-            </div>
-          )}
+            {/* Navigation période */}
+            {home && (
+              <div className="flex items-center justify-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setOffset((v) => v - 1)}
+                  className="px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+                  aria-label="Période précédente"
+                >
+                  <i className="icon-chevron-left" aria-hidden="true" />
+                </button>
+                <span className="px-3 py-1.5 text-sm text-gray-600 select-none">
+                  {home.periodLabel}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setOffset((v) => v + 1)}
+                  className="px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+                  aria-label="Période suivante"
+                >
+                  <i className="icon-chevron-right" aria-hidden="true" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Colonne droite : texte d'accueil du groupe + raccourcis */}
+          <aside className="space-y-4">
+            {home?.groupTxtHome && (
+              <Card>
+                <div
+                  className="px-5 py-4 text-sm text-gray-700 whitespace-pre-line"
+                >
+                  {home.groupTxtHome}
+                </div>
+              </Card>
+            )}
+            <a
+              href="/distribution/volunteersCalendar"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+            >
+              <i className="icon-calendar" aria-hidden="true" />
+              Calendrier des permanences
+            </a>
+          </aside>
         </section>
 
         {/* Dernières opérations */}

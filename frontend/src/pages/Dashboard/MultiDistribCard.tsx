@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { MultiDistribView } from "../../api/home";
+import { OrderDetailModal } from "./OrderDetailModal";
 
 /**
  * Carte d'une distribution sur la page d'accueil. Port du legacy
@@ -10,6 +12,7 @@ import type { MultiDistribView } from "../../api/home";
 export function MultiDistribCard({ md }: { md: MultiDistribView }) {
   const headerBg = md.canOrder ? "bg-ac-green" : "bg-white";
   const headerText = md.canOrder ? "text-white" : "text-gray-700";
+  const [orderOpen, setOrderOpen] = useState(false);
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
@@ -59,9 +62,8 @@ export function MultiDistribCard({ md }: { md: MultiDistribView }) {
         <div className="text-center px-4 py-2">
           <button
             type="button"
-            disabled
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium border border-gray-300 text-gray-700 bg-gray-50 cursor-not-allowed"
-            title="Détail à venir"
+            onClick={() => setOrderOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
           >
             <i className="icon-basket" aria-hidden="true" />
             Ma commande : {Math.round(md.userOrderTotal)} €
@@ -120,6 +122,23 @@ export function MultiDistribCard({ md }: { md: MultiDistribView }) {
           </div>
         </div>
       )}
+
+      {/* Footer facture (distributions passées avec commande) */}
+      {md.past && md.userOrders && md.userOrders.length > 0 && (
+        <div className="px-4 py-3 border-t border-gray-100">
+          <a
+            href={`/member/invoice/${md.id}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm border border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
+            <i className="icon-print" aria-hidden="true" />
+            Ma facture
+          </a>
+        </div>
+      )}
+
+      {orderOpen && <OrderDetailModal md={md} onClose={() => setOrderOpen(false)} />}
     </div>
   );
 }
