@@ -74,10 +74,12 @@ RUN --mount=type=cache,target=/go/pkg/mod \
         -o /out/alterconso \
         ./cmd/server
 
-# Pré-compression des assets texte legacy (www/css, www/js, www/font, etc.).
-# On crée <fichier>.br ET <fichier>.gz, puis on supprime l'original :
-# l'image ne porte que les versions compressées, le handler négocie via
-# Accept-Encoding (br > gzip > 404). Économise ~70 % sur les blobs.
+# Pré-compression des assets statiques racine www/ (CSS Bootstrap 3, jQuery,
+# fonts d'icônes, images taxonomie). Partagés par les templates Go et le shop
+# React (qui réutilise /font/icons.css et /img/). On crée <fichier>.br ET
+# <fichier>.gz puis on supprime l'original : l'image ne porte que les versions
+# compressées, le handler négocie via Accept-Encoding (br > gzip > 404).
+# Économise ~70 % sur les blobs JS/CSS.
 COPY www /assets/www
 RUN find /assets/www -type f \( \
         -name '*.js' -o -name '*.css' -o -name '*.svg' -o \
