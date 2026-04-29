@@ -3,9 +3,9 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  // Base URL pour le déploiement côte-à-côte avec le legacy : la SPA est
-  // montée sous /shop2/ par le backend Go.
-  base: '/shop2/',
+  // SPA montée à la racine côté Go : les routes SPA (/login, /groups/...,
+  // /shop/:id, /profile) sont servies par index.html via NoRoute, et /assets
+  // par r.Static. Pas de base.
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,

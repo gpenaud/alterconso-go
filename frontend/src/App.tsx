@@ -25,7 +25,7 @@ function Protected({ children }: { children: React.ReactElement }) {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter basename="/shop2">
+      <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/groups" element={<Protected><GroupsPage /></Protected>} />

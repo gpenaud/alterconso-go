@@ -13,8 +13,8 @@ api.interceptors.response.use(
   (r) => r,
   (err) => {
     if (err.response?.status === 401) {
-      // L'auth peut être portée par le cookie JWT (cas de la SPA shop accédée
-      // directement via /shop2/...) ou par le Bearer token dans le store. Dans
+      // L'auth peut être portée par le cookie JWT (cas de la SPA accédée
+      // directement, ex /shop/:id) ou par le Bearer token dans le store. Dans
       // les deux cas on renvoie vers le login Go avec un __redirect, qui ré-émet
       // un cookie et rebascule l'utilisateur exactement là où il était.
       useAuthStore.getState().logout()

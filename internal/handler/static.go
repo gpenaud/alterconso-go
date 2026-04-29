@@ -61,40 +61,6 @@ func StaticPrecompressed(urlPrefix, dir string) gin.HandlerFunc {
 	}
 }
 
-// SPAFallback retourne un handler qui sert une SPA depuis `dir` :
-//   - Si le path correspond à un fichier existant sous `dir`, il est servi
-//     directement.
-//   - Sinon (route client-side gérée par React Router), `index.html` est
-//     renvoyé pour que la SPA prenne le relais.
-//
-// `urlPrefix` est l'URL sous laquelle la SPA est montée (ex "/shop2"). Doit
-// être enregistré avec un wildcard : r.GET(urlPrefix+"/*filepath", ...).
-func SPAFallback(urlPrefix, dir string) gin.HandlerFunc {
-	dir = filepath.Clean(dir)
-	indexHTML := filepath.Join(dir, "index.html")
-	return func(c *gin.Context) {
-		rel := strings.TrimPrefix(c.Request.URL.Path, urlPrefix)
-		rel = path.Clean("/" + rel)
-		rel = strings.TrimPrefix(rel, "/")
-		// Racine ou route SPA → index.html
-		if rel == "" {
-			c.File(indexHTML)
-			return
-		}
-		full := filepath.Join(dir, filepath.FromSlash(rel))
-		if !strings.HasPrefix(full, dir+string(filepath.Separator)) && full != dir {
-			c.Status(http.StatusForbidden)
-			return
-		}
-		if info, err := os.Stat(full); err == nil && !info.IsDir() {
-			c.File(full)
-			return
-		}
-		// Route SPA inconnue côté serveur → laisse React Router gérer.
-		c.File(indexHTML)
-	}
-}
-
 func serveCompressed(c *gin.Context, path, encoding, contentType string) bool {
 	info, err := os.Stat(path)
 	if err != nil || info.IsDir() {

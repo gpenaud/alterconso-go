@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"net/http"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gpenaud/alterconso/internal/config"
 	"github.com/gpenaud/alterconso/internal/middleware"
@@ -38,13 +41,15 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	fileH := NewFileHandler(db, cfg)
 	r.GET("/file/:sign", fileH.ServeFile)
 
-	// ---- Nouvelle SPA React (montée côte-à-côte du shop legacy Haxe) ----
-	// Sert frontend/dist sous /shop2/, avec fallback index.html pour les
-	// routes gérées par React Router. L'auth est portée par le cookie JWT
-	// "token" déjà partagé avec les autres pages — pas de middleware ici,
-	// les appels API sous /api restent protégés par middleware.Auth.
-	r.GET("/shop2", func(c *gin.Context) { c.Redirect(302, "/shop2/") })
-	r.GET("/shop2/*filepath", SPAFallback("/shop2", "frontend/dist"))
+	// ---- SPA React (mountée à la racine) ----
+	// /assets/* sert les bundles Vite (index-XXX.js / .css) directement depuis
+	// frontend/dist/assets. Les routes SPA (/login, /groups/..., /shop/:id,
+	// /profile) sont servies par index.html via NoRoute plus bas — React
+	// Router prend le relais côté client. L'auth est portée par le cookie JWT
+	// "token" déjà partagé avec les pages Go ; pas de middleware ici, les
+	// appels API sous /api restent protégés par middleware.Auth.
+	r.Static("/assets", "frontend/dist/assets")
+	r.StaticFile("/favicon.svg", "frontend/dist/favicon.svg")
 
 	// ---- Frontend pages (original Haxe UI) ----
 	pagesH := NewPagesHandler(db, cfg)
@@ -54,11 +59,6 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/user/choose", pageAuth, pagesH.ChoosePage)
 	r.GET("/home", pageAuth, pagesH.HomePage)
 	r.GET("/contract/view/:id", pageAuth, pagesH.ContractViewPage)
-	// /shop/:id était servi par un template qui chargeait l'app Haxe ; il
-	// renvoie désormais sur la SPA React sous /shop2/.
-	r.GET("/shop/:multiDistribId", func(c *gin.Context) {
-		c.Redirect(302, "/shop2/shop/"+c.Param("multiDistribId"))
-	})
 	r.GET("/account", pageAuth, pagesH.AccountPage)
 	r.GET("/account/edit", pageAuth, pagesH.AccountEditPage)
 	r.POST("/account/update", pageAuth, pagesH.AccountUpdate)
@@ -318,4 +318,22 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 
 	// Home (JSON pour la future page d'accueil React).
 	api.GET("/home", pagesH.HomeJSON)
+
+	// ---- Fallback SPA ----
+	// Pour toute route non matchée par les pages Go ou l'API, on sert
+	// frontend/dist/index.html si l'URL ressemble à une route SPA. Sinon 404.
+	// Ça permet à React Router de gérer /shop/:id, /groups/:id/..., /login,
+	// /profile sans préfixe.
+	spaPrefixes := []string{"/login", "/profile", "/groups", "/shop/"}
+	r.NoRoute(func(c *gin.Context) {
+		p := c.Request.URL.Path
+		for _, pref := range spaPrefixes {
+			if p == pref || strings.HasPrefix(p, pref+"/") ||
+				(strings.HasSuffix(pref, "/") && strings.HasPrefix(p, pref)) {
+				c.File("frontend/dist/index.html")
+				return
+			}
+		}
+		c.Status(http.StatusNotFound)
+	})
 }
