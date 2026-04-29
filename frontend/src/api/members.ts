@@ -7,8 +7,21 @@ export interface Member {
   email: string
   phone?: string
   balance: number
-  rights: string[]
+  isManager: boolean
+  address: string
 }
 
-export const getMembers = (groupId: number) =>
-  api.get<{ members: Member[] }>(`/groups/${groupId}/members`).then((r) => r.data.members)
+export interface MembersResponse {
+  members: Member[]
+  total: number
+  totalPages: number
+  page: number
+  perPage: number
+  waitingListCount: number
+}
+
+export function getMembers(groupId: number, page = 1) {
+  return api
+    .get<MembersResponse>(`/groups/${groupId}/members`, { params: { page } })
+    .then((r) => r.data)
+}

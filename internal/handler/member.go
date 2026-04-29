@@ -14,7 +14,9 @@ type MemberHandler struct{ db *gorm.DB }
 
 func NewMemberHandler(db *gorm.DB) *MemberHandler { return &MemberHandler{db: db} }
 
-// List retourne les membres d'un groupe avec leur balance.
+// List retourne les membres d'un groupe avec leur balance, paginés.
+// Query params : ?page=N (défaut 1), ?perPage=M (défaut 10, plafonné 200).
+// Retourne aussi waitingListCount pour la sidebar de la page Membres.
 func (h *MemberHandler) List(c *gin.Context) {
 	groupID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -28,26 +30,84 @@ func (h *MemberHandler) List(c *gin.Context) {
 		return
 	}
 
-	type memberRow struct {
-		model.User
-		Balance float64 `json:"balance"`
-		Rights  string  `json:"rights"`
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 {
+		page = 1
 	}
+	perPage, _ := strconv.Atoi(c.DefaultQuery("perPage", "10"))
+	if perPage < 1 || perPage > 200 {
+		perPage = 10
+	}
+
+	var total int64
+	h.db.Model(&model.UserGroup{}).Where("group_id = ?", groupID).Count(&total)
 
 	var rows []struct {
 		model.User
 		Balance float64
 		Rights  string
 	}
-
 	h.db.Model(&model.User{}).
 		Select("users.*, user_groups.balance, user_groups.rights").
 		Joins("JOIN user_groups ON user_groups.user_id = users.id").
 		Where("user_groups.group_id = ?", groupID).
 		Order("users.last_name").
+		Offset((page - 1) * perPage).
+		Limit(perPage).
 		Scan(&rows)
 
-	c.JSON(http.StatusOK, rows)
+	type memberView struct {
+		model.User
+		Balance   float64 `json:"balance"`
+		IsManager bool    `json:"isManager"`
+		Address   string  `json:"address"`
+	}
+	members := make([]memberView, 0, len(rows))
+	for _, r := range rows {
+		ug := model.UserGroup{Rights: r.Rights}
+		address := ""
+		if r.Address1 != nil {
+			address = *r.Address1
+		}
+		if r.ZipCode != nil {
+			if address != "" {
+				address += " "
+			}
+			address += *r.ZipCode
+		}
+		if r.City != nil {
+			if address != "" {
+				address += " "
+			}
+			address += *r.City
+		}
+		members = append(members, memberView{
+			User:      r.User,
+			Balance:   r.Balance,
+			IsManager: ug.IsGroupManager(),
+			Address:   address,
+		})
+	}
+
+	totalPages := int(total) / perPage
+	if int(total)%perPage != 0 {
+		totalPages++
+	}
+
+	var waitingListCount int64
+	h.db.Model(&model.WaitingList{}).
+		Joins("JOIN catalogs ON catalogs.id = waiting_lists.catalog_id").
+		Where("catalogs.group_id = ?", groupID).
+		Count(&waitingListCount)
+
+	c.JSON(http.StatusOK, gin.H{
+		"members":          members,
+		"total":            total,
+		"totalPages":       totalPages,
+		"page":             page,
+		"perPage":          perPage,
+		"waitingListCount": waitingListCount,
+	})
 }
 
 // Add ajoute un utilisateur existant comme membre du groupe.
