@@ -1,6 +1,6 @@
 {{define "content"}}
 <div class="row">
-  <div class="col-md-5">
+  <div class="col-md-4">
     <h2>Coordonnées</h2>
     <div class="article">
       <div style="font-weight:bold;font-size:120%;">{{.Member.FirstName}} {{.Member.LastName}}</div>
@@ -18,15 +18,15 @@
         Inscrit le : {{.Member.CreatedAt.Format "02/01/2006"}}
       </p>
       <p style="display:flex;gap:6px;flex-wrap:nowrap;align-items:center;white-space:nowrap;">
-        <a href="/member/edit/{{.Member.ID}}" class="btn btn-default btn-xs"><i class="icon icon-edit"></i> Modifier</a>
-        <a href="/member/delete/{{.Member.ID}}" class="btn btn-default btn-xs"
+        <a href="/member/edit/{{.Member.ID}}" class="btn btn-default btn-xs" style="padding:5px 10px;"><i class="icon icon-edit"></i> Modifier</a>
+        <a href="/member/delete/{{.Member.ID}}" class="btn btn-default btn-xs" style="padding:5px 10px;"
           onclick="return confirm('Retirer ce membre du groupe ?')">
           <i class="icon icon-delete"></i> Retirer
         </a>
         {{if .IsGroupManager}}
         <form method="POST" action="/member/fullDelete/{{.Member.ID}}" style="margin:0;padding:0;display:inline-block;"
               onsubmit="return confirm('SUPPRIMER DÉFINITIVEMENT le compte de {{.Member.FirstName}} {{.Member.LastName}} ?\n\nLe compte sera retiré de tous les groupes et toutes les données associées (commandes, adhésions, bénévolat) seront perdues. Cette action est irréversible.');">
-          <button type="submit" class="btn btn-danger btn-xs">
+          <button type="submit" class="btn btn-danger btn-xs" style="padding:5px 10px;">
             <i class="icon icon-delete"></i> Supprimer
           </button>
         </form>
@@ -67,7 +67,7 @@
     </div>
   </div>
 
-  <div class="col-md-7">
+  <div class="col-md-8">
     <h2>Commandes</h2>
     <div class="article">
 
