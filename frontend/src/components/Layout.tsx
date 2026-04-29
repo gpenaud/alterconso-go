@@ -11,7 +11,6 @@ interface Props {
 
 const navItems = [
   { label: 'Accueil', path: '' },
-  { label: 'Producteurs', path: '/amap' },
   { label: 'Distributions', path: '/distributions' },
   { label: 'Finances', path: '/finances' },
   { label: 'Membres', path: '/members' },

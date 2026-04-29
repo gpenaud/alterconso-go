@@ -10,7 +10,6 @@ import { MembersPage } from './pages/MembersPage'
 import { CatalogsPage } from './pages/CatalogsPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { AdminPage } from './pages/AdminPage'
-import { AmapPage } from './pages/AmapPage'
 import { ShopPage } from './pages/ShopPage'
 import { useAuthStore } from './store/auth'
 
@@ -38,7 +37,6 @@ export default function App() {
           <Route path="/groups/:groupId/members" element={<Protected><MembersPage /></Protected>} />
           <Route path="/groups/:groupId/catalogs" element={<Protected><CatalogsPage /></Protected>} />
           <Route path="/groups/:groupId/admin" element={<Protected><AdminPage /></Protected>} />
-          <Route path="/groups/:groupId/amap" element={<Protected><AmapPage /></Protected>} />
           {/* Shop accessible directement : l'auth API se fait via le cookie de
               session JWT déjà en place (middleware Auth accepte cookie OU Bearer). */}
           <Route path="/shop/:multiDistribId" element={<ShopPage />} />

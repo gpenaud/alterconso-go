@@ -76,15 +76,7 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/account/quit", pageAuth, pagesH.AccountQuitPage)
 	r.GET("/member", pageAuth, pagesH.MemberPage)
 	r.GET("/distribution", pageAuth, pagesH.DistributionPage)
-	// /amap : redirige vers la AmapPage React. La page Go n'est plus servie.
-	r.GET("/amap", pageAuth, func(c *gin.Context) {
-		claims := middleware.GetClaims(c)
-		if claims == nil || claims.GroupID == 0 {
-			c.Redirect(http.StatusFound, "/user/choose")
-			return
-		}
-		c.Redirect(http.StatusFound, fmt.Sprintf("/groups/%d/amap", claims.GroupID))
-	})
+	r.GET("/amap", pageAuth, pagesH.AmapPage)
 	r.GET("/amapadmin", pageAuth, pagesH.AmapAdminPage)
 	r.GET("/amapadmin/edit", pageAuth, pagesH.AmapAdminEditPage)
 	r.POST("/amapadmin/update", pageAuth, pagesH.AmapAdminUpdate)
@@ -335,10 +327,9 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	api.GET("/orders", orderH.GetForUser)
 	api.POST("/orders", orderH.CreateOrUpdate)
 
-	// Home + Account + Amap (JSON pour les pages React).
+	// Home + Account (JSON pour les pages React).
 	api.GET("/home", pagesH.HomeJSON)
 	api.GET("/account", pagesH.AccountJSON)
-	api.GET("/amap", pagesH.AmapJSON)
 
 	// ---- Fallback SPA ----
 	// Pour toute route non matchée par les pages Go ou l'API, on sert

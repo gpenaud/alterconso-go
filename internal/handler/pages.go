@@ -154,6 +154,7 @@ type PageData struct {
 	LogoURL          string
 	// amap page
 	Vendors     []model.Vendor
+	AmapVendors []AmapVendorView
 	// contractAdmin page
 	AdminCatalogs []CatalogAdminRow
 	// account page membership
@@ -942,6 +943,101 @@ func (h *PagesHandler) DistributionPage(c *gin.Context) {
 	pd.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}}
 
 	t, err := loadTemplates("base.html", "design.html", "distribution.html")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err)
+		return
+	}
+	if err := t.ExecuteTemplate(c.Writer, "base", pd); err != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err)
+	}
+}
+
+// ---- Amap page (producteurs) ----
+
+type AmapCatalogView struct {
+	ID            uint
+	Name          string
+	ProductImages []ProductImageView
+	Coordinator   *model.User
+}
+
+type AmapVendorView struct {
+	ID       uint
+	Name     string
+	City     string
+	ImageURL string
+	ZipCode  string
+	Catalogs []AmapCatalogView
+}
+
+func (h *PagesHandler) AmapPage(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil {
+		c.Redirect(http.StatusFound, "/user/choose")
+		return
+	}
+
+	// Load catalogs with vendor, contact, and product images
+	var catalogs []model.Catalog
+	h.db.Where("group_id = ?", pd.Group.ID).
+		Preload("Vendor").
+		Preload("Contact").
+		Find(&catalogs)
+
+	// Build vendor views ordered by first seen
+	vendorOrder := []uint{}
+	vendorMap := make(map[uint]*AmapVendorView)
+	for _, cat := range catalogs {
+		v := cat.Vendor
+		if _, exists := vendorMap[v.ID]; !exists {
+			vendorOrder = append(vendorOrder, v.ID)
+			city := ""
+			zip := ""
+			if v.City != nil { city = *v.City }
+			if v.ZipCode != nil { zip = *v.ZipCode }
+			vendorMap[v.ID] = &AmapVendorView{
+				ID:      v.ID,
+				Name:    v.Name,
+				City:    city,
+				ZipCode: zip,
+			}
+		}
+		// Load product images for this catalog (max 5)
+		var prods []model.Product
+		h.db.Where("catalog_id = ?", cat.ID).Preload("Image").Limit(5).Find(&prods)
+		imgs := []ProductImageView{}
+		for _, p := range prods {
+			url := "/img/taxo/grey/fruits-legumes.png"
+			if p.Image != nil {
+				url = FileURL(p.Image.ID, h.cfg.Key, p.Image.Name)
+			}
+			imgs = append(imgs, ProductImageView{URL: url, Name: p.Name})
+		}
+		catView := AmapCatalogView{
+			ID:            cat.ID,
+			Name:          cat.Name,
+			ProductImages: imgs,
+			Coordinator:   cat.Contact,
+		}
+		vendorMap[v.ID].Catalogs = append(vendorMap[v.ID].Catalogs, catView)
+	}
+	for _, id := range vendorOrder {
+		pd.AmapVendors = append(pd.AmapVendors, *vendorMap[id])
+	}
+
+	// Group contact principal
+	if pd.Group.ContactID != nil {
+		var contact model.User
+		if err := h.db.First(&contact, *pd.Group.ContactID).Error; err == nil {
+			pd.Contact = &contact
+		}
+	}
+
+	pd.Title = "Producteurs"
+	pd.Category = "amap"
+	pd.Breadcrumb = []BreadcrumbItem{{Name: "Producteurs", Link: "/amap"}}
+
+	t, err := loadTemplates("base.html", "design.html", "amap.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
