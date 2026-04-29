@@ -1158,17 +1158,27 @@ type MessageView struct {
 // du groupe ayant commandé sur une distribution programmée au jour donné.
 // Utilisé pour le destinataire éphémère "Clients de la commande du DD/MM/YYYY".
 func (h *PagesHandler) distribOrdersEmails(groupID uint, day time.Time) []string {
-	dayStr := day.Format("2006-01-02")
-	var emails []string
-	h.db.Raw(`
-		SELECT DISTINCT u.email
-		FROM users u
-		JOIN user_orders uo ON uo.user_id = u.id
-		JOIN distributions d ON d.id = uo.distribution_id
-		JOIN multi_distribs md ON md.id = d.multi_distrib_id
-		WHERE md.group_id = ? AND DATE(md.distrib_start_date) = ? AND u.email <> ''
-		ORDER BY u.last_name, u.first_name
-	`, groupID, dayStr).Scan(&emails)
+	dayStart := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, day.Location())
+	dayEnd := dayStart.AddDate(0, 0, 1)
+	var rows []struct {
+		Email    string
+		LastName string
+		FirstName string
+	}
+	h.db.Table("user_orders").
+		Select("DISTINCT users.email, users.last_name, users.first_name").
+		Joins("JOIN users ON users.id = user_orders.user_id").
+		Joins("JOIN distributions ON distributions.id = user_orders.distribution_id").
+		Joins("JOIN multi_distribs ON multi_distribs.id = distributions.multi_distrib_id").
+		Where("multi_distribs.group_id = ?", groupID).
+		Where("multi_distribs.distrib_start_date >= ? AND multi_distribs.distrib_start_date < ?", dayStart, dayEnd).
+		Where("users.email <> ''").
+		Order("users.last_name, users.first_name").
+		Scan(&rows)
+	emails := make([]string, len(rows))
+	for i, r := range rows {
+		emails[i] = r.Email
+	}
 	return emails
 }
 
