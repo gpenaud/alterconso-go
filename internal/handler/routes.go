@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -57,7 +58,17 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/user/login", pagesH.LoginPage)
 	r.GET("/user/logout", pagesH.Logout)
 	r.GET("/user/choose", pageAuth, pagesH.ChoosePage)
-	r.GET("/home", pageAuth, pagesH.HomePage)
+	// /home : redirige vers la DashboardPage React (/groups/:id) pour le
+	// groupe courant des claims. Les anciennes URLs Go pointant vers /home
+	// continuent de fonctionner via redirect.
+	r.GET("/home", pageAuth, func(c *gin.Context) {
+		claims := middleware.GetClaims(c)
+		if claims == nil || claims.GroupID == 0 {
+			c.Redirect(http.StatusFound, "/user/choose")
+			return
+		}
+		c.Redirect(http.StatusFound, fmt.Sprintf("/groups/%d", claims.GroupID))
+	})
 	r.GET("/contract/view/:id", pageAuth, pagesH.ContractViewPage)
 	r.GET("/account", pageAuth, pagesH.AccountPage)
 	r.GET("/account/edit", pageAuth, pagesH.AccountEditPage)
