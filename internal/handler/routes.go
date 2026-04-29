@@ -315,4 +315,7 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	orderH := NewOrderHandler(db)
 	api.GET("/orders", orderH.GetForUser)
 	api.POST("/orders", orderH.CreateOrUpdate)
+
+	// Home (JSON pour la future page d'accueil React).
+	api.GET("/home", pagesH.HomeJSON)
 }
