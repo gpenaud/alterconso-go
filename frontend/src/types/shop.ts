@@ -88,6 +88,7 @@ export interface ProductInfo {
 export interface ShopInitResponse {
   success: boolean;
   place: PlaceInfo;
+  group: { id: number; name: string };
   distributionStartDate: string; // "YYYY-MM-DD HH:MM:SS"
   distributionEndDate: string;
   orderEndDates: Array<{ date: string; contracts: string[] }>;

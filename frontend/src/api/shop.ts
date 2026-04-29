@@ -9,6 +9,18 @@ import type {
 // À terme, remplacer par des endpoints REST propres si on dégage la couche
 // de compatibilité Haxe.
 
+export interface ShopMe {
+  id: number;
+  name: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+export function fetchShopMe() {
+  return api.get<ShopMe>("/user/me").then((r) => r.data);
+}
+
 export function fetchShopInit(multiDistribId: number) {
   return api
     .get<ShopInitResponse>("/shop/init", { params: { multiDistrib: multiDistribId } })

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { useShopData } from "../hooks/useShop";
+import { useShopData, useShopMe } from "../hooks/useShop";
 import { useCartStore } from "../store/cart";
 import { parseDateTime } from "../utils/format";
 import type { ProductInfo, VendorInfo } from "../types/shop";
+import { ShopTopBar } from "./Shop/ShopTopBar";
 import { Header } from "./Shop/Header";
 import { CategoryNav } from "./Shop/CategoryNav";
 import { SubCategoryNav } from "./Shop/SubCategoryNav";
@@ -25,6 +26,7 @@ export function ShopPage() {
   }, [searchParams]);
 
   const { isLoading, error, init, categories, catalog } = useShopData(multiDistribId);
+  const { data: me } = useShopMe();
   const setMd = useCartStore((s) => s.setMultiDistrib);
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
   const [activeSubcategory, setActiveSubcategory] = useState<number | null>(null);
@@ -135,8 +137,19 @@ export function ShopPage() {
   }
   if (!init || !catalog) return null;
 
+  const userName = me ? `${me.firstName} ${me.lastName}`.trim() : undefined;
+
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#fff" }}>
+    <div
+      className="min-h-screen"
+      style={{
+        backgroundColor: "#fff",
+        fontFamily: "Cabin, Arial, Helvetica, sans-serif",
+        color: "#333",
+      }}
+    >
+      <ShopTopBar groupName={init.group.name} userName={userName} />
+
       <div
         style={{
           position: "sticky",

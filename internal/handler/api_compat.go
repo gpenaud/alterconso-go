@@ -525,6 +525,7 @@ func (h *CompatHandler) ShopInit(c *gin.Context) {
 
 	var md model.MultiDistrib
 	if err := h.db.Preload("Place").
+		Preload("Group").
 		Preload("Distributions.Catalog.Vendor").
 		First(&md, mdID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
@@ -556,6 +557,7 @@ func (h *CompatHandler) ShopInit(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success":               true,
 		"place":                 placeInfos(md.Place),
+		"group":                 gin.H{"id": md.Group.ID, "name": md.Group.Name},
 		"distributionStartDate": md.DistribStartDate.Format("2006-01-02 15:04:05"),
 		"distributionEndDate":   md.DistribEndDate.Format("2006-01-02 15:04:05"),
 		"orderEndDates":         []gin.H{},

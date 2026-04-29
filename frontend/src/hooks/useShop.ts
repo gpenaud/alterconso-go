@@ -1,7 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchShopInit, fetchShopCategories, fetchShopProducts } from "../api/shop";
+import {
+  fetchShopInit,
+  fetchShopCategories,
+  fetchShopProducts,
+  fetchShopMe,
+} from "../api/shop";
 import { buildCatalog } from "../utils/catalog";
 import type { CategoryInfo, FilteredProductCatalog } from "../types/shop";
+
+/**
+ * Récupère l'utilisateur courant via /api/user/me (compat). Le résultat est
+ * mis en cache 5 min : appelé en parallèle des données shop.
+ */
+export function useShopMe() {
+  return useQuery({
+    queryKey: ["shop", "me"],
+    queryFn: fetchShopMe,
+    staleTime: 5 * 60_000,
+  });
+}
 
 /**
  * Récupère et compose toutes les données du shop pour un MultiDistrib donné :
