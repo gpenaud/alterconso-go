@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCartStore } from "../../store/cart";
 import { submitOrder } from "../../api/shop";
 import { formatPrice, smartQty } from "../../utils/format";
@@ -26,6 +27,7 @@ export function CartPanel({ onClose, targetUserId }: Props) {
   const clear = useCartStore((s) => s.clear);
   const multiDistribId = useCartStore((s) => s.multiDistribId);
 
+  const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -70,6 +72,11 @@ export function CartPanel({ onClose, targetUserId }: Props) {
         });
       }
       clear();
+      // Invalide les caches dépendant de l'état serveur de la commande, sinon
+      // une re-visite (shop pré-rempli, dashboard "Ma commande : X €") affiche
+      // l'état d'avant submit pendant la durée de staleTime.
+      queryClient.invalidateQueries({ queryKey: ["shop", "existingOrders"] });
+      queryClient.invalidateQueries({ queryKey: ["home"] });
       setSubmitted(true);
     } catch (e) {
       setSubmitError((e as Error).message ?? "Erreur lors de la commande");

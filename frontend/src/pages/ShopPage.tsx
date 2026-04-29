@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useShopData, useShopMe, useExistingOrders } from "../hooks/useShop";
 import { useCartStore, type CartItem } from "../store/cart";
@@ -79,14 +79,17 @@ export function ShopPage() {
     }
   }, [multiDistribId, setMd]);
 
-  // Pré-remplit le panier avec la commande existante quand on (re)visite un
-  // shop sur lequel l'utilisateur a déjà commandé. On ne touche pas au panier
-  // s'il contient déjà des articles (panier local en cours d'édition).
+  // Pré-remplit le panier avec la commande existante au PREMIER chargement
+  // pour ce multiDistribId — pas après un submit (on a juste vidé le panier
+  // et l'invalidation va déclencher un refetch ; on ne veut pas que l'effet
+  // se redéclenche avec l'ancienne donnée puis l'ignore avec la nouvelle).
+  const populatedFor = useRef<number | null>(null);
   useEffect(() => {
+    if (populatedFor.current === multiDistribId) return;
     if (!existingOrders || existingOrders.length === 0) return;
     if (!products || products.length === 0) return;
     if (cartMd !== multiDistribId) return; // setMd pas encore aligné
-    if (cartItemsCount > 0) return;
+    if (cartItemsCount > 0) return; // panier local en cours d'édition
     const byId = new Map(products.map((p) => [p.id, p]));
     const items: CartItem[] = existingOrders.map((o) => {
       const p = byId.get(o.product.id);
@@ -102,6 +105,7 @@ export function ShopPage() {
         unitType: p?.unitType ?? null,
       };
     });
+    populatedFor.current = multiDistribId;
     replaceCart(items);
   }, [existingOrders, products, cartMd, multiDistribId, cartItemsCount, replaceCart]);
 
