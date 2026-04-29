@@ -47,7 +47,7 @@
         {{if .CanOrder}}
         <a href="/shop/{{.ID}}" class="btn btn-lg btn-primary">
           <i class="icon icon-basket"></i>
-          {{if .UserOrders}}Ma commande : {{printf "%.0f" .UserOrderTotal}} €{{else}}Commander{{end}}
+          {{if .UserOrders}}Ma commande : {{printf "%.2f" .UserOrderTotal}} €{{else}}Commander{{end}}
         </a>
         {{if .OrderEndDate}}
         <div style="color:#888;font-size:1em;margin-top:12px;">
@@ -57,7 +57,7 @@
         {{else}}
         {{if .UserOrders}}
         <button type="button" class="btn btn-default" style="margin-bottom:12px;" data-toggle="modal" data-target="#modalMyOrder-{{.ID}}">
-          <i class="icon icon-basket"></i> Ma commande : {{printf "%.0f" .UserOrderTotal}} €
+          <i class="icon icon-basket"></i> Ma commande : {{printf "%.2f" .UserOrderTotal}} €
         </button>
         <br>
         {{end}}
@@ -119,10 +119,10 @@
                   <tr style="border-bottom:1px solid #f0f0f0;">
                     <td style="vertical-align:middle;padding-left:28px;">{{.SmartQty}}</td>
                     <td style="vertical-align:middle;color:#7aaa3a;">{{.ProductName}}</td>
-                    <td style="vertical-align:middle;text-align:right;">{{printf "%.0f" .UnitPrice}} €</td>
-                    <td style="vertical-align:middle;text-align:right;">{{printf "%.0f" .SubTotal}} €</td>
+                    <td style="vertical-align:middle;text-align:right;">{{printf "%.2f" .UnitPrice}} €</td>
+                    <td style="vertical-align:middle;text-align:right;">{{printf "%.2f" .SubTotal}} €</td>
                     <td style="vertical-align:middle;text-align:right;color:#aaa;">{{if gt .Fees 0.0}}{{printf "%.2f" .Fees}} €{{end}}</td>
-                    <td style="vertical-align:middle;text-align:right;padding-right:28px;">{{printf "%.0f" .Total}} €</td>
+                    <td style="vertical-align:middle;text-align:right;padding-right:28px;">{{printf "%.2f" .Total}} €</td>
                   </tr>
                   {{end}}
                 </tbody>
@@ -134,7 +134,7 @@
                       </a>
                     </td>
                     <td colspan="4" style="text-align:right;color:#aaa;letter-spacing:0.05em;">TOTAL</td>
-                    <td style="text-align:right;font-weight:bold;padding-right:28px;">{{printf "%.0f" .UserOrderTotal}} €</td>
+                    <td style="text-align:right;font-weight:bold;padding-right:28px;">{{printf "%.2f" .UserOrderTotal}} €</td>
                   </tr>
                 </tfoot>
               </table>

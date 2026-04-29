@@ -76,7 +76,7 @@ export function MultiDistribCard({ md }: { md: MultiDistribView }) {
               >
                 <i className="icon-basket" aria-hidden="true" />
                 {md.userOrders && md.userOrders.length > 0
-                  ? `Ma commande : ${Math.round(md.userOrderTotal)} €`
+                  ? `Ma commande : ${md.userOrderTotal.toFixed(2)} €`
                   : "Commander"}
               </Link>
               {md.orderEndDate && (
@@ -94,7 +94,7 @@ export function MultiDistribCard({ md }: { md: MultiDistribView }) {
                   className="inline-flex items-center gap-2 px-4 py-2 mb-3 rounded-md text-sm font-medium border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
                 >
                   <i className="icon-basket" aria-hidden="true" />
-                  Ma commande : {Math.round(md.userOrderTotal)} €
+                  Ma commande : {md.userOrderTotal.toFixed(2)} €
                 </button>
               )}
               {md.orderNotYetOpen ? (

@@ -73,12 +73,12 @@ export function OrderDetailModal({
                 <tr key={i} className="border-b border-gray-100">
                   <td className="py-2 pl-7">{o.smartQty}</td>
                   <td className="py-2 text-ac-green-dark">{o.productName}</td>
-                  <td className="py-2 text-right">{Math.round(o.unitPrice)} €</td>
-                  <td className="py-2 text-right">{Math.round(o.subTotal)} €</td>
+                  <td className="py-2 text-right">{o.unitPrice.toFixed(2)} €</td>
+                  <td className="py-2 text-right">{o.subTotal.toFixed(2)} €</td>
                   <td className="py-2 text-right text-gray-400">
                     {o.fees > 0 ? `${o.fees.toFixed(2)} €` : ""}
                   </td>
-                  <td className="py-2 text-right pr-7">{Math.round(o.total)} €</td>
+                  <td className="py-2 text-right pr-7">{o.total.toFixed(2)} €</td>
                 </tr>
               ))}
             </tbody>
@@ -99,7 +99,7 @@ export function OrderDetailModal({
                   Total
                 </td>
                 <td className="py-3 text-right font-bold pr-7">
-                  {Math.round(md.userOrderTotal)} €
+                  {md.userOrderTotal.toFixed(2)} €
                 </td>
               </tr>
             </tfoot>
