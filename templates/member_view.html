@@ -8,8 +8,8 @@
         {{if .Member.Address1}}{{deref .Member.Address1}}{{end}}{{if and .Member.Address1 (or .Member.ZipCode .Member.City)}}, {{end}}{{if .Member.ZipCode}}{{deref .Member.ZipCode}}{{end}} {{if .Member.City}}{{deref .Member.City}}{{end}}
       </p>
       <p style="margin-bottom:8px;line-height:1.7;">
-        {{if .Member.Phone}}<i class="icon icon-phone" style="width:16px;display:inline-block;"></i> {{deref .Member.Phone}}<br/>{{end}}
-        <i class="icon icon-mail" style="width:16px;display:inline-block;"></i> <a href="mailto:{{.Member.Email}}">{{.Member.Email}}</a>
+        {{if .Member.Phone}}<i class="icon icon-phone" style="width:16px;display:inline-block;margin-right:6px;"></i> {{deref .Member.Phone}}<br/>{{end}}
+        <i class="icon icon-mail" style="width:16px;display:inline-block;margin-right:6px;"></i> <a href="mailto:{{.Member.Email}}">{{.Member.Email}}</a>
       </p>
       <hr/>
       <p style="font-size:11px;">
