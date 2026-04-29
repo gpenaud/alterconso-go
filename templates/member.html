@@ -11,6 +11,19 @@
             <a href="/member/view/{{.ID}}" style="color:#5a8a00;font-weight:500;">{{.LastName}} {{.FirstName}}</a>
           </td>
           <td style="padding:10px 16px;color:#555;">{{.Address}}</td>
+          {{if $.Group.HasMembership}}
+          <td style="padding:10px 16px;text-align:center;width:1%;white-space:nowrap;">
+            {{if .MembershipPaid}}
+            <span title="Adhésion {{printf "%.2f" .MembershipFee}} € payée" style="color:#5a8a00;">
+              <i class="icon icon-check"></i>
+            </span>
+            {{else}}
+            <span title="Adhésion non payée" style="color:#c0392b;">
+              <i class="icon icon-alert"></i>
+            </span>
+            {{end}}
+          </td>
+          {{end}}
         </tr>
         {{end}}
       </tbody>

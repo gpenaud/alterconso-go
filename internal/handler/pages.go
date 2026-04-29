@@ -250,6 +250,10 @@ type MemberView struct {
 	Balance   float64
 	IsManager bool
 	Address   string
+	// Adhésion de l'année courante : payée si MembershipFee > 0.
+	// MembershipPaid n'a de sens que si Group.HasMembership.
+	MembershipPaid bool
+	MembershipFee  float64
 }
 
 type DistribAdminView struct {
@@ -944,6 +948,22 @@ func (h *PagesHandler) MemberPage(c *gin.Context) {
 	h.db.Where("group_id = ?", pd.Group.ID).Preload("User").
 		Offset((page - 1) * perPage).Limit(perPage).Find(&ugs)
 
+	// Adhésions de l'année courante pour les membres affichés (un seul SELECT
+	// IN au lieu d'une requête par ligne).
+	feeByUserID := map[uint]float64{}
+	if pd.Group.HasMembership && len(ugs) > 0 {
+		userIDs := make([]uint, 0, len(ugs))
+		for _, ug := range ugs {
+			userIDs = append(userIDs, ug.UserID)
+		}
+		var ms []model.Membership
+		h.db.Where("group_id = ? AND year = ? AND user_id IN ?",
+			pd.Group.ID, time.Now().Year(), userIDs).Find(&ms)
+		for _, m := range ms {
+			feeByUserID[m.UserID] = m.Fee
+		}
+	}
+
 	for _, ug := range ugs {
 		addr := ""
 		if ug.User.ZipCode != nil {
@@ -958,14 +978,17 @@ func (h *PagesHandler) MemberPage(c *gin.Context) {
 		if ug.User.Address1 != nil && addr != "" {
 			addr = *ug.User.Address1 + " " + addr
 		}
+		fee, paid := feeByUserID[ug.UserID]
 		pd.Members = append(pd.Members, MemberView{
-			ID:        ug.User.ID,
-			FirstName: ug.User.FirstName,
-			LastName:  ug.User.LastName,
-			Email:     ug.User.Email,
-			Balance:   ug.Balance,
-			IsManager: ug.IsGroupManager(),
-			Address:   addr,
+			ID:             ug.User.ID,
+			FirstName:      ug.User.FirstName,
+			LastName:       ug.User.LastName,
+			Email:          ug.User.Email,
+			Balance:        ug.Balance,
+			IsManager:      ug.IsGroupManager(),
+			Address:        addr,
+			MembershipPaid: paid && fee > 0,
+			MembershipFee:  fee,
 		})
 	}
 

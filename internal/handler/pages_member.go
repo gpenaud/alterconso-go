@@ -27,6 +27,11 @@ type MemberDetailData struct {
 	MemberUG        model.UserGroup
 	CatalogSubs     []CatalogSubsView
 	DistribOrderSets []DistribOrderSet
+	// Adhésion de l'année courante : nil si pas encore payée pour ce
+	// (user, group, currentYear). Affichée seulement si le groupe gère
+	// les adhésions (Group.HasMembership).
+	CurrentMembership *model.Membership
+	CurrentYear       int
 }
 
 type CatalogSubsView struct {
@@ -169,6 +174,14 @@ func (h *PagesHandler) MemberViewPage(c *gin.Context) {
 	ddata.Member = member
 	ddata.MemberUG = ug
 	ddata.Title = member.FirstName + " " + member.LastName
+	ddata.CurrentYear = now.Year()
+	if pd.Group.HasMembership {
+		var m model.Membership
+		if err := h.db.Where("user_id = ? AND group_id = ? AND year = ?",
+			id, pd.Group.ID, ddata.CurrentYear).First(&m).Error; err == nil {
+			ddata.CurrentMembership = &m
+		}
+	}
 
 	for _, c := range catalogMap {
 		ddata.CatalogSubs = append(ddata.CatalogSubs, *c)
@@ -621,6 +634,57 @@ func (h *PagesHandler) MemberFullDelete(c *gin.Context) {
 	h.db.Delete(&model.User{}, uid)
 
 	c.Redirect(http.StatusFound, "/member")
+}
+
+// ---- POST /member/membership/:id ----
+// Enregistre / met à jour l'adhésion de l'année courante pour un membre
+// donné. fee = montant payé. fee=0 ou champ vide = supprimer l'adhésion
+// (annulation). Accessible aux gestionnaires et aux titulaires du droit
+// RightMembership.
+
+func (h *PagesHandler) MembershipUpsert(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil || (!pd.IsGroupManager && !pd.HasMembership) {
+		c.Redirect(http.StatusFound, "/home")
+		return
+	}
+	if !pd.Group.HasMembership {
+		c.String(http.StatusBadRequest, "ce groupe ne gère pas les adhésions")
+		return
+	}
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.String(http.StatusBadRequest, "id invalide")
+		return
+	}
+	year := time.Now().Year()
+	feeStr := strings.TrimSpace(c.PostForm("fee"))
+	feeStr = strings.ReplaceAll(feeStr, ",", ".")
+
+	if feeStr == "" {
+		// Pas de montant → supprime l'adhésion existante (annulation).
+		h.db.Where("user_id = ? AND group_id = ? AND year = ?", id, pd.Group.ID, year).
+			Delete(&model.Membership{})
+		c.Redirect(http.StatusFound, fmt.Sprintf("/member/view/%d", id))
+		return
+	}
+	fee, err := strconv.ParseFloat(feeStr, 64)
+	if err != nil || fee < 0 {
+		c.String(http.StatusBadRequest, "montant invalide")
+		return
+	}
+
+	var m model.Membership
+	if err := h.db.Where("user_id = ? AND group_id = ? AND year = ?", id, pd.Group.ID, year).
+		First(&m).Error; err == nil {
+		m.Fee = fee
+		h.db.Save(&m)
+	} else {
+		h.db.Create(&model.Membership{
+			UserID: uint(id), GroupID: pd.Group.ID, Year: year, Fee: fee,
+		})
+	}
+	c.Redirect(http.StatusFound, fmt.Sprintf("/member/view/%d", id))
 }
 
 // ---- POST /transaction/insertPayment/:memberId ----

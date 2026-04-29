@@ -114,6 +114,7 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.POST("/member/fullDelete/:id", pageAuth, pagesH.MemberFullDelete)
 	r.GET("/member/waiting", pageAuth, pagesH.MemberWaitingPage)
 	r.GET("/member/invoice/:multiDistribId", pageAuth, pagesH.MemberInvoicePage)
+	r.POST("/member/membership/:id", pageAuth, pagesH.MembershipUpsert)
 
 	// ContractAdmin sub-pages
 	r.GET("/contractAdmin/ordersByDate/:date/:groupId", pageAuth, pagesH.ContractAdminOrdersByDatePage)

@@ -42,6 +42,39 @@
           <i class="icon icon-plus"></i> Saisir paiement
         </a>
       </p>
+
+      {{if .Group.HasMembership}}
+      <hr/>
+      <p style="margin-bottom:6px;">
+        <b>Adhésion {{.CurrentYear}}</b>
+        {{if .CurrentMembership}}
+        <span style="color:#080;margin-left:6px;">
+          <i class="icon icon-check"></i> payée — {{printf "%.2f" .CurrentMembership.Fee}} €
+        </span>
+        {{else}}
+        <span style="color:#c0392b;margin-left:6px;">
+          <i class="icon icon-alert"></i> non payée
+        </span>
+        {{end}}
+      </p>
+      <form method="POST" action="/member/membership/{{.Member.ID}}" class="form-inline" style="margin-bottom:0;">
+        <div class="input-group input-group-sm" style="max-width:240px;">
+          <input type="text" inputmode="decimal" name="fee" class="form-control"
+            placeholder="Montant payé" value="{{if .CurrentMembership}}{{printf "%.2f" .CurrentMembership.Fee}}{{end}}" />
+          <span class="input-group-addon">€</span>
+          <span class="input-group-btn">
+            <button type="submit" class="btn btn-default">
+              <i class="icon icon-check"></i> Enregistrer
+            </button>
+          </span>
+        </div>
+        {{if .CurrentMembership}}
+        <p class="help-block" style="margin-top:4px;">
+          Vider le champ et enregistrer pour annuler l'adhésion.
+        </p>
+        {{end}}
+      </form>
+      {{end}}
     </div>
   </div>
 
