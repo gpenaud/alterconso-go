@@ -81,9 +81,8 @@ export interface ProductInfo {
   catalogTaxName?: string | null;
   vendorId?: number;
   distributionId?: number | null;
-  /** Le produit est revendu : il n'est pas produit par le Vendor du catalogue. */
-  isResale?: boolean;
-  /** Nom (libre) du producteur d'origine, affiché si isResale=true. */
+  /** Nom libre du producteur d'origine si le produit est revendu — vide /
+   *  null = pas de revente. */
   resaleFrom?: string | null;
 }
 

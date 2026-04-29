@@ -104,14 +104,12 @@
   <div class="form-group">
     <label class="col-sm-3 control-label">Revente</label>
     <div class="col-sm-9">
-      <label style="font-weight:normal;display:block;">
-        <input type="checkbox" name="is_resale" value="1" {{if .Product.IsResale}}checked{{end}} /> Ce produit est revendu (pas produit par le producteur du catalogue)
-      </label>
-      <input type="text" name="resale_from" class="form-control" style="margin-top:6px;"
-             placeholder="Producteur d'origine (ex : GAEC du Bois)"
+      <input type="text" name="resale_from" class="form-control"
+             placeholder="Nom du producteur d'origine (ex : GAEC du Bois)"
              value="{{deref .Product.ResaleFrom}}" />
       <p class="help-block" style="margin-top:4px;">
-        Le nom saisi ici s'affiche sur la fiche produit du shop.
+        Renseigne ce champ uniquement si ce produit est revendu (pas produit
+        par le producteur du catalogue). Laisse vide sinon.
       </p>
     </div>
   </div>

@@ -29,11 +29,10 @@ type Product struct {
 	HasFloatQt    bool   `gorm:"default:false"     json:"hasFloatQt"`
 	Active        bool   `gorm:"default:true"      json:"active"`
 
-	// Revente : indique que ce produit n'est pas produit par le Vendor du
-	// catalogue mais simplement revendu. ResaleFrom est le nom (libre) du
-	// producteur d'origine ; affiché tel quel sur la fiche produit.
-	IsResale   bool    `gorm:"default:false" json:"isResale"`
-	ResaleFrom *string `gorm:"size:128"      json:"resaleFrom,omitempty"`
+	// Revente : nom libre du producteur d'origine si le produit est revendu
+	// par ce catalogue. Vide / NULL = pas de revente, c'est le Vendor du
+	// catalogue qui produit. Affiché tel quel sur la fiche produit.
+	ResaleFrom *string `gorm:"size:128" json:"resaleFrom,omitempty"`
 
 	// Stocks
 	Stock        *float64 `json:"stock,omitempty"`

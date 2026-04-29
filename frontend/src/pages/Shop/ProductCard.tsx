@@ -113,21 +113,16 @@ export function ProductCard({ product, vendor, onClick }: Props) {
             }}
           >
             {vendor && <span>{vendor.name}</span>}
-            {product.isResale && (
+            {product.resaleFrom && (
               <span
-                title={
-                  product.resaleFrom
-                    ? `Produit revendu — provient de ${product.resaleFrom}`
-                    : "Produit revendu"
-                }
+                title={`Produit revendu — provient de ${product.resaleFrom}`}
                 style={{
                   display: "block",
                   fontStyle: "italic",
                   marginTop: 2,
                 }}
               >
-                <i className="icon-refresh" aria-hidden="true" /> Revente
-                {product.resaleFrom ? ` · ${product.resaleFrom}` : ""}
+                <i className="icon-refresh" aria-hidden="true" /> Revente · {product.resaleFrom}
               </span>
             )}
             {lowStock && (
