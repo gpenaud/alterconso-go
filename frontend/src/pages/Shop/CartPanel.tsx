@@ -11,6 +11,10 @@ interface Props {
   /** Si défini, la commande est passée pour le compte de cet utilisateur (admin
    *  pour membre — cf. ?userId=N dans l'URL du shop). */
   targetUserId?: number;
+  /** Catalogues sur lesquels l'utilisateur avait déjà commandé : utilisé pour
+   *  envoyer des payloads vides à ceux dont tous les items ont été retirés
+   *  (sans ça, le serveur garde l'ancienne commande pour ces catalogues). */
+  existingCatalogIds?: number[];
 }
 
 /**
@@ -19,7 +23,7 @@ interface Props {
  * footer avec total + "Commander". Port libre de react.store.Cart +
  * CartDetails (Haxe), refondu en panneau latéral plutôt qu'en popover.
  */
-export function CartPanel({ onClose, targetUserId }: Props) {
+export function CartPanel({ onClose, targetUserId, existingCatalogIds = [] }: Props) {
   const items = useCartStore((s) => s.items);
   const total = useCartStore((s) => s.total());
   const setQuantity = useCartStore((s) => s.setQuantity);
@@ -45,13 +49,20 @@ export function CartPanel({ onClose, targetUserId }: Props) {
     };
   }, [onClose]);
 
+  // Le panier peut être validé même vide si l'utilisateur avait déjà des
+  // commandes — c'est l'équivalent d'une annulation (delete-then-insert avec
+  // 0 ligne). On bloque seulement quand il n'y a rien à dire au serveur.
+  const canSubmit = items.length > 0 || existingCatalogIds.length > 0;
+
   const submit = async () => {
-    if (items.length === 0 || multiDistribId == null) return;
+    if (!canSubmit || multiDistribId == null) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
-      // Le shop submit attend une commande par (multiDistrib, catalog) : si le
-      // panier mélange plusieurs catalogues, on fait un appel par catalogue.
+      // Le shop submit attend une commande par (multiDistrib, catalog). On
+      // groupe les items par catalogId et on inclut aussi les catalogues
+      // existingCatalogIds qui n'ont plus d'items dans le panier — sinon le
+      // serveur garde leurs anciennes commandes intactes.
       const groups = new Map<number, typeof items>();
       for (const it of items) {
         if (!it.catalogId) {
@@ -60,6 +71,9 @@ export function CartPanel({ onClose, targetUserId }: Props) {
         const arr = groups.get(it.catalogId) ?? [];
         arr.push(it);
         groups.set(it.catalogId, arr);
+      }
+      for (const cid of existingCatalogIds) {
+        if (!groups.has(cid)) groups.set(cid, []);
       }
       for (const [catalogId, arr] of groups) {
         await submitOrder(multiDistribId, {
@@ -204,6 +218,11 @@ export function CartPanel({ onClose, targetUserId }: Props) {
               <p style={{ margin: 0, fontSize: "1rem" }}>
                 Votre panier est vide
               </p>
+              {existingCatalogIds.length > 0 && (
+                <p style={{ margin: "12px 0 0", fontSize: "0.85rem", color: COLORS.mediumGrey, maxWidth: 280 }}>
+                  Tu peux confirmer pour annuler ta commande sur cette distribution.
+                </p>
+              )}
             </div>
           ) : (
             <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
@@ -310,8 +329,11 @@ export function CartPanel({ onClose, targetUserId }: Props) {
           )}
         </div>
 
-        {/* Footer */}
-        {!submitted && items.length > 0 && (
+        {/* Footer
+            Affiché dès qu'il y a quelque chose à dire au serveur :
+              - panier non vide → bouton Commander, total
+              - panier vide + commande existante → bouton Annuler ma commande */}
+        {!submitted && canSubmit && (
           <div
             style={{
               borderTop: `1px solid ${COLORS.lightGrey}`,
@@ -319,23 +341,25 @@ export function CartPanel({ onClose, targetUserId }: Props) {
               backgroundColor: COLORS.white,
             }}
           >
-            <div
-              className="flex items-center justify-between"
-              style={{ marginBottom: 12 }}
-            >
-              <span style={{ fontSize: "0.95rem", color: COLORS.darkGrey }}>
-                Total
-              </span>
-              <span
-                style={{
-                  fontSize: "1.4rem",
-                  fontWeight: 700,
-                  color: COLORS.third,
-                }}
+            {items.length > 0 && (
+              <div
+                className="flex items-center justify-between"
+                style={{ marginBottom: 12 }}
               >
-                {formatPrice(total)}
-              </span>
-            </div>
+                <span style={{ fontSize: "0.95rem", color: COLORS.darkGrey }}>
+                  Total
+                </span>
+                <span
+                  style={{
+                    fontSize: "1.4rem",
+                    fontWeight: 700,
+                    color: COLORS.third,
+                  }}
+                >
+                  {formatPrice(total)}
+                </span>
+              </div>
+            )}
             {submitError && (
               <div
                 style={{
@@ -355,7 +379,7 @@ export function CartPanel({ onClose, targetUserId }: Props) {
               style={{
                 width: "100%",
                 padding: "12px 16px",
-                background: COLORS.primary,
+                background: items.length === 0 ? COLORS.third : COLORS.primary,
                 color: COLORS.white,
                 border: "none",
                 borderRadius: 6,
@@ -367,7 +391,11 @@ export function CartPanel({ onClose, targetUserId }: Props) {
                 opacity: submitting ? 0.7 : 1,
               }}
             >
-              {submitting ? "Envoi…" : "Commander"}
+              {submitting
+                ? "Envoi…"
+                : items.length === 0
+                ? "Annuler ma commande"
+                : "Commander"}
             </button>
           </div>
         )}

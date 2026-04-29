@@ -28,6 +28,10 @@ export function ShopPage() {
   const { isLoading, error, init, categories, catalog, products } = useShopData(multiDistribId);
   const { data: me } = useShopMe();
   const { data: existingOrders } = useExistingOrders(me?.id, multiDistribId);
+  const existingCatalogIds = useMemo(
+    () => Array.from(new Set((existingOrders ?? []).map((o) => o.catalogId))),
+    [existingOrders],
+  );
   const setMd = useCartStore((s) => s.setMultiDistrib);
   const replaceCart = useCartStore((s) => s.replace);
   const cartItemsCount = useCartStore((s) => s.items.length);
@@ -244,7 +248,11 @@ export function ShopPage() {
       )}
 
       {cartOpen && (
-        <CartPanel targetUserId={targetUserId} onClose={() => setCartOpen(false)} />
+        <CartPanel
+          targetUserId={targetUserId}
+          existingCatalogIds={existingCatalogIds}
+          onClose={() => setCartOpen(false)}
+        />
       )}
 
       {/* FAB "remonter en haut" — apparaît une fois scrollé (legacy
