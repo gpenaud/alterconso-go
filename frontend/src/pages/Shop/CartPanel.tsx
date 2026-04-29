@@ -78,6 +78,11 @@ export function CartPanel({ onClose, targetUserId }: Props) {
       queryClient.invalidateQueries({ queryKey: ["shop", "existingOrders"] });
       queryClient.invalidateQueries({ queryKey: ["home"] });
       setSubmitted(true);
+      // Retour à /home après un bref affichage de la confirmation. Navigation
+      // dure (window.location) car /home est une page Go hors SPA.
+      window.setTimeout(() => {
+        window.location.href = "/home";
+      }, 800);
     } catch (e) {
       setSubmitError((e as Error).message ?? "Erreur lors de la commande");
     } finally {
