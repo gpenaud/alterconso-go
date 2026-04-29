@@ -4,11 +4,13 @@
     <h2>Coordonnées</h2>
     <div class="article">
       <div style="font-weight:bold;font-size:120%;">{{.Member.FirstName}} {{.Member.LastName}}</div>
-      {{if .Member.Address1}}<p>{{deref .Member.Address1}}</p>{{end}}
-      {{if .Member.ZipCode}}{{deref .Member.ZipCode}}{{end}} {{if .Member.City}}{{deref .Member.City}}{{end}}
-      <br/>
-      {{if .Member.Phone}}<p><i class="icon icon-phone"></i> {{deref .Member.Phone}}</p>{{end}}
-      <p><i class="icon icon-mail"></i> <a href="mailto:{{.Member.Email}}">{{.Member.Email}}</a></p>
+      <p>
+        {{if .Member.Address1}}{{deref .Member.Address1}}{{end}}{{if and .Member.Address1 (or .Member.ZipCode .Member.City)}}, {{end}}{{if .Member.ZipCode}}{{deref .Member.ZipCode}}{{end}} {{if .Member.City}}{{deref .Member.City}}{{end}}
+      </p>
+      <p style="margin-bottom:8px;line-height:1.7;">
+        {{if .Member.Phone}}<i class="icon icon-phone" style="width:16px;display:inline-block;"></i> {{deref .Member.Phone}}<br/>{{end}}
+        <i class="icon icon-mail" style="width:16px;display:inline-block;"></i> <a href="mailto:{{.Member.Email}}">{{.Member.Email}}</a>
+      </p>
       <hr/>
       <p style="font-size:11px;">
         Dernière connexion :
@@ -19,10 +21,10 @@
         <a href="/member/edit/{{.Member.ID}}" class="btn btn-default btn-xs"><i class="icon icon-edit"></i> Modifier</a>
         <a href="/member/delete/{{.Member.ID}}" class="btn btn-default btn-xs"
           onclick="return confirm('Retirer ce membre du groupe ?')">
-          <i class="icon icon-delete"></i> Retirer du groupe
+          <i class="icon icon-delete"></i> Retirer
         </a>
         {{if .IsGroupManager}}
-        <form method="POST" action="/member/fullDelete/{{.Member.ID}}" style="margin:0;padding:0;display:contents;"
+        <form method="POST" action="/member/fullDelete/{{.Member.ID}}" style="margin:0;padding:0;display:inline-block;"
               onsubmit="return confirm('SUPPRIMER DÉFINITIVEMENT le compte de {{.Member.FirstName}} {{.Member.LastName}} ?\n\nLe compte sera retiré de tous les groupes et toutes les données associées (commandes, adhésions, bénévolat) seront perdues. Cette action est irréversible.');">
           <button type="submit" class="btn btn-danger btn-xs">
             <i class="icon icon-delete"></i> Supprimer
