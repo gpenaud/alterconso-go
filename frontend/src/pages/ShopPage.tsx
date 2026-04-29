@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useShopData, useShopMe, useExistingOrders } from "../hooks/useShop";
 import { useCartStore, type CartItem } from "../store/cart";
+import { useDocumentTitle } from "../utils/useDocumentTitle";
 import { parseDateTime } from "../utils/format";
 import type { ProductInfo, VendorInfo } from "../types/shop";
 import { ShopTopBar } from "./Shop/ShopTopBar";
@@ -26,6 +27,8 @@ export function ShopPage() {
   }, [searchParams]);
 
   const { isLoading, error, init, categories, catalog, products } = useShopData(multiDistribId);
+
+  useDocumentTitle("Boutique");
   const { data: me } = useShopMe();
   const { data: existingOrders } = useExistingOrders(me?.id, multiDistribId);
   const existingCatalogIds = useMemo(

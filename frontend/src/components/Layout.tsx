@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useAuthStore } from '../store/auth'
+import { useDocumentTitle } from '../utils/useDocumentTitle'
 
 interface Props {
   children: ReactNode
@@ -18,9 +19,10 @@ const navItems = [
   { label: 'Admin', path: '/admin' },
 ]
 
-export function Layout({ children, backTo, backLabel }: Props) {
+export function Layout({ children, title, backTo, backLabel }: Props) {
   const { groupId } = useParams<{ groupId: string }>()
   const { user } = useAuthStore()
+  useDocumentTitle(title)
 
   return (
     <div className="min-h-screen bg-gray-50">
