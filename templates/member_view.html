@@ -16,15 +16,15 @@
         Inscrit le : {{.Member.CreatedAt.Format "02/01/2006"}}
       </p>
       <p style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-        <a href="/member/edit/{{.Member.ID}}" class="btn btn-default btn-sm"><i class="icon icon-edit"></i> Modifier</a>
-        <a href="/member/delete/{{.Member.ID}}" class="btn btn-default btn-sm"
+        <a href="/member/edit/{{.Member.ID}}" class="btn btn-default btn-xs"><i class="icon icon-edit"></i> Modifier</a>
+        <a href="/member/delete/{{.Member.ID}}" class="btn btn-default btn-xs"
           onclick="return confirm('Retirer ce membre du groupe ?')">
           <i class="icon icon-delete"></i> Retirer du groupe
         </a>
         {{if .IsGroupManager}}
         <form method="POST" action="/member/fullDelete/{{.Member.ID}}" style="margin:0;padding:0;display:contents;"
               onsubmit="return confirm('SUPPRIMER DÉFINITIVEMENT le compte de {{.Member.FirstName}} {{.Member.LastName}} ?\n\nLe compte sera retiré de tous les groupes et toutes les données associées (commandes, adhésions, bénévolat) seront perdues. Cette action est irréversible.');">
-          <button type="submit" class="btn btn-danger btn-sm">
+          <button type="submit" class="btn btn-danger btn-xs">
             <i class="icon icon-delete"></i> Supprimer
           </button>
         </form>
