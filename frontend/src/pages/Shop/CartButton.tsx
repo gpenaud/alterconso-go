@@ -36,7 +36,7 @@ export function CartButton({ onClick }: Props) {
       style={{
         // Largeur min stable même quand le total grandit (0 € → 1234.56 €)
         // pour que la barre de recherche du Header ne se décale pas.
-        minWidth: 180,
+        minWidth: 200,
         justifyContent: "space-between",
         backgroundColor: COLORS.white,
         border: "1px solid " + COLORS.lightGrey,
@@ -86,7 +86,7 @@ export function CartButton({ onClick }: Props) {
       <span
         style={{
           fontWeight: 700,
-          fontSize: "1rem",
+          fontSize: "1.2rem",
           fontVariantNumeric: "tabular-nums",
         }}
       >
