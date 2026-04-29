@@ -34,6 +34,10 @@ export function CartButton({ onClick }: Props) {
       onClick={onClick}
       className="flex items-center transition-shadow hover:shadow-sm"
       style={{
+        // Largeur min stable même quand le total grandit (0 € → 1234.56 €)
+        // pour que la barre de recherche du Header ne se décale pas.
+        minWidth: 180,
+        justifyContent: "space-between",
         backgroundColor: COLORS.white,
         border: "1px solid " + COLORS.lightGrey,
         borderRadius: 999,
@@ -79,7 +83,15 @@ export function CartButton({ onClick }: Props) {
           </span>
         )}
       </span>
-      <span style={{ fontWeight: 700, fontSize: "1rem" }}>{formatPrice(total)}</span>
+      <span
+        style={{
+          fontWeight: 700,
+          fontSize: "1rem",
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {formatPrice(total)}
+      </span>
       <i
         className="icon-chevron-down"
         style={{ color: COLORS.mediumGrey, fontSize: 14 }}
