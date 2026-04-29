@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { MultiDistribView } from "../../api/home";
 import { OrderDetailModal } from "./OrderDetailModal";
+import { VolunteerModal } from "./VolunteerModal";
 
 /**
  * Carte d'une distribution sur la page d'accueil. Port du legacy
@@ -13,6 +14,7 @@ export function MultiDistribCard({ md }: { md: MultiDistribView }) {
   const headerBg = md.canOrder ? "bg-ac-green" : "bg-white";
   const headerText = md.canOrder ? "text-white" : "text-gray-700";
   const [orderOpen, setOrderOpen] = useState(false);
+  const [volunteerOpen, setVolunteerOpen] = useState(false);
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
@@ -120,13 +122,14 @@ export function MultiDistribCard({ md }: { md: MultiDistribView }) {
             <p className="text-red-700 font-bold text-sm mb-3">
               {md.volunteerRoles?.join(", ")}
             </p>
-            <a
-              href="/distribution/volunteersCalendar"
+            <button
+              type="button"
+              onClick={() => setVolunteerOpen(true)}
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm bg-red-600 hover:bg-red-700 text-white"
             >
               <i className="icon-chevron-right" aria-hidden="true" />
               Inscription
-            </a>
+            </button>
           </div>
         </div>
       )}
@@ -147,6 +150,13 @@ export function MultiDistribCard({ md }: { md: MultiDistribView }) {
       )}
 
       {orderOpen && <OrderDetailModal md={md} onClose={() => setOrderOpen(false)} />}
+      {volunteerOpen && (
+        <VolunteerModal
+          multiDistribId={md.id}
+          roles={md.volunteerRoles ?? []}
+          onClose={() => setVolunteerOpen(false)}
+        />
+      )}
     </div>
   );
 }
