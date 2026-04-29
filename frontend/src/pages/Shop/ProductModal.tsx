@@ -160,6 +160,28 @@ export function ProductModal({ product, vendor, onClose }: Props) {
               <ProductLabels product={product} />
             </div>
 
+            {product.isResale && (
+              <div
+                style={{
+                  backgroundColor: "#fff8e6",
+                  border: "1px solid #f0d99a",
+                  borderRadius: 6,
+                  padding: "10px 12px",
+                  fontSize: "0.9rem",
+                  color: "#7a5b00",
+                }}
+              >
+                <i className="icon-refresh" aria-hidden="true" style={{ marginRight: 6 }} />
+                <b>Produit revendu</b>
+                {product.resaleFrom && (
+                  <>
+                    {" — provient de "}
+                    <span style={{ fontStyle: "italic" }}>{product.resaleFrom}</span>
+                  </>
+                )}
+              </div>
+            )}
+
             {product.desc && (
               <div
                 style={{

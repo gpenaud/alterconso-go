@@ -357,6 +357,12 @@ func (h *PagesHandler) CatalogAdminProductEditPage(c *gin.Context) {
 		product.MultiWeight = c.PostForm("multi_weight") == "1"
 		product.HasFloatQt = c.PostForm("has_float_qt") == "1"
 		product.Active = c.PostForm("active") == "1"
+		product.IsResale = c.PostForm("is_resale") == "1"
+		if rf := strings.TrimSpace(c.PostForm("resale_from")); rf != "" && product.IsResale {
+			product.ResaleFrom = &rf
+		} else {
+			product.ResaleFrom = nil
+		}
 		h.db.Model(&model.Product{}).Where("id = ?", product.ID).Updates(map[string]interface{}{
 			"name":           product.Name,
 			"ref":            product.Ref,
@@ -370,6 +376,8 @@ func (h *PagesHandler) CatalogAdminProductEditPage(c *gin.Context) {
 			"multi_weight":   product.MultiWeight,
 			"has_float_qt":   product.HasFloatQt,
 			"active":         product.Active,
+			"is_resale":      product.IsResale,
+			"resale_from":    product.ResaleFrom,
 		})
 		c.Redirect(http.StatusFound, fmt.Sprintf("/contractAdmin/products/%d", data.Catalog.ID))
 		return

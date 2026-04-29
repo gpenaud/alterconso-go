@@ -426,6 +426,8 @@ func productInfo(p model.Product) gin.H {
 		"catalogTax":    taxRate,
 		"catalogTaxName": taxName,
 		"vendorId":      p.Catalog.VendorID,
+		"isResale":      p.IsResale,
+		"resaleFrom":    p.ResaleFrom,
 	}
 }
 
