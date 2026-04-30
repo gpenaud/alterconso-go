@@ -37,6 +37,10 @@ spec:
         {{- include "alterconso.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: mysql
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: mysql
           image: "mysql:{{ .Values.database.embedded.version }}"

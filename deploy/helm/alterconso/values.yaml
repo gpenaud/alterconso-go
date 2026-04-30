@@ -11,6 +11,18 @@ image:
   repository: ghcr.io/gpenaud/alterconso
   tag: latest
 
+# Secrets de pull pour les registries privés (ghcr.io, registry interne…).
+# Le Secret référencé doit être de type kubernetes.io/dockerconfigjson et
+# créé hors-chart, par exemple :
+#   kubectl create secret docker-registry ghcr-creds \
+#     --docker-server=ghcr.io \
+#     --docker-username=gpenaud \
+#     --docker-password=<github-PAT-with-read:packages>
+# Puis :
+#   imagePullSecrets:
+#     - name: ghcr-creds
+imagePullSecrets: []
+
 replicaCount: 1
 
 # ─── ServiceAccount ────────────────────────────────────────────────────────
