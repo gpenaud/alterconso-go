@@ -8,6 +8,55 @@ image:
 
 replicaCount: 1
 
+# ─── Ressources (requests / limits) ──────────────────────────────────────────
+# requests = minimum garanti (utilisé par le scheduler pour placer le pod).
+# limits   = max autorisé. CPU au-dessus → throttling. RAM au-dessus → OOMKilled.
+#
+# Alterconso est une app Go modeste : ~50 Mo de heap au repos, montant à
+# ~200 Mo en charge. Les valeurs par défaut sont confortables ; ajuste si
+# ton k3s est étroit.
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# Tip : pour les apps Go, on peut faire mieux que la "guérison par OOMKill"
+# en disant au runtime "voici ta limite, freine le GC en conséquence" :
+# Set extraEnv pour ajouter GOMEMLIMIT = ~90% de la limite mémoire.
+# Doc Go : https://pkg.go.dev/runtime
+extraEnv: []
+  # - name: GOMEMLIMIT
+  #   value: 230MiB
+
+# ─── Scheduling pod-level ────────────────────────────────────────────────────
+# Toutes ces clés sont passées telles quelles au PodSpec, libre à toi de
+# remplir avec des structures k8s standards.
+nodeSelector: {}
+# nodeSelector:
+#   disktype: ssd
+
+tolerations: []
+# tolerations:
+#   - key: dedicated
+#     operator: Equal
+#     value: alterconso
+#     effect: NoSchedule
+
+affinity: {}
+# affinity:
+#   podAntiAffinity:
+#     preferredDuringSchedulingIgnoredDuringExecution:
+#       - weight: 100
+#         podAffinityTerm:
+#           labelSelector:
+#             matchLabels: { app: alterconso }
+#           topologyKey: kubernetes.io/hostname
+
+priorityClassName: ""
+
 service:
   port: 80
 
@@ -99,6 +148,14 @@ database:
     # les credentials admin nécessaires aux CREATE/GRANT.
     # Doit avoir les clés MYSQL_ADMIN_USER et MYSQL_ADMIN_PASSWORD.
     adminSecret: ""
+    # Le Job tourne ~5 secondes — quelques requêtes SQL. Resources minimales.
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
 
 # ─── Config applicative (non sensible) ──────────────────────────────────────
 # Cette section est dumpée telle quelle dans /app/config.yaml du container.

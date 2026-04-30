@@ -10,19 +10,28 @@ spec:
   template:
     metadata:
       annotations:
-        # Force un rolling update du Deployment quand la ConfigMap change.
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-        # Pour le Secret on ne tracke le checksum que si c'est NOTRE Secret
-        # (mode dev). En mode existingSecret, c'est à l'opérateur externe
-        # (SOPS/Flux/ESO) de déclencher un rollout — typiquement via
-        # `kubectl rollout restart deployment/alterconso` après update du
-        # Secret, ou via une annotation propre côté opérateur.
         {{- if not .Values.secrets.existingSecret }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
         {{- end }}
       labels:
         app: alterconso
     spec:
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
       containers:
         - name: alterconso
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -30,10 +39,12 @@ spec:
             - name: http
               containerPort: 8080
           envFrom:
-            # Référence le Secret externe si existingSecret est défini,
-            # sinon celui que le chart vient de créer (nommé "alterconso").
             - secretRef:
                 name: {{ .Values.secrets.existingSecret | default "alterconso" }}
+          {{- with .Values.extraEnv }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           volumeMounts:
             - name: config
               mountPath: /app/config.yaml
@@ -45,6 +56,8 @@ spec:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
           startupProbe:
             {{- toYaml .Values.startupProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
       volumes:
         - name: config
           configMap:

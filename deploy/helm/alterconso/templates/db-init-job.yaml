@@ -51,6 +51,8 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.database.init.adminSecret }}
                   key: MYSQL_ADMIN_PASSWORD
+          resources:
+            {{- toYaml .Values.database.init.resources | nindent 12 }}
           command: ["/bin/sh", "-c"]
           args:
             - |
