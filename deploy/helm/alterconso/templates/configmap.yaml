@@ -3,9 +3,8 @@ kind: ConfigMap
 metadata:
   name: alterconso
 data:
-  # On itère par clés triées pour une sortie déterministe : sinon le rendu
-  # YAML change à chaque helm install (ordre de map Go = aléatoire), ce qui
-  # déclenche un rollout du Deployment pour rien.
-  {{- range $k := .Values.config | keys | sortAlpha }}
-  {{ $k }}: {{ index $.Values.config $k | quote }}
-  {{- end }}
+  # Dump direct de .Values.config en YAML — comme la structure de values
+  # mirroite déjà ce qu'attend le code Go, pas de mapping à faire.
+  # Le `|` (block scalar) garde le YAML lisible côté kubectl get.
+  config.yaml: |
+    {{- toYaml .Values.config | nindent 4 }}

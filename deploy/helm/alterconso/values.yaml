@@ -12,27 +12,50 @@ service:
   port: 80
 
 # ─── Config applicative (non sensible) ──────────────────────────────────────
-# Rendue dans une ConfigMap et injectée en env vars du container.
-# Les clés correspondent 1:1 aux env vars que lit le code Go.
+# Cette section est dumpée telle quelle dans /app/config.yaml du container.
+# La structure ci-dessous DOIT correspondre 1:1 à ce que parse le code Go
+# (cf config.yaml.example à la racine du repo). Tout ce qui est sensible
+# (mots de passe, clés) reste vide ici et est injecté en env var depuis
+# le Secret (le code Go priorité env > yaml).
 config:
-  PORT: "8080"
-  DEBUG: "false"
-  DB_HOST: mysql.alterconso.svc.cluster.local
-  DB_PORT: "3306"
-  DB_USER: alterconso
-  DB_NAME: alterconso
-  HOST: alterconso.example.com
-  SMTP_HOST: smtp-relay.brevo.com
-  SMTP_PORT: "587"
-  SMTP_USER: ""
-  DEFAULT_EMAIL: noreply@example.com
-  SUPERADMIN_EMAIL: ""
+  port: "8080"
+  debug: false
+
+  db_host: mysql.alterconso.svc.cluster.local
+  db_port: "3306"
+  db_user: alterconso
+  db_name: alterconso
+
+  jwt_expiry_hours: 168
+
+  host: alterconso.example.com
+
+  smtp_host: smtp-relay.brevo.com
+  smtp_port: "587"
+  smtp_user: ""
+  default_email: noreply@example.com
+
+  superadmin:
+    email: ""
+    first_name: Super
+    last_name: Admin
+
+  messages:
+    recipient_categories:
+      - name: "Membres réguliers"
+        pattern: ">= 3 commandes sur 3m"
+      - name: "Membres occasionnels"
+        pattern: ">= 1 commande sur 6m"
+      - name: "Membres inactifs"
+        pattern: "< 1 commande sur 6m"
+
+  notifications:
+    recipient_category: "Membres réguliers"
 
 # ─── Secrets ────────────────────────────────────────────────────────────────
-# JAMAIS commiter de vraies valeurs ici. Surcharger via :
-#   --set secrets.DB_PASSWORD=...
-#   ou un fichier values.local.yaml gitignored
-#   ou un Secret externe (cf existingSecret plus tard)
+# Injectés en env vars (le code Go priorité env > yaml). Les noms de clés
+# correspondent aux env vars que lit le code (DB_PASSWORD, JWT_SECRET, ...).
+# JAMAIS commiter de vraies valeurs — surcharger via --set ou values.local.yaml.
 secrets:
   DB_PASSWORD: ""
   JWT_SECRET: "" # openssl rand -hex 32

@@ -10,11 +10,9 @@ spec:
   template:
     metadata:
       annotations:
-        # Force un rollout du Deployment quand la ConfigMap ou le Secret
-        # changent : k8s détecte que le podSpec a changé (l'annotation
-        # est dans podTemplate) et déclenche un rolling update.
-        # Sans ça, kubectl edit configmap → rien ne se passe : les pods
-        # gardent l'ancienne valeur en mémoire.
+        # Force un rolling update du Deployment quand la ConfigMap ou le
+        # Secret changent : k8s détecte que podSpec.annotations a changé
+        # et redéploie. Sans ça, kubectl edit configmap → rien ne se passe.
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
       labels:
@@ -26,17 +24,26 @@ spec:
           ports:
             - name: http
               containerPort: 8080
-          # envFrom injecte TOUTES les clés de la ressource comme env vars.
-          # Plus concis que 17× valueFrom.configMapKeyRef. Les noms de clés
-          # doivent matcher exactement les os.Getenv("...") du code Go.
+          # Secrets injectés en env vars. Le code Go priorité env > yaml,
+          # donc DB_PASSWORD (env) prend le pas sur db_password (config.yaml,
+          # vide).
           envFrom:
-            - configMapRef:
-                name: alterconso
             - secretRef:
                 name: alterconso
+          # ConfigMap montée comme fichier au chemin attendu par le binaire
+          # (CONFIG_FILE par défaut = ./config.yaml, et WORKDIR=/app).
+          volumeMounts:
+            - name: config
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+              readOnly: true
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}
           readinessProbe:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
           startupProbe:
             {{- toYaml .Values.startupProbe | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: alterconso
