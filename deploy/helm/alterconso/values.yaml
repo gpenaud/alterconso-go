@@ -1,0 +1,66 @@
+# Valeurs par défaut. Surcharger via :
+#   helm install alterconso ./deploy/helm/alterconso --set image.tag=v0.2.0
+#   helm install alterconso ./deploy/helm/alterconso -f values.local.yaml
+
+image:
+  repository: ghcr.io/gpenaud/alterconso
+  tag: latest
+
+replicaCount: 1
+
+service:
+  port: 80
+
+# ─── Config applicative (non sensible) ──────────────────────────────────────
+# Rendue dans une ConfigMap et injectée en env vars du container.
+# Les clés correspondent 1:1 aux env vars que lit le code Go.
+config:
+  PORT: "8080"
+  DEBUG: "false"
+  DB_HOST: mysql.alterconso.svc.cluster.local
+  DB_PORT: "3306"
+  DB_USER: alterconso
+  DB_NAME: alterconso
+  HOST: alterconso.example.com
+  SMTP_HOST: smtp-relay.brevo.com
+  SMTP_PORT: "587"
+  SMTP_USER: ""
+  DEFAULT_EMAIL: noreply@example.com
+  SUPERADMIN_EMAIL: ""
+
+# ─── Secrets ────────────────────────────────────────────────────────────────
+# JAMAIS commiter de vraies valeurs ici. Surcharger via :
+#   --set secrets.DB_PASSWORD=...
+#   ou un fichier values.local.yaml gitignored
+#   ou un Secret externe (cf existingSecret plus tard)
+secrets:
+  DB_PASSWORD: ""
+  JWT_SECRET: "" # openssl rand -hex 32
+  APP_KEY: "" # openssl rand -hex 32
+  SMTP_PASSWORD: ""
+  BREVO_API_KEY: ""
+  SUPERADMIN_PASSWORD: ""
+
+# ─── Probes k8s ────────────────────────────────────────────────────────────
+livenessProbe:
+  httpGet:
+    path: /livez
+    port: http
+  periodSeconds: 30
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 5
+  failureThreshold: 30

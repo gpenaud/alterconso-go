@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alterconso
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: alterconso
+  template:
+    metadata:
+      annotations:
+        # Force un rollout du Deployment quand la ConfigMap ou le Secret
+        # changent : k8s détecte que le podSpec a changé (l'annotation
+        # est dans podTemplate) et déclenche un rolling update.
+        # Sans ça, kubectl edit configmap → rien ne se passe : les pods
+        # gardent l'ancienne valeur en mémoire.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      labels:
+        app: alterconso
+    spec:
+      containers:
+        - name: alterconso
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - name: http
+              containerPort: 8080
+          # envFrom injecte TOUTES les clés de la ressource comme env vars.
+          # Plus concis que 17× valueFrom.configMapKeyRef. Les noms de clés
+          # doivent matcher exactement les os.Getenv("...") du code Go.
+          envFrom:
+            - configMapRef:
+                name: alterconso
+            - secretRef:
+                name: alterconso
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          startupProbe:
+            {{- toYaml .Values.startupProbe | nindent 12 }}

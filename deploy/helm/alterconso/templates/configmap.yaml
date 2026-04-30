@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alterconso
+data:
+  # On itère par clés triées pour une sortie déterministe : sinon le rendu
+  # YAML change à chaque helm install (ordre de map Go = aléatoire), ce qui
+  # déclenche un rollout du Deployment pour rien.
+  {{- range $k := .Values.config | keys | sortAlpha }}
+  {{ $k }}: {{ index $.Values.config $k | quote }}
+  {{- end }}

@@ -2,9 +2,10 @@
 config.yaml
 .env
 
-# Binaires
-alterconso
-alterconso-go
+# Binaires (ancrés à la racine sinon ça matche aussi
+# deploy/helm/alterconso/, internal/.../alterconso, etc.)
+/alterconso
+/alterconso-go
 
 # Go
 vendor/
