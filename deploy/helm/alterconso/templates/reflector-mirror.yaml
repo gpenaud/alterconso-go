@@ -1,0 +1,25 @@
+{{- /*
+Crée des Secrets "placeholder" annotés pour kubernetes-reflector. Le
+Secret est initialement vide ; reflector le détecte (via l'annotation
+reflects), va lire la source dans son namespace d'origine et populate
+le contenu — typiquement <2 secondes après création.
+
+Chaque mirror est facultatif et indépendant : on peut en mirrorer 0,
+1 ou N selon les besoins (regcred, pull-secret-internal, etc.).
+
+Si reflector n'est PAS installé dans le cluster, ces Secrets restent
+vides → les pods qui s'en servent en imagePullSecrets vont planter
+sur "ImagePullBackOff". À surveiller.
+*/}}
+{{- range .Values.reflector.mirrors }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "alterconso.labels" $ | nindent 4 }}
+  annotations:
+    reflector.v1.k8s.emberstack.com/reflects: {{ printf "%s/%s" .sourceNamespace .sourceName | quote }}
+type: {{ .type | default "Opaque" }}
+{{- end }}
