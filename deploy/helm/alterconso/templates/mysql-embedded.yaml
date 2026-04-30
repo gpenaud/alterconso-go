@@ -1,55 +1,41 @@
-{{- /*
-MySQL embedded — StatefulSet single-replica, pour mode dev/test ou
-mono-app sans HA. Pour de la prod multi-replica, préférer un opérateur
-(Oracle MySQL Operator, Percona, etc.) ou un service managé externe.
-
-Le serveur lit ses credentials depuis le Secret du chart (alterconso) :
-  MYSQL_ROOT_PASSWORD : root pour bootstrap
-  DB_PASSWORD         : user de l'app (renommé en mysql-password serait
-                        le standard bitnami, on garde DB_PASSWORD pour
-                        cohérence avec l'app)
-Au boot, l'image officielle mysql:8 utilise les env vars
-MYSQL_DATABASE, MYSQL_USER, MYSQL_PASSWORD pour créer la DB et le user.
-
-Service nommé "<release>-mysql" (cf configmap pour l'auto-resolution
-de db_host).
-*/}}
 {{- if .Values.database.embedded.enabled }}
+{{- $mysqlName := printf "%s-mysql" (include "alterconso.fullname" .) -}}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-mysql
+  name: {{ $mysqlName }}
   labels:
-    app: {{ .Release.Name }}-mysql
+    {{- include "alterconso.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mysql
 spec:
   type: ClusterIP
-  # ClusterIP None (Headless Service) → DNS direct vers le pod, requis
-  # pour les StatefulSets si tu veux résoudre <pod>.<service>. Avec un
-  # seul replica c'est optionnel mais propre.
-  clusterIP: None
+  clusterIP: None # Headless Service, requis par les StatefulSets
   ports:
     - port: 3306
       targetPort: mysql
       name: mysql
   selector:
-    app: {{ .Release.Name }}-mysql
+    app: {{ $mysqlName }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ .Release.Name }}-mysql
+  name: {{ $mysqlName }}
   labels:
-    app: {{ .Release.Name }}-mysql
+    {{- include "alterconso.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mysql
 spec:
-  serviceName: {{ .Release.Name }}-mysql
+  serviceName: {{ $mysqlName }}
   replicas: 1
   selector:
     matchLabels:
-      app: {{ .Release.Name }}-mysql
+      app: {{ $mysqlName }}
   template:
     metadata:
       labels:
-        app: {{ .Release.Name }}-mysql
+        app: {{ $mysqlName }}
+        {{- include "alterconso.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: mysql
     spec:
       containers:
         - name: mysql
@@ -61,7 +47,7 @@ spec:
             - name: MYSQL_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.secrets.existingSecret | default "alterconso" }}
+                  name: {{ include "alterconso.secretName" . }}
                   key: MYSQL_ROOT_PASSWORD
             - name: MYSQL_DATABASE
               value: {{ .Values.config.db_name | quote }}
@@ -70,12 +56,11 @@ spec:
             - name: MYSQL_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.secrets.existingSecret | default "alterconso" }}
+                  name: {{ include "alterconso.secretName" . }}
                   key: DB_PASSWORD
           volumeMounts:
             - name: data
               mountPath: /var/lib/mysql
-          # Liveness/readiness via mysqladmin ping. Inclus dans l'image officielle.
           livenessProbe:
             exec:
               command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p$(MYSQL_ROOT_PASSWORD)"]

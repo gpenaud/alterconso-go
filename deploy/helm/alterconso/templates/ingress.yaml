@@ -2,7 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: alterconso
+  name: {{ include "alterconso.fullname" . }}
+  labels:
+    {{- include "alterconso.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -12,8 +14,6 @@ spec:
   ingressClassName: {{ . }}
   {{- end }}
   {{- with .Values.ingress.tls }}
-  # tls : passé tel quel, l'API k8s gère la structure standard
-  # (secretName + hosts).
   tls:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -27,7 +27,7 @@ spec:
             pathType: {{ .pathType | default "Prefix" }}
             backend:
               service:
-                name: alterconso
+                name: {{ include "alterconso.fullname" $ }}
                 port:
                   name: http
           {{- end }}

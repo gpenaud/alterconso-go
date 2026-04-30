@@ -1,22 +1,21 @@
 {{- /*
 db_host et db_port dépendent du mode :
   - external : valeurs de .Values.database.external
-  - embedded : Service du sub-chart bitnami/mysql, nommé <release>-mysql
-On les calcule ici plutôt que de demander à l'utilisateur de les saisir
-deux fois (dans config: ET database:).
+  - embedded : Service du StatefulSet, nommé <fullname>-mysql
 */}}
 {{- $dbHost := .Values.database.external.host -}}
 {{- $dbPort := .Values.database.external.port -}}
 {{- if .Values.database.embedded.enabled -}}
-  {{- $dbHost = printf "%s-mysql" .Release.Name -}}
+  {{- $dbHost = printf "%s-mysql" (include "alterconso.fullname" .) -}}
   {{- $dbPort = "3306" -}}
 {{- end -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: alterconso
+  name: {{ include "alterconso.fullname" . }}
+  labels:
+    {{- include "alterconso.labels" . | nindent 4 }}
 data:
-  # On préfixe avec db_host/db_port calculés, puis dump du reste.
   config.yaml: |
     db_host: {{ $dbHost | quote }}
     db_port: {{ $dbPort | quote }}

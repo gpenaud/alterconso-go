@@ -11,7 +11,9 @@ MySQL n'est pas encore up quand le pre-install hook tourne).
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: alterconso-db-init
+  name: {{ include "alterconso.fullname" . }}-db-init
+  labels:
+    {{- include "alterconso.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "-5"
@@ -20,14 +22,18 @@ spec:
   ttlSecondsAfterFinished: 300
   backoffLimit: 3
   template:
+    metadata:
+      labels:
+        {{- include "alterconso.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: db-init
     spec:
+      serviceAccountName: {{ include "alterconso.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
       restartPolicy: OnFailure
       containers:
         - name: db-init
           image: {{ .Values.database.init.image | quote }}
           env:
-            # En mode external (le seul possible ici), les paramètres viennent
-            # de .Values.database.external.
             - name: DB_HOST
               value: {{ .Values.database.external.host | quote }}
             - name: DB_PORT
@@ -39,7 +45,7 @@ spec:
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.secrets.existingSecret | default "alterconso" }}
+                  name: {{ include "alterconso.secretName" . }}
                   key: DB_PASSWORD
             - name: MYSQL_ADMIN_USER
               valueFrom:

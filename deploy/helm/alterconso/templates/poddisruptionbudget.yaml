@@ -2,11 +2,13 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: alterconso
+  name: {{ include "alterconso.fullname" . }}
+  labels:
+    {{- include "alterconso.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      app: alterconso
+      {{- include "alterconso.selectorLabels" . | nindent 6 }}
   {{- if .Values.podDisruptionBudget.maxUnavailable }}
   maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
   {{- else }}

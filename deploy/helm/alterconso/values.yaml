@@ -2,11 +2,26 @@
 #   helm install alterconso ./deploy/helm/alterconso --set image.tag=v0.2.0
 #   helm install alterconso ./deploy/helm/alterconso -f values.local.yaml
 
+# Surcharges optionnelles des noms générés par les templates.
+# Voir _helpers.tpl pour la logique.
+nameOverride: ""
+fullnameOverride: ""
+
 image:
   repository: ghcr.io/gpenaud/alterconso
   tag: latest
 
 replicaCount: 1
+
+# ─── ServiceAccount ────────────────────────────────────────────────────────
+# L'app ne parle pas à l'API k8s, mais on lui donne un SA dédié pour pouvoir
+# écrire des règles audit/policy ciblées si besoin. automountServiceAccount-
+# Token désactivé : pas de token utile → pas de surface d'attaque.
+serviceAccount:
+  create: true
+  name: "" # vide = dérivé de fullname
+  annotations: {}
+  automountServiceAccountToken: false
 
 # ─── Ressources (requests / limits) ──────────────────────────────────────────
 # requests = minimum garanti (utilisé par le scheduler pour placer le pod).

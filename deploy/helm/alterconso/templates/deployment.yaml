@@ -1,12 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: alterconso
+  name: {{ include "alterconso.fullname" . }}
+  labels:
+    {{- include "alterconso.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: alterconso
+      {{- include "alterconso.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -15,8 +17,10 @@ spec:
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
         {{- end }}
       labels:
-        app: alterconso
+        {{- include "alterconso.selectorLabels" . | nindent 8 }}
     spec:
+      serviceAccountName: {{ include "alterconso.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -40,7 +44,7 @@ spec:
               containerPort: 8080
           envFrom:
             - secretRef:
-                name: {{ .Values.secrets.existingSecret | default "alterconso" }}
+                name: {{ include "alterconso.secretName" . }}
           {{- with .Values.extraEnv }}
           env:
             {{- toYaml . | nindent 12 }}
@@ -61,4 +65,4 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: alterconso
+            name: {{ include "alterconso.fullname" . }}

@@ -1,0 +1,61 @@
+{{ .Chart.Name }} {{ .Chart.AppVersion }} déployé sous "{{ .Release.Name }}".
+
+────────────────────────────────────────────────────────────────────────
+État du déploiement :
+  kubectl --namespace {{ .Release.Namespace }} get all \
+    -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Logs :
+  kubectl --namespace {{ .Release.Namespace }} logs -f \
+    -l app.kubernetes.io/instance={{ .Release.Name }} \
+    -l app.kubernetes.io/name={{ include "alterconso.name" . }}
+
+{{- if .Values.ingress.enabled }}
+
+URL{{ if gt (len .Values.ingress.hosts) 1 }}s{{ end }} publique{{ if gt (len .Values.ingress.hosts) 1 }}s{{ end }} :
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
+
+Ingress désactivé. Pour tester en local :
+  kubectl --namespace {{ .Release.Namespace }} port-forward \
+    svc/{{ include "alterconso.fullname" . }} 8080:{{ .Values.service.port }}
+  → http://localhost:8080
+{{- end }}
+
+{{- if .Values.database.embedded.enabled }}
+
+DB MySQL embedded déployée :
+  Service : {{ include "alterconso.fullname" . }}-mysql.{{ .Release.Namespace }}.svc.cluster.local:3306
+  Pod     : kubectl get pod -l app={{ include "alterconso.fullname" . }}-mysql -n {{ .Release.Namespace }}
+{{- else }}
+
+DB externe utilisée :
+  Host : {{ .Values.database.external.host }}:{{ .Values.database.external.port }}
+{{- if .Values.database.init.enabled }}
+  Init Job : tournera en pre-install/pre-upgrade pour créer DB + user.
+             Vérifier l'historique des Jobs :
+               kubectl get job -n {{ .Release.Namespace }} \
+                 -l app.kubernetes.io/instance={{ .Release.Name }}
+{{- end }}
+{{- end }}
+
+{{- if not .Values.secrets.existingSecret }}
+{{- if or (not .Values.secrets.DB_PASSWORD) (not .Values.secrets.JWT_SECRET) (not .Values.secrets.APP_KEY) }}
+
+⚠️  ATTENTION : un ou plusieurs secrets obligatoires sont vides
+   (DB_PASSWORD / JWT_SECRET / APP_KEY). L'app refusera de démarrer.
+
+   Pour fixer : surcharger via --set ou un values file gitignored :
+     --set secrets.DB_PASSWORD=...
+
+   Mieux pour la prod : pointer un Secret externe (SOPS, SealedSecrets…) :
+     --set secrets.existingSecret=alterconso-prod
+{{- end }}
+{{- end }}
+
+────────────────────────────────────────────────────────────────────────
+Health endpoints :
+  /livez   → liveness (jamais 503 sauf process mort)
+  /healthz → readiness (incluant ping DB, timeout 1s)
