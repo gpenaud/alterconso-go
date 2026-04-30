@@ -1,0 +1,84 @@
+{{- if .Values.database.init.enabled }}
+{{- if not .Values.database.init.adminSecret }}
+{{- fail "database.init.enabled=true requires database.init.adminSecret to be set" }}
+{{- end }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: alterconso-db-init
+  annotations:
+    # Helm hooks : ce Job tourne AVANT l'install/upgrade du Deployment.
+    #   pre-install + pre-upgrade : à chaque déploiement, idempotent
+    #   weight -5                 : avant les autres hooks de même phase
+    #   delete-policy             : nettoie l'ancien Job au lancement (sinon
+    #                               conflit de nom), garde les Jobs réussis
+    #                               nettoyés via ttlSecondsAfterFinished, et
+    #                               laisse les échecs pour debug.
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: db-init
+          image: {{ .Values.database.init.image | quote }}
+          env:
+            # Cible (mêmes valeurs que celles que verra l'app dans config.yaml)
+            - name: DB_HOST
+              value: {{ .Values.config.db_host | quote }}
+            - name: DB_PORT
+              value: {{ .Values.config.db_port | quote }}
+            - name: DB_NAME
+              value: {{ .Values.config.db_name | quote }}
+            - name: DB_USER
+              value: {{ .Values.config.db_user | quote }}
+            # Mot de passe du nouveau user — depuis le Secret de l'app
+            # (existingSecret en mode prod, ou Secret créé par le chart en dev).
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret | default "alterconso" }}
+                  key: DB_PASSWORD
+            # Credentials admin pour exécuter CREATE/GRANT.
+            # MYSQL_PWD est lu nativement par le client mysql — évite de
+            # passer le password en argument (visible dans `ps`).
+            - name: MYSQL_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.init.adminSecret }}
+                  key: MYSQL_ADMIN_USER
+            - name: MYSQL_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.init.adminSecret }}
+                  key: MYSQL_ADMIN_PASSWORD
+          command: ["/bin/sh", "-c"]
+          args:
+            # SQL idempotent :
+            #   CREATE ... IF NOT EXISTS : 1re exécution OK, suivantes no-op.
+            #   ALTER USER ... IDENTIFIED BY : update du password lors des
+            #     rotations (CREATE USER IF NOT EXISTS ne change pas le pass
+            #     d'un user déjà existant).
+            #   GRANT ... : idempotent côté MySQL.
+            #
+            # ⚠️ Le password est interpolé en SQL via env shell : éviter les
+            #    caractères ' " \ dans le password (utiliser hex/base64).
+            - |
+              set -eu
+              echo "[db-init] target ${DB_HOST}:${DB_PORT} as ${MYSQL_ADMIN_USER}"
+              mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${MYSQL_ADMIN_USER}" <<SQL
+              CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`
+                CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+              CREATE USER IF NOT EXISTS '${DB_USER}'@'%'
+                IDENTIFIED BY '${DB_PASSWORD}';
+              ALTER USER '${DB_USER}'@'%'
+                IDENTIFIED BY '${DB_PASSWORD}';
+              GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%';
+              FLUSH PRIVILEGES;
+              SQL
+              echo "[db-init] OK: ${DB_NAME} / ${DB_USER} provisioned"
+{{- end }}

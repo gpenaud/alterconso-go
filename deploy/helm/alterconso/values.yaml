@@ -11,6 +11,27 @@ replicaCount: 1
 service:
   port: 80
 
+# ─── Base de données ────────────────────────────────────────────────────────
+# Pour l'instant un seul mode : "external" — connexion à un MySQL déjà en
+# place (typiquement un InnoDBCluster du MySQL Operator). Mode "embedded"
+# (sub-chart bitnami/mysql) viendra dans un second temps.
+#
+# Le chart peut provisionner lui-même DB + user + grants via un Helm hook
+# Job qui tourne en pre-install / pre-upgrade. Idempotent.
+database:
+  init:
+    # true → un Job CREATE DATABASE / CREATE USER / GRANT s'exécute avant
+    # le déploiement. Utile la 1re fois et lors des rotations de password.
+    enabled: false
+    # Image avec le client mysql.
+    image: mysql:8.4
+    # Secret externe (typiquement géré via SOPS hors-chart) qui contient
+    # les credentials admin nécessaires aux CREATE/GRANT.
+    # Doit avoir les clés MYSQL_ADMIN_USER et MYSQL_ADMIN_PASSWORD.
+    # Typiquement : root du MySQL/InnoDBCluster, ou un user dédié avec
+    # GRANT CREATE, GRANT OPTION sur *.*.
+    adminSecret: ""
+
 # ─── Config applicative (non sensible) ──────────────────────────────────────
 # Cette section est dumpée telle quelle dans /app/config.yaml du container.
 # La structure ci-dessous DOIT correspondre 1:1 à ce que parse le code Go
