@@ -11,6 +11,42 @@ replicaCount: 1
 service:
   port: 80
 
+# ─── Ingress ────────────────────────────────────────────────────────────────
+# Expose le service publiquement via un Ingress standard k8s.
+# Compatible avec n'importe quel controller (Traefik en k3s par défaut,
+# nginx, contour, etc.) — il suffit de matcher className.
+#
+# La liste hosts accepte autant d'entrées que tu veux : domaines, alias,
+# multi-AMAP sur la même app, etc. Chaque host a sa propre liste de paths.
+ingress:
+  enabled: false
+  className: traefik
+
+  # Annotations pour le controller. Quelques exemples utiles :
+  #   cert-manager.io/cluster-issuer: letsencrypt-prod   (auto-renew TLS)
+  #   traefik.ingress.kubernetes.io/router.entrypoints: websecure
+  #   nginx.ingress.kubernetes.io/proxy-body-size: 10m   (uploads gros)
+  annotations: {}
+
+  # Liste de hosts. Ajoute autant d'entrées que de domaines à servir.
+  hosts:
+    - host: alterconso.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+  # TLS : chaque entrée associe un Secret de type kubernetes.io/tls
+  # (créé par cert-manager, kubectl create secret tls, ou SOPS/SealedSecrets)
+  # à une liste d'hôtes couverts par le cert.
+  # Vide = HTTP only.
+  tls: []
+  # Exemple :
+  # tls:
+  #   - secretName: alterconso-tls
+  #     hosts:
+  #       - alterconso.example.com
+  #       - www.alterconso.example.com
+
 # ─── Base de données ────────────────────────────────────────────────────────
 # Deux modes mutuellement exclusifs :
 #
