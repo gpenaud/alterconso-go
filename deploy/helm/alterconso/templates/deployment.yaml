@@ -10,11 +10,16 @@ spec:
   template:
     metadata:
       annotations:
-        # Force un rolling update du Deployment quand la ConfigMap ou le
-        # Secret changent : k8s détecte que podSpec.annotations a changé
-        # et redéploie. Sans ça, kubectl edit configmap → rien ne se passe.
+        # Force un rolling update du Deployment quand la ConfigMap change.
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        # Pour le Secret on ne tracke le checksum que si c'est NOTRE Secret
+        # (mode dev). En mode existingSecret, c'est à l'opérateur externe
+        # (SOPS/Flux/ESO) de déclencher un rollout — typiquement via
+        # `kubectl rollout restart deployment/alterconso` après update du
+        # Secret, ou via une annotation propre côté opérateur.
+        {{- if not .Values.secrets.existingSecret }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
       labels:
         app: alterconso
     spec:
@@ -24,14 +29,11 @@ spec:
           ports:
             - name: http
               containerPort: 8080
-          # Secrets injectés en env vars. Le code Go priorité env > yaml,
-          # donc DB_PASSWORD (env) prend le pas sur db_password (config.yaml,
-          # vide).
           envFrom:
+            # Référence le Secret externe si existingSecret est défini,
+            # sinon celui que le chart vient de créer (nommé "alterconso").
             - secretRef:
-                name: alterconso
-          # ConfigMap montée comme fichier au chemin attendu par le binaire
-          # (CONFIG_FILE par défaut = ./config.yaml, et WORKDIR=/app).
+                name: {{ .Values.secrets.existingSecret | default "alterconso" }}
           volumeMounts:
             - name: config
               mountPath: /app/config.yaml

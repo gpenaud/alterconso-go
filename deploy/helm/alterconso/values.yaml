@@ -53,10 +53,23 @@ config:
     recipient_category: "Membres réguliers"
 
 # ─── Secrets ────────────────────────────────────────────────────────────────
-# Injectés en env vars (le code Go priorité env > yaml). Les noms de clés
-# correspondent aux env vars que lit le code (DB_PASSWORD, JWT_SECRET, ...).
-# JAMAIS commiter de vraies valeurs — surcharger via --set ou values.local.yaml.
+# Deux modes :
+#
+#   Mode A (dev / quickstart) : existingSecret vide. Le chart crée un Secret
+#   à partir des valeurs ci-dessous. JAMAIS commiter de vraies valeurs —
+#   surcharger via --set ou values.local.yaml gitignored.
+#
+#   Mode B (prod / GitOps / SOPS) : existingSecret = nom d'un Secret déjà
+#   présent dans le namespace. Le chart ne crée RIEN, il référence juste.
+#   Le Secret peut être créé par : `kubectl apply -f <(sops -d ...)`,
+#   helm-secrets plugin, Flux/Argo CD avec décryption SOPS, SealedSecrets,
+#   External Secrets Operator, etc. Les noms de clés du Secret doivent
+#   matcher : DB_PASSWORD, JWT_SECRET, APP_KEY, SMTP_PASSWORD,
+#   BREVO_API_KEY, SUPERADMIN_PASSWORD.
 secrets:
+  existingSecret: ""
+
+  # Utilisé seulement en mode A (existingSecret vide). Ignoré en mode B.
   DB_PASSWORD: ""
   JWT_SECRET: "" # openssl rand -hex 32
   APP_KEY: "" # openssl rand -hex 32
