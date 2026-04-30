@@ -12,35 +12,12 @@ image:
   tag: latest
 
 # Secrets de pull pour les registries privés (ghcr.io, registry interne…).
-# Le Secret référencé doit exister dans le namespace de la release, soit :
+# Le Secret référencé doit exister dans le namespace de la release. Au choix :
 #   - créé hors-chart via kubectl create secret docker-registry
-#   - mirroré depuis un autre namespace via reflector (cf section
-#     reflector.mirrors plus bas)
+#   - géré via SOPS / SealedSecrets / ExternalSecrets
+#   - mirroré depuis un autre namespace via reflector (configuré hors-chart,
+#     ex. côté devspace)
 imagePullSecrets: []
-
-# ─── Secret mirroring (kubernetes-reflector) ───────────────────────────────
-# Permet de répliquer un Secret depuis un autre namespace (typiquement un
-# regcred dans kube-system) vers le namespace de la release. Évite la
-# duplication manuelle et la rotation à plusieurs endroits.
-#
-# Pré-requis dans le cluster :
-#   1. reflector installé : https://github.com/emberstack/kubernetes-reflector
-#      helm install reflector emberstack/reflector -n kube-system
-#   2. Le Secret source doit avoir l'annotation autorisant le mirroring :
-#      kubectl annotate secret regcred -n kube-system \
-#        reflector.v1.k8s.emberstack.com/reflection-allowed=true \
-#        reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces=<ns-cible>
-#
-# Chaque entrée dans mirrors crée un Secret "placeholder" annoté ; reflector
-# le détecte et le remplit depuis la source dans les secondes qui suivent.
-reflector:
-  mirrors: []
-  # Exemple :
-  # mirrors:
-  #   - name: regcred
-  #     sourceNamespace: kube-system
-  #     sourceName: regcred
-  #     type: kubernetes.io/dockerconfigjson
 
 replicaCount: 1
 
