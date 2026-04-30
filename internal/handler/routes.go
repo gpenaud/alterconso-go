@@ -18,16 +18,12 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	auth := middleware.Auth(cfg)
 	pageAuth := middleware.PageAuth(cfg)
 
-	// ---- Probes ----
-	r.GET("/livez", func(c *gin.Context) { c.JSON(200, gin.H{"status": "alive"}) })
-	r.GET("/healthz", func(c *gin.Context) {
-		sqlDB, err := db.DB()
-		if err != nil || sqlDB.Ping() != nil {
-			c.JSON(503, gin.H{"status": "unhealthy", "error": "database unreachable"})
-			return
-		}
-		c.JSON(200, gin.H{"status": "ok"})
-	})
+	// ---- Probes k8s ----
+	// liveness  → /livez   : process vivant ? (zéro dépendance, jamais 503
+	//                        sauf si Go est mort)
+	// readiness → /healthz : DB joignable ? (timeout 1s, 503 sinon)
+	r.GET("/livez", Liveness)
+	r.GET("/healthz", Readiness(db))
 
 	// ---- Static assets (original www/) ----
 	// Sert les variantes pré-compressées (.br / .gz) générées au build Docker
