@@ -1,10 +1,23 @@
+{{- /*
+db_host et db_port dépendent du mode :
+  - external : valeurs de .Values.database.external
+  - embedded : Service du sub-chart bitnami/mysql, nommé <release>-mysql
+On les calcule ici plutôt que de demander à l'utilisateur de les saisir
+deux fois (dans config: ET database:).
+*/}}
+{{- $dbHost := .Values.database.external.host -}}
+{{- $dbPort := .Values.database.external.port -}}
+{{- if .Values.database.embedded.enabled -}}
+  {{- $dbHost = printf "%s-mysql" .Release.Name -}}
+  {{- $dbPort = "3306" -}}
+{{- end -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: alterconso
 data:
-  # Dump direct de .Values.config en YAML — comme la structure de values
-  # mirroite déjà ce qu'attend le code Go, pas de mapping à faire.
-  # Le `|` (block scalar) garde le YAML lisible côté kubectl get.
+  # On préfixe avec db_host/db_port calculés, puis dump du reste.
   config.yaml: |
+    db_host: {{ $dbHost | quote }}
+    db_port: {{ $dbPort | quote }}
     {{- toYaml .Values.config | nindent 4 }}

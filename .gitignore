@@ -22,3 +22,6 @@ docs/
 
 # SQL import
 *.sql
+
+# Helm sub-charts téléchargés par helm dep update (Chart.lock suffit)
+deploy/helm/alterconso/charts/

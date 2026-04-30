@@ -1,4 +1,10 @@
-{{- if .Values.database.init.enabled }}
+{{- /*
+Init Job auto-skippé en mode embedded : bitnami/mysql crée déjà la DB +
+user au boot via les env vars MYSQL_DATABASE / MYSQL_USER. Lancer notre
+Job en plus serait redondant et ferait foirer la 1re install (le serveur
+MySQL n'est pas encore up quand le pre-install hook tourne).
+*/}}
+{{- if and .Values.database.init.enabled (not .Values.database.embedded.enabled) }}
 {{- if not .Values.database.init.adminSecret }}
 {{- fail "database.init.enabled=true requires database.init.adminSecret to be set" }}
 {{- end }}
@@ -7,13 +13,6 @@ kind: Job
 metadata:
   name: alterconso-db-init
   annotations:
-    # Helm hooks : ce Job tourne AVANT l'install/upgrade du Deployment.
-    #   pre-install + pre-upgrade : à chaque déploiement, idempotent
-    #   weight -5                 : avant les autres hooks de même phase
-    #   delete-policy             : nettoie l'ancien Job au lancement (sinon
-    #                               conflit de nom), garde les Jobs réussis
-    #                               nettoyés via ttlSecondsAfterFinished, et
-    #                               laisse les échecs pour debug.
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "-5"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
@@ -27,25 +26,21 @@ spec:
         - name: db-init
           image: {{ .Values.database.init.image | quote }}
           env:
-            # Cible (mêmes valeurs que celles que verra l'app dans config.yaml)
+            # En mode external (le seul possible ici), les paramètres viennent
+            # de .Values.database.external.
             - name: DB_HOST
-              value: {{ .Values.config.db_host | quote }}
+              value: {{ .Values.database.external.host | quote }}
             - name: DB_PORT
-              value: {{ .Values.config.db_port | quote }}
+              value: {{ .Values.database.external.port | quote }}
             - name: DB_NAME
               value: {{ .Values.config.db_name | quote }}
             - name: DB_USER
               value: {{ .Values.config.db_user | quote }}
-            # Mot de passe du nouveau user — depuis le Secret de l'app
-            # (existingSecret en mode prod, ou Secret créé par le chart en dev).
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.secrets.existingSecret | default "alterconso" }}
                   key: DB_PASSWORD
-            # Credentials admin pour exécuter CREATE/GRANT.
-            # MYSQL_PWD est lu nativement par le client mysql — évite de
-            # passer le password en argument (visible dans `ps`).
             - name: MYSQL_ADMIN_USER
               valueFrom:
                 secretKeyRef:
@@ -58,15 +53,6 @@ spec:
                   key: MYSQL_ADMIN_PASSWORD
           command: ["/bin/sh", "-c"]
           args:
-            # SQL idempotent :
-            #   CREATE ... IF NOT EXISTS : 1re exécution OK, suivantes no-op.
-            #   ALTER USER ... IDENTIFIED BY : update du password lors des
-            #     rotations (CREATE USER IF NOT EXISTS ne change pas le pass
-            #     d'un user déjà existant).
-            #   GRANT ... : idempotent côté MySQL.
-            #
-            # ⚠️ Le password est interpolé en SQL via env shell : éviter les
-            #    caractères ' " \ dans le password (utiliser hex/base64).
             - |
               set -eu
               echo "[db-init] target ${DB_HOST}:${DB_PORT} as ${MYSQL_ADMIN_USER}"

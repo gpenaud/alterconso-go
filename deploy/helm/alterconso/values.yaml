@@ -12,24 +12,56 @@ service:
   port: 80
 
 # ─── Base de données ────────────────────────────────────────────────────────
-# Pour l'instant un seul mode : "external" — connexion à un MySQL déjà en
-# place (typiquement un InnoDBCluster du MySQL Operator). Mode "embedded"
-# (sub-chart bitnami/mysql) viendra dans un second temps.
+# Deux modes mutuellement exclusifs :
 #
-# Le chart peut provisionner lui-même DB + user + grants via un Helm hook
-# Job qui tourne en pre-install / pre-upgrade. Idempotent.
+#   external (default) : pointe sur un MySQL existant (InnoDBCluster, RDS…).
+#   embedded           : déploie un StatefulSet MySQL via le sub-chart
+#                        bitnami/mysql. Utile en dev / test / mono-app.
+#
+# db_host et db_port sont calculés automatiquement par le template selon
+# le mode actif — pas besoin de les dupliquer.
 database:
+  # ─── Mode external ────────────────────────────────────────────────────────
+  external:
+    host: mysql.alterconso.svc.cluster.local
+    port: "3306"
+
+  # ─── Mode embedded (StatefulSet inline) ───────────────────────────────────
+  # Quand enabled=true :
+  #   - un StatefulSet MySQL single-replica est déployé (templates/mysql-
+  #     embedded.yaml)
+  #   - l'image mysql officielle bootstrappe la DB + user au boot via
+  #     MYSQL_DATABASE / MYSQL_USER / MYSQL_PASSWORD env vars
+  #   - db_host devient automatiquement <release-name>-mysql
+  #   - database.init.enabled est ignoré (l'image fait déjà le boulot)
+  #
+  # Pour de la prod HA, plutôt utiliser un opérateur MySQL externe
+  # (Oracle MySQL Operator avec InnoDBCluster, Percona) en mode external.
+  embedded:
+    enabled: false
+    version: "8.4"
+    storageClass: "" # vide = StorageClass par défaut du cluster
+    persistence:
+      size: 1Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1
+        memory: 1Gi
+
+  # ─── Init Job (pertinent en mode external uniquement) ─────────────────────
   init:
     # true → un Job CREATE DATABASE / CREATE USER / GRANT s'exécute avant
     # le déploiement. Utile la 1re fois et lors des rotations de password.
+    # Auto-skip en mode embedded.
     enabled: false
     # Image avec le client mysql.
     image: mysql:8.4
     # Secret externe (typiquement géré via SOPS hors-chart) qui contient
     # les credentials admin nécessaires aux CREATE/GRANT.
     # Doit avoir les clés MYSQL_ADMIN_USER et MYSQL_ADMIN_PASSWORD.
-    # Typiquement : root du MySQL/InnoDBCluster, ou un user dédié avec
-    # GRANT CREATE, GRANT OPTION sur *.*.
     adminSecret: ""
 
 # ─── Config applicative (non sensible) ──────────────────────────────────────
@@ -42,8 +74,8 @@ config:
   port: "8080"
   debug: false
 
-  db_host: mysql.alterconso.svc.cluster.local
-  db_port: "3306"
+  # db_host et db_port sont injectés par le configmap selon database.embedded
+  # (ne pas définir ici).
   db_user: alterconso
   db_name: alterconso
 
@@ -97,6 +129,9 @@ secrets:
   SMTP_PASSWORD: ""
   BREVO_API_KEY: ""
   SUPERADMIN_PASSWORD: ""
+  # Utilisé seulement quand database.embedded.enabled=true (le sub-chart
+  # bitnami/mysql en a besoin pour bootstrapper le serveur MySQL).
+  MYSQL_ROOT_PASSWORD: ""
 
 # ─── Probes k8s ────────────────────────────────────────────────────────────
 livenessProbe:

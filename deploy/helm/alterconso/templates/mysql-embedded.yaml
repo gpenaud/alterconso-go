@@ -1,0 +1,102 @@
+{{- /*
+MySQL embedded — StatefulSet single-replica, pour mode dev/test ou
+mono-app sans HA. Pour de la prod multi-replica, préférer un opérateur
+(Oracle MySQL Operator, Percona, etc.) ou un service managé externe.
+
+Le serveur lit ses credentials depuis le Secret du chart (alterconso) :
+  MYSQL_ROOT_PASSWORD : root pour bootstrap
+  DB_PASSWORD         : user de l'app (renommé en mysql-password serait
+                        le standard bitnami, on garde DB_PASSWORD pour
+                        cohérence avec l'app)
+Au boot, l'image officielle mysql:8 utilise les env vars
+MYSQL_DATABASE, MYSQL_USER, MYSQL_PASSWORD pour créer la DB et le user.
+
+Service nommé "<release>-mysql" (cf configmap pour l'auto-resolution
+de db_host).
+*/}}
+{{- if .Values.database.embedded.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-mysql
+  labels:
+    app: {{ .Release.Name }}-mysql
+spec:
+  type: ClusterIP
+  # ClusterIP None (Headless Service) → DNS direct vers le pod, requis
+  # pour les StatefulSets si tu veux résoudre <pod>.<service>. Avec un
+  # seul replica c'est optionnel mais propre.
+  clusterIP: None
+  ports:
+    - port: 3306
+      targetPort: mysql
+      name: mysql
+  selector:
+    app: {{ .Release.Name }}-mysql
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-mysql
+  labels:
+    app: {{ .Release.Name }}-mysql
+spec:
+  serviceName: {{ .Release.Name }}-mysql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-mysql
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-mysql
+    spec:
+      containers:
+        - name: mysql
+          image: "mysql:{{ .Values.database.embedded.version }}"
+          ports:
+            - name: mysql
+              containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret | default "alterconso" }}
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              value: {{ .Values.config.db_name | quote }}
+            - name: MYSQL_USER
+              value: {{ .Values.config.db_user | quote }}
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret | default "alterconso" }}
+                  key: DB_PASSWORD
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+          # Liveness/readiness via mysqladmin ping. Inclus dans l'image officielle.
+          livenessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p$(MYSQL_ROOT_PASSWORD)"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p$(MYSQL_ROOT_PASSWORD)"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.database.embedded.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with .Values.database.embedded.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.database.embedded.persistence.size }}
+{{- end }}
