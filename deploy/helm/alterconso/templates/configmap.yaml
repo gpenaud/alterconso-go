@@ -1,14 +1,3 @@
-{{- /*
-db_host et db_port dépendent du mode :
-  - external : valeurs de .Values.database.external
-  - embedded : Service du StatefulSet, nommé <fullname>-mysql
-*/}}
-{{- $dbHost := .Values.database.external.host -}}
-{{- $dbPort := .Values.database.external.port -}}
-{{- if .Values.database.embedded.enabled -}}
-  {{- $dbHost = printf "%s-mysql" (include "alterconso.fullname" .) -}}
-  {{- $dbPort = "3306" -}}
-{{- end -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -17,6 +6,6 @@ metadata:
     {{- include "alterconso.labels" . | nindent 4 }}
 data:
   config.yaml: |
-    db_host: {{ $dbHost | quote }}
-    db_port: {{ $dbPort | quote }}
+    db_host: {{ include "alterconso.dbHost" . | quote }}
+    db_port: {{ include "alterconso.dbPort" . | quote }}
     {{- toYaml .Values.config | nindent 4 }}

@@ -21,6 +21,21 @@ imagePullSecrets: []
 
 replicaCount: 1
 
+# ─── Wait for database (initContainer) ─────────────────────────────────────
+# Ajoute un initContainer qui ping MySQL jusqu'à ce qu'il réponde, avant de
+# laisser démarrer le container principal. Évite le CrashLoopBackOff
+# classique au boot quand l'app et la DB démarrent en parallèle (mode
+# embedded) ou quand la DB externe a un blip transient.
+#
+# Désactivable si tu as une autre stratégie (retry côté app, init manuel…).
+waitForDatabase:
+  enabled: true
+  image: mysql:8.4
+  # Timeout total avant que l'init container abandonne et fasse échouer
+  # le pod (qui sera recréé par le Deployment). Au-delà de ce délai, on
+  # considère que la DB est vraiment cassée, pas juste lente à booter.
+  timeoutSeconds: 60
+
 # ─── ServiceAccount ────────────────────────────────────────────────────────
 # L'app ne parle pas à l'API k8s, mais on lui donne un SA dédié pour pouvoir
 # écrire des règles audit/policy ciblées si besoin. automountServiceAccount-

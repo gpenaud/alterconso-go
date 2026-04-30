@@ -86,3 +86,23 @@ du chart.
 {{- define "alterconso.secretName" -}}
 {{- .Values.secrets.existingSecret | default (include "alterconso.fullname" .) }}
 {{- end }}
+
+{{/*
+Hôte de la DB — calculé selon le mode (embedded vs external).
+Source de vérité unique réutilisée par la configmap et l'init container.
+*/}}
+{{- define "alterconso.dbHost" -}}
+{{- if .Values.database.embedded.enabled -}}
+{{- printf "%s-mysql" (include "alterconso.fullname" .) -}}
+{{- else -}}
+{{- .Values.database.external.host -}}
+{{- end -}}
+{{- end }}
+
+{{- define "alterconso.dbPort" -}}
+{{- if .Values.database.embedded.enabled -}}
+3306
+{{- else -}}
+{{- .Values.database.external.port -}}
+{{- end -}}
+{{- end }}
