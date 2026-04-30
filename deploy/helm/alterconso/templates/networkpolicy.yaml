@@ -1,0 +1,58 @@
+{{- /*
+NetworkPolicy "default-deny + allowlist explicite" pour le pod alterconso.
+
+Règles auto-générées :
+  - egress DNS vers kube-system (sinon l'app ne résout aucun nom)
+  - egress vers le pod MySQL embedded si database.embedded.enabled
+
+Reste à charge de l'utilisateur (via networkPolicy.egress) :
+  - flux SMTP / HTTPS sortants vers Brevo & co
+  - MySQL externe si database.external pointe ailleurs
+
+⚠️ Sans CNI compatible (Calico, Cilium…), la policy est créée mais
+   non enforcée — les flux passent quand même. Vérifier le CNI avant
+   de compter dessus pour la sécurité.
+*/}}
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: alterconso
+spec:
+  podSelector:
+    matchLabels:
+      app: alterconso
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        {{- toYaml .Values.networkPolicy.ingress.from | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # DNS — sans ça l'app ne résout pas le hostname de la DB.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- if .Values.database.embedded.enabled }}
+    # MySQL embedded — même release, sélection par label
+    - to:
+        - podSelector:
+            matchLabels:
+              app: {{ .Release.Name }}-mysql
+      ports:
+        - protocol: TCP
+          port: 3306
+    {{- end }}
+    {{- with .Values.networkPolicy.egress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}

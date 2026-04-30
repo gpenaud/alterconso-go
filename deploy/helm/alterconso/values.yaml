@@ -96,6 +96,53 @@ ingress:
   #       - alterconso.example.com
   #       - www.alterconso.example.com
 
+# ─── NetworkPolicy ─────────────────────────────────────────────────────────
+# Firewall L3/L4 au niveau pod. Default-deny : tout flux non explicitement
+# autorisé est bloqué.
+#
+# ⚠️ Pour que la policy soit ENFORCÉE, le CNI du cluster doit la supporter :
+#    - Calico  ✓
+#    - Cilium  ✓
+#    - Flannel ✗ (k3s par défaut !) → policy créée mais ignorée
+#    Vérifier avec : kubectl get pod -n kube-system | grep -E 'calico|cilium'
+networkPolicy:
+  enabled: false
+
+  # Sources autorisées vers le port http de l'app.
+  ingress:
+    from:
+      # Ingress controller en kube-system (Traefik dans k3s)
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+
+  # Règles egress en plus des règles auto-générées (DNS toujours, MySQL
+  # embedded si activé). Liste libre de NetworkPolicyEgressRule.
+  egress: []
+  # Exemples typiques :
+  # - to:
+  #     - ipBlock: { cidr: 0.0.0.0/0 }
+  #   ports:
+  #     - { protocol: TCP, port: 587 }   # SMTP STARTTLS (Brevo)
+  #     - { protocol: TCP, port: 443 }   # HTTPS API (Brevo)
+  # - to:
+  #     - namespaceSelector:
+  #         matchLabels:
+  #           kubernetes.io/metadata.name: mysql-ns
+  #   ports:
+  #     - { protocol: TCP, port: 3306 }  # MySQL externe
+
+# ─── PodDisruptionBudget ───────────────────────────────────────────────────
+# Protège l'app contre les évictions VOLONTAIRES (kubectl drain, node
+# upgrade, autoscaler scale-down). N'a d'effet utile qu'avec replicaCount >= 2 :
+# avec 1 seul replica + minAvailable=1, la PDB BLOQUE TOUT drain → tu ne
+# peux plus mettre à jour le nœud. À activer quand tu passes en HA.
+podDisruptionBudget:
+  enabled: false
+  # Choisir l'un ou l'autre, jamais les deux (mutuellement exclusifs).
+  minAvailable: 1
+  # maxUnavailable: 1
+
 # ─── Base de données ────────────────────────────────────────────────────────
 # Deux modes mutuellement exclusifs :
 #
