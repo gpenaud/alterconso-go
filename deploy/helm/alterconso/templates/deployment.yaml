@@ -42,11 +42,15 @@ spec:
       {{- end }}
       {{- if .Values.waitForDatabase.enabled }}
       initContainers:
-        # Attend que MySQL réponde sur TCP+protocol avant de démarrer l'app.
-        # `mysqladmin ping` retourne OK seulement quand le serveur accepte
-        # vraiment des connexions (pas juste socket open). Pas de creds
-        # nécessaires — un ping anonyme renvoie "mysqld is alive" même
-        # sans auth.
+        # Attend que MySQL réponde au niveau protocole (pas juste TCP) avant
+        # de laisser démarrer l'app. Depuis MySQL 8, `mysqladmin ping` SANS
+        # credentials retourne exit 1 même quand le serveur tourne ("Access
+        # denied"), donc on doit passer DB_USER + DB_PASSWORD. Le user app
+        # existe à ce moment-là :
+        #   - mode embedded : créé par l'image mysql au boot via env vars
+        #   - mode external : créé par le db-init Job (pre-install hook)
+        # MYSQL_PWD est lu nativement par mysqladmin, évite de passer le
+        # password en argument visible dans `ps`.
         - name: wait-for-db
           image: {{ .Values.waitForDatabase.image | quote }}
           env:
@@ -54,6 +58,13 @@ spec:
               value: {{ include "alterconso.dbHost" . | quote }}
             - name: DB_PORT
               value: {{ include "alterconso.dbPort" . | quote }}
+            - name: DB_USER
+              value: {{ .Values.config.db_user | quote }}
+            - name: MYSQL_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alterconso.secretName" . }}
+                  key: DB_PASSWORD
             - name: TIMEOUT
               value: {{ .Values.waitForDatabase.timeoutSeconds | quote }}
           command: ["/bin/sh", "-c"]
@@ -61,7 +72,7 @@ spec:
             - |
               set -eu
               elapsed=0
-              until mysqladmin ping -h "$DB_HOST" -P "$DB_PORT" --silent 2>/dev/null; do
+              until mysqladmin ping -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" --connect-timeout=2 --silent 2>/dev/null; do
                 if [ "$elapsed" -ge "$TIMEOUT" ]; then
                   echo "[wait-for-db] timeout: ${DB_HOST}:${DB_PORT} unreachable after ${TIMEOUT}s"
                   exit 1
