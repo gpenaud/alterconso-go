@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -315,6 +316,11 @@ func (h *PagesHandler) VolunteersCalendarJoin(c *gin.Context) {
 
 	mdID, err := strconv.ParseUint(mdIDStr, 10, 64)
 	if err != nil {
+		// Le formulaire n'a pas transmis de distribution exploitable. Sans
+		// trace, l'utilisateur est simplement renvoyé au calendrier et croit
+		// s'être inscrit.
+		log.Printf("[volunteers] inscription ignorée: multiDistribId=%q invalide (user=%d, rôle=%q)",
+			mdIDStr, pd.User.ID, roleName)
 		c.Redirect(http.StatusFound, "/distribution/volunteersCalendar?from="+fromStr+"&to="+toStr)
 		return
 	}
@@ -324,7 +330,15 @@ func (h *PagesHandler) VolunteersCalendarJoin(c *gin.Context) {
 		MultiDistribID: uint(mdID),
 		Role:           &roleName,
 	}
-	h.db.Create(&vol)
+	// Erreur vérifiée : une insertion refusée passait inaperçue, et le
+	// bénévole n'apparaissait nulle part sans que rien ne l'indique.
+	if err := h.db.Create(&vol).Error; err != nil {
+		log.Printf("[volunteers] inscription échouée (user=%d, multiDistrib=%d, rôle=%q): %v",
+			pd.User.ID, mdID, roleName, err)
+	} else {
+		log.Printf("[volunteers] inscription enregistrée (id=%d, user=%d, multiDistrib=%d, rôle=%q)",
+			vol.ID, pd.User.ID, mdID, roleName)
+	}
 
 	c.Redirect(http.StatusFound, "/distribution/volunteersCalendar?from="+fromStr+"&to="+toStr)
 }

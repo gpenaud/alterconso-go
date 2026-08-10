@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gpenaud/alterconso/internal/middleware"
 	"github.com/gpenaud/alterconso/internal/model"
+	"gorm.io/gorm"
 )
 
 // ---- /account/quit ----
@@ -328,25 +330,51 @@ func (h *PagesHandler) VolunteersSummaryPage(c *gin.Context) {
 	}
 
 	if c.Request.Method == http.MethodPost {
-		// Delete existing volunteer records for this multidistrib
-		h.db.Where("multi_distrib_id = ?", md.ID).Delete(&model.Volunteer{})
-		// Re-create from form
-		for _, r := range roles {
-			key := "role_" + strconv.Itoa(int(r.ID))
-			userIDStr := c.PostForm(key)
-			if userIDStr == "" || userIDStr == "0" {
-				continue
+		// Réconciliation rôle par rôle, restreinte aux rôles réellement présents
+		// dans le formulaire. Un DELETE global sur la multidistrib effacerait
+		// aussi les inscriptions que cet écran n'affiche pas — celles prises via
+		// le calendrier pour un rôle dont le catalogue ne participe plus, ou
+		// sans rôle — alors que rien ici ne permet de les ressaisir.
+		err := h.db.Transaction(func(tx *gorm.DB) error {
+			for _, r := range roles {
+				roleName := r.Name
+
+				var uid uint
+				if s := c.PostForm("role_" + strconv.Itoa(int(r.ID))); s != "" {
+					if parsed, parseErr := strconv.ParseUint(s, 10, 64); parseErr == nil {
+						uid = uint(parsed)
+					}
+				}
+
+				// Titulaire inchangé : on ne touche pas à la ligne existante,
+				// sa date d'inscription est conservée.
+				if uid == roleAssign[roleName] {
+					continue
+				}
+
+				// Le rôle change de titulaire (ou repasse à « non défini ») :
+				// on retire l'ancien avant d'inscrire le nouveau.
+				if err := tx.Where("multi_distrib_id = ? AND role = ?", md.ID, roleName).
+					Delete(&model.Volunteer{}).Error; err != nil {
+					return err
+				}
+				if uid == 0 {
+					continue
+				}
+				if err := tx.Create(&model.Volunteer{
+					UserID:         uid,
+					MultiDistribID: md.ID,
+					Role:           &roleName,
+				}).Error; err != nil {
+					return err
+				}
 			}
-			uid, err := strconv.ParseUint(userIDStr, 10, 64)
-			if err != nil || uid == 0 {
-				continue
-			}
-			roleName := r.Name
-			h.db.Create(&model.Volunteer{
-				UserID:         uint(uid),
-				MultiDistribID: md.ID,
-				Role:           &roleName,
-			})
+			return nil
+		})
+		if err != nil {
+			log.Printf("[volunteers] enregistrement des rôles échoué (multiDistribID=%d): %v", md.ID, err)
+			c.String(http.StatusInternalServerError, "enregistrement impossible")
+			return
 		}
 		c.Redirect(http.StatusFound, "/distribution")
 		return

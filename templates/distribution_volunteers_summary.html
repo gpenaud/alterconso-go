@@ -4,14 +4,14 @@
     <h3 style="font-style:italic;">Sélectionnez un(e) bénévole pour chaque rôle pour cette distribution</h3>
     <form method="POST" class="form-horizontal" style="margin-top:16px;">
       {{if .RoleRows}}
-      {{range .RoleRows}}
+      {{range $row := .RoleRows}}
       <div class="form-group">
         <label class="col-sm-4 control-label">{{.RoleName}}</label>
         <div class="col-sm-8">
           <select name="role_{{.RoleID}}" class="form-control">
             <option value="0">Pas de bénévole défini</option>
             {{range .Members}}
-            <option value="{{.ID}}" {{if eq $.AssignedUID .ID}}selected{{end}}>{{.Name}}</option>
+            <option value="{{.ID}}" {{if eq $row.AssignedUID .ID}}selected{{end}}>{{.Name}}</option>
             {{end}}
           </select>
         </div>
