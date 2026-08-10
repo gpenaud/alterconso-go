@@ -547,8 +547,7 @@ func (h *PagesHandler) ChoosePage(c *gin.Context) {
 		}
 	}
 
-	// Le superadmin voit tous les groupes et n'est jamais auto-redirigé,
-	// même s'il n'y a qu'un seul groupe (il doit toujours choisir explicitement).
+	// Le superadmin voit tous les groupes ; les autres uniquement les leurs.
 	var groups []model.Group
 	if user.IsAdmin() {
 		h.db.Preload("Logo").Order("name").Find(&groups)
@@ -560,20 +559,28 @@ func (h *PagesHandler) ChoosePage(c *gin.Context) {
 			groupIDs = append(groupIDs, ug.GroupID)
 		}
 
-		// Auto-redirect pour les users normaux avec un seul groupe.
-		if len(groupIDs) == 1 && claims.GroupID != groupIDs[0] {
-			newToken, err := h.issueTokenAs(claims.UserID, groupIDs[0], claims.ImpersonatorID)
-			if err == nil {
-				c.SetCookie("token", newToken, 3600*24*7, "/", "", false, true)
-				c.Redirect(http.StatusFound, "/home")
-				return
-			}
-		}
-
 		if len(groupIDs) > 0 {
 			h.db.Preload("Logo").Where("id IN ?", groupIDs).Find(&groups)
 		}
 	}
+	// Un seul groupe accessible : il n'y a pas de choix à faire, on entre
+	// directement dedans. Le token doit porter ce groupe avant la redirection,
+	// sinon /home renvoie ici et la navigation boucle.
+	if len(groups) == 1 {
+		if claims.GroupID == groups[0].ID {
+			c.Redirect(http.StatusFound, "/home")
+			return
+		}
+		newToken, err := h.issueTokenAs(claims.UserID, groups[0].ID, claims.ImpersonatorID)
+		if err == nil {
+			c.SetCookie("token", newToken, 3600*24*7, "/", "", false, true)
+			c.Redirect(http.StatusFound, "/home")
+			return
+		}
+		// Émission impossible : on retombe sur la page de choix plutôt que de
+		// boucler vers /home avec un token sans groupe.
+	}
+
 	logoURL := ""
 	for _, g := range groups {
 		if g.Logo != nil {
