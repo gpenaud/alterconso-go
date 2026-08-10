@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatPrice } from "../utils/format";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { getOrders, saveOrders } from '../api/orders'
@@ -91,7 +92,7 @@ export function OrdersPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900">{p.name}</p>
                       <p className="text-sm text-gray-500">
-                        {p.price.toFixed(2)} € / {p.unitLabel ?? 'unité'}
+                        {formatPrice(p.price)} / {p.unitLabel ?? 'unité'}
                         {p.stock !== undefined && p.stock !== null && (
                           <span className="ml-2 text-gray-400">— stock : {p.stock}</span>
                         )}
@@ -110,7 +111,7 @@ export function OrdersPage() {
                           hover:bg-gray-100 flex items-center justify-center text-lg"
                       >+</button>
                       <span className={`w-16 text-right text-sm font-semibold ${sub > 0 ? 'text-ac-green-dark' : 'text-gray-300'}`}>
-                        {sub > 0 ? `${sub.toFixed(2)} €` : '—'}
+                        {sub > 0 ? `${formatPrice(sub)}` : '—'}
                       </span>
                     </div>
                   </div>
@@ -123,7 +124,7 @@ export function OrdersPage() {
           <div className="bg-white rounded-lg border border-gray-200 px-6 py-4 flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Total</p>
-              <p className="text-2xl font-bold text-gray-900">{total.toFixed(2)} €</p>
+              <p className="text-2xl font-bold text-gray-900">{formatPrice(total)}</p>
             </div>
             <div className="flex items-center gap-3">
               {saved && <span className="text-sm text-ac-green-dark">Enregistré ✓</span>}

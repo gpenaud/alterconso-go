@@ -17,16 +17,22 @@
         {{if .Member.LastLogin}}{{.Member.LastLogin.Format "02/01/2006 15:04"}}{{else}}<b>Jamais connecté</b>{{end}}<br/>
         Inscrit le : {{.Member.CreatedAt.Format "02/01/2006"}}
       </p>
-      <p style="display:flex;gap:6px;flex-wrap:nowrap;align-items:center;white-space:nowrap;">
-        <a href="/member/edit/{{.Member.ID}}" class="btn btn-default btn-xs" style="padding:5px 10px;"><i class="icon icon-edit"></i> Modifier</a>
-        <a href="/member/delete/{{.Member.ID}}" class="btn btn-default btn-xs" style="padding:5px 10px;"
+      <p style="display:flex;flex-direction:column;gap:6px;align-items:stretch;">
+        <a href="/member/edit/{{.Member.ID}}" class="btn btn-default btn-xs" style="padding:5px 10px;width:100%;"><i class="icon icon-edit"></i> Modifier</a>
+        {{if and .HasMembership (ne .Member.ID .User.ID)}}
+        <a href="/member/loginAs/{{.Member.ID}}" class="btn btn-default btn-xs" style="padding:5px 10px;width:100%;"
+          onclick="return confirm('Se connecter en tant que {{.Member.FirstName}} {{.Member.LastName}} ?');">
+          <i class="icon icon-user"></i> Se connecter en tant que
+        </a>
+        {{end}}
+        <a href="/member/delete/{{.Member.ID}}" class="btn btn-default btn-xs" style="padding:5px 10px;width:100%;"
           onclick="return confirm('Retirer ce membre du groupe ?')">
           <i class="icon icon-delete"></i> Retirer du groupe
         </a>
         {{if .IsGroupManager}}
-        <form method="POST" action="/member/fullDelete/{{.Member.ID}}" style="margin:0;padding:0;display:inline-block;"
+        <form method="POST" action="/member/fullDelete/{{.Member.ID}}" style="margin:0;padding:0;"
               onsubmit="return confirm('SUPPRIMER DÉFINITIVEMENT le compte de {{.Member.FirstName}} {{.Member.LastName}} ?\n\nLe compte sera retiré de tous les groupes et toutes les données associées (commandes, adhésions, bénévolat) seront perdues. Cette action est irréversible.');">
-          <button type="submit" class="btn btn-danger btn-xs" style="padding:5px 10px;">
+          <button type="submit" class="btn btn-danger btn-xs" style="padding:5px 10px;width:100%;">
             <i class="icon icon-delete"></i> Supprimer
           </button>
         </form>
@@ -38,7 +44,7 @@
         <b>Adhésion {{.CurrentYear}}</b>
         {{if .CurrentMembership}}
         <span style="color:#080;margin-left:6px;">
-          <i class="icon icon-check"></i> payée — {{printf "%.2f" .CurrentMembership.Fee}} €
+          <i class="icon icon-check"></i> payée — {{price .CurrentMembership.Fee}} €
         </span>
         {{else}}
         <span style="color:#c0392b;margin-left:6px;">
@@ -49,7 +55,7 @@
       <form method="POST" action="/member/membership/{{.Member.ID}}" class="form-inline" style="margin-bottom:0;">
         <div class="input-group input-group-sm" style="max-width:240px;">
           <input type="text" inputmode="decimal" name="fee" class="form-control"
-            placeholder="Montant payé" value="{{if .CurrentMembership}}{{printf "%.2f" .CurrentMembership.Fee}}{{end}}" />
+            placeholder="Montant payé" value="{{if .CurrentMembership}}{{price .CurrentMembership.Fee}}{{end}}" />
           <span class="input-group-addon">€</span>
           <span class="input-group-btn">
             <button type="submit" class="btn btn-default">
@@ -83,7 +89,7 @@
         {{range .Subs}}
         <tr>
           <td>Du {{.StartDate}} au {{.EndDate}}</td>
-          <td>{{printf "%.2f" .Total}} €</td>
+          <td>{{price .Total}} €</td>
         </tr>
         {{end}}
       </table>
@@ -103,16 +109,16 @@
         <tr>
           <td>{{.SmartQty}}</td>
           <td>{{.ProductName}}</td>
-          <td>{{printf "%.2f" .ProductPrice}} €</td>
-          <td>{{printf "%.2f" .SubTotal}} €</td>
-          <td>{{printf "%.2f" .Fees}} €</td>
-          <td>{{printf "%.2f" .Total}} €</td>
+          <td>{{price .ProductPrice}} €</td>
+          <td>{{price .SubTotal}} €</td>
+          <td>{{price .Fees}} €</td>
+          <td>{{price .Total}} €</td>
           <td><a href="/contract/view/{{.CatalogID}}">{{.CatalogName}}</a></td>
         </tr>
         {{end}}
         <tr>
           <td colspan="5"></td>
-          <td><b>{{printf "%.2f" .Total}} €</b></td>
+          <td><b>{{price .Total}} €</b></td>
           <td></td>
         </tr>
       </table>

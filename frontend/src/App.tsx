@@ -22,10 +22,13 @@ function Protected({ children }: { children: React.ReactElement }) {
   return token ? children : <Navigate to="/login" replace />
 }
 
+import { ImpersonationBanner } from "./components/ImpersonationBanner"
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <ImpersonationBanner />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/groups" element={<Protected><GroupsPage /></Protected>} />

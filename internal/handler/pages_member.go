@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -1164,8 +1165,17 @@ func (h *PagesHandler) DefinePasswordPage(c *gin.Context) {
 
 type MessagesData struct {
 	PageData
-	SentMessages   []MessageView
-	Today          string
+	SentMessages []MessageView
+	Today        string
+
+	// Recipients : destinataires proposés à CET utilisateur, déjà filtrés selon
+	// ses droits (cf. buildScopedRecipients). Remplace les entrées autrefois
+	// codées en dur dans le template, qui exposaient tout le groupe à tous.
+	Recipients []RecipientOption
+
+	// ShowBrevo : le quota d'envoi ne concerne que qui pilote les envois de
+	// masse. Masqué pour un adhérent, et l'appel à l'API Brevo est alors évité.
+	ShowBrevo      bool
 	BrevoLimit     int
 	BrevoRemaining int
 	BrevoError     string
@@ -1221,7 +1231,7 @@ type MessageView struct {
 // distribOrdersEmails retourne les emails (uniques, non vides) des membres
 // du groupe ayant commandé sur une distribution programmée au jour donné.
 // Utilisé pour le destinataire éphémère "Clients de la commande du DD/MM/YYYY".
-func (h *PagesHandler) distribOrdersEmails(groupID uint, day time.Time) []string {
+func (h *PagesHandler) distribOrdersEmails(groupID uint, day time.Time, scopedCatalogID uint) []string {
 	dayStart := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, day.Location())
 	dayEnd := dayStart.AddDate(0, 0, 1)
 	var rows []struct {
@@ -1229,21 +1239,200 @@ func (h *PagesHandler) distribOrdersEmails(groupID uint, day time.Time) []string
 		LastName string
 		FirstName string
 	}
-	h.db.Table("user_orders").
+	q := h.db.Table("user_orders").
 		Select("DISTINCT users.email, users.last_name, users.first_name").
 		Joins("JOIN users ON users.id = user_orders.user_id").
 		Joins("JOIN distributions ON distributions.id = user_orders.distribution_id").
 		Joins("JOIN multi_distribs ON multi_distribs.id = distributions.multi_distrib_id").
 		Where("multi_distribs.group_id = ?", groupID).
 		Where("multi_distribs.distrib_start_date >= ? AND multi_distribs.distrib_start_date < ?", dayStart, dayEnd).
-		Where("users.email <> ''").
-		Order("users.last_name, users.first_name").
-		Scan(&rows)
+		Where("users.email <> ''")
+	if scopedCatalogID != 0 {
+		q = q.Where("distributions.catalog_id = ?", scopedCatalogID)
+	}
+	q.Order("users.last_name, users.first_name").Scan(&rows)
 	emails := make([]string, len(rows))
 	for i, r := range rows {
 		emails[i] = r.Email
 	}
 	return emails
+}
+
+// catalogDistribRecipients : une distribution à venir et les membres qui y ont
+// commandé.
+type catalogDistribRecipients struct {
+	DistribID uint
+	Date      time.Time
+	Emails    []string
+}
+
+// catalogUpcomingDistribs retourne les distributions À VENIR du catalogue qui
+// ont au moins une commande, avec leurs clients.
+//
+// Une entrée par distribution, datée : un message s'adresse à une livraison
+// précise — retard, produit manquant, changement d'horaire. Les livraisons
+// passées sont exclues, et celles sans commande n'apparaissent pas puisque la
+// requête part de user_orders.
+func (h *PagesHandler) catalogUpcomingDistribs(groupID, catalogID uint, now time.Time) []catalogDistribRecipients {
+	var rows []struct {
+		DistribID uint
+		Date      time.Time
+		Email     string
+	}
+
+	// COALESCE : la date propre à la distribution prime, sinon celle de la
+	// multi-distribution — même règle que Distribution.EffectiveDate().
+	//
+	// last_name et first_name figurent dans le SELECT parce que l'ORDER BY s'y
+	// réfère : avec DISTINCT, MySQL refuse d'ordonner sur une colonne absente
+	// de la projection, et rejette la requête entière —
+	//
+	//   ERROR 3065: Expression #2 of ORDER BY clause is not in SELECT list …
+	//   this is incompatible with DISTINCT
+	//
+	// L'erreur ne remonte pas : Scan ne la propage pas ici, la liste revenait
+	// simplement vide et aucune entrée catalogue ne s'affichait.
+	err := h.db.Table("user_orders").
+		Select(`DISTINCT distributions.id AS distrib_id,
+		        COALESCE(distributions.date, multi_distribs.distrib_start_date) AS date,
+		        users.email, users.last_name, users.first_name`).
+		Joins("JOIN users ON users.id = user_orders.user_id").
+		Joins("JOIN distributions ON distributions.id = user_orders.distribution_id").
+		Joins("JOIN multi_distribs ON multi_distribs.id = distributions.multi_distrib_id").
+		Where("multi_distribs.group_id = ?", groupID).
+		Where("distributions.catalog_id = ?", catalogID).
+		Where("COALESCE(distributions.date, multi_distribs.distrib_start_date) >= ?", now).
+		Where("users.email <> ''").
+		// Chronologique : la livraison la plus proche en tête de liste.
+		Order("date ASC, users.last_name, users.first_name").
+		Scan(&rows).Error
+
+	// Une erreur SQL ici ne doit pas rester muette : elle vide la liste des
+	// destinataires sans que rien ne le signale, et la page paraît simplement
+	// « ne rien proposer ».
+	if err != nil {
+		log.Printf("[messages] destinataires du catalogue %d indisponibles: %v", catalogID, err)
+		return nil
+	}
+	// Regroupe par distribution, en conservant l'ordre chronologique du SELECT.
+	var out []catalogDistribRecipients
+	byID := map[uint]int{}
+	for _, r := range rows {
+		idx, seen := byID[r.DistribID]
+		if !seen {
+			out = append(out, catalogDistribRecipients{DistribID: r.DistribID, Date: r.Date})
+			idx = len(out) - 1
+			byID[r.DistribID] = idx
+		}
+		out[idx].Emails = append(out[idx].Emails, r.Email)
+	}
+	return out
+}
+
+// groupManagerEmails retourne les emails des responsables du groupe.
+func (h *PagesHandler) groupManagerEmails(groupID uint) []string {
+	var rows []struct{ Email string }
+	h.db.Table("user_groups").
+		Select("DISTINCT users.email").
+		Joins("JOIN users ON users.id = user_groups.user_id").
+		Where("user_groups.group_id = ? AND user_groups.rights LIKE ?", groupID, "%GroupAdmin%").
+		Where("users.email <> ''").
+		Scan(&rows)
+
+	emails := make([]string, 0, len(rows))
+	for _, r := range rows {
+		emails = append(emails, r.Email)
+	}
+	return emails
+}
+
+// buildScopedRecipients construit les destinataires accessibles à
+// l'utilisateur courant, selon ses droits dans le groupe.
+//
+// Retourne CONJOINTEMENT les options à afficher et la carte des emails. Les
+// deux doivent être produites au même endroit : la carte sert aussi à résoudre
+// l'envoi, si bien qu'une valeur absente ici est inenvoyable. Sans ça, un
+// adhérent pourrait poster `recipients=all` et écrire à tout le groupe alors
+// que le formulaire ne le lui proposait pas.
+//
+// Trois portées, de la plus large à la plus étroite :
+//
+//	gestionnaire       toutes les catégories (comportement historique)
+//	resp. de catalogue une entrée par catalogue administré
+//	adhérent           responsables du groupe + contacts techniques
+//
+// Un responsable de catalogue reçoit AUSSI les entrées de l'adhérent : il reste
+// un membre du groupe et doit pouvoir joindre ses responsables.
+func (h *PagesHandler) buildScopedRecipients(pd PageData, now time.Time) ([]RecipientOption, map[string][]string) {
+	emails := map[string][]string{}
+	var opts []RecipientOption
+
+	add := func(value, name string, list []string) {
+		if len(list) == 0 {
+			return
+		}
+		emails[value] = list
+		opts = append(opts, RecipientOption{
+			Value: value, Name: name, Tooltip: name, Count: len(list),
+		})
+	}
+
+	// ── Gestionnaire : périmètre complet, inchangé ──────────────────────────
+	if pd.IsGroupManager || pd.HasMessages {
+		full := h.buildRecipientEmails(pd.Group.ID, now)
+		for k, v := range full {
+			emails[k] = v
+		}
+		opts = append(opts,
+			RecipientOption{Value: "all", Name: "Tout le monde", Count: len(full["all"])},
+			RecipientOption{Value: "managers", Name: "Gestionnaires uniquement", Count: len(full["managers"])},
+			RecipientOption{Value: "members", Name: "Membres uniquement", Count: len(full["members"])},
+		)
+		return opts, emails
+	}
+
+	// ── Responsable de catalogue : une entrée par catalogue administré ──────
+	if pd.HasCatalogAdmin {
+		var catalogs []model.Catalog
+		q := h.db.Where("group_id = ?", pd.Group.ID)
+		// AllowedCatalogIDs vide avec HasCatalogAdmin = droit global : tous les
+		// catalogues du groupe.
+		if len(pd.AllowedCatalogIDs) > 0 {
+			q = q.Where("id IN ?", pd.AllowedCatalogIDs)
+		}
+		q.Order("name").Find(&catalogs)
+
+		for _, cat := range catalogs {
+			// Une entrée par distribution à venir, datée. Seules celles qui
+			// ont au moins une commande remontent : la requête part de
+			// user_orders, une distribution vide ne produit aucune ligne.
+			for _, d := range h.catalogUpcomingDistribs(pd.Group.ID, cat.ID, now) {
+				add(
+					fmt.Sprintf("catalog-%d-distrib-%d", cat.ID, d.DistribID),
+					fmt.Sprintf("Clients de « %s » — livraison du %02d/%02d/%d",
+						cat.Name, d.Date.Day(), int(d.Date.Month()), d.Date.Year()),
+					d.Emails,
+				)
+			}
+		}
+	}
+
+	// ── Tout utilisateur : responsables du groupe et contacts techniques ────
+	label := h.cfg.Messages.GroupManagersLabel
+	if label == "" {
+		label = "Responsables du groupe"
+	}
+	add("group-managers", label, h.groupManagerEmails(pd.Group.ID))
+
+	for i, tc := range h.cfg.Messages.TechnicalContacts {
+		name := tc.Name
+		if name == "" {
+			name = "Contact technique"
+		}
+		add(fmt.Sprintf("tech-%d", i), name, tc.Emails)
+	}
+
+	return opts, emails
 }
 
 // Utilisé pour alimenter le tooltip de la page /messages.
@@ -1353,6 +1542,10 @@ func (h *PagesHandler) MessagesPage(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
+	// Plus de refus global : la page est ouverte à tout membre du groupe, mais
+	// ce qu'elle expose dépend des droits. Un adhérent n'y voit que les
+	// responsables et les contacts techniques — jamais les emails du groupe.
+	// Le filtrage est porté par buildScopedRecipients, qui borne aussi l'envoi.
 
 	var msgs []model.Message
 	h.db.Where("group_id = ?", pd.Group.ID).
@@ -1377,11 +1570,20 @@ func (h *PagesHandler) MessagesPage(c *gin.Context) {
 	now := time.Now()
 	data.Today = fmt.Sprintf("%s %d %s %d", frDays[now.Weekday()], now.Day(), frMonths[now.Month()], now.Year())
 
-	// Brevo quota
-	q := FetchBrevoQuota(h.cfg.BrevoAPIKey)
-	data.BrevoLimit = q.DailyLimit
-	data.BrevoRemaining = q.Remaining
-	data.BrevoError = q.Error
+	// Pilote l'ensemble des éléments réservés à la gestion : quota d'envoi,
+	// catégories d'activité, effectifs du groupe.
+	isMessagingManager := pd.IsGroupManager || pd.HasMessages
+
+	// Quota Brevo : information d'exploitation, réservée à qui pilote les
+	// envois de masse. Sans intérêt pour un adhérent qui écrit à son
+	// responsable, et l'appel à l'API est évité pour lui.
+	data.ShowBrevo = isMessagingManager
+	if data.ShowBrevo {
+		q := FetchBrevoQuota(h.cfg.BrevoAPIKey)
+		data.BrevoLimit = q.DailyLimit
+		data.BrevoRemaining = q.Remaining
+		data.BrevoError = q.Error
+	}
 
 	// Comptage des destinataires potentiels
 	var nbAll, nbManagers int64
@@ -1399,20 +1601,59 @@ func (h *PagesHandler) MessagesPage(c *gin.Context) {
 	// Catégories d'activité (config). Les catégories sont mutuellement
 	// exclusives : un user appartient à la première catégorie qui matche
 	// dans l'ordre de la config, puis on s'arrête.
-	data.ActivityCategories = h.computeActivityCategoryCounts(pd.Group.ID, now)
+	//
+	// Réservées aux gestionnaires : « réguliers / occasionnels / inactifs »
+	// découpent l'ensemble des membres du groupe, ce qu'un adhérent n'a pas à
+	// voir ni à joindre. Le calcul lui-même est évité — il parcourt tout le
+	// groupe.
+	if isMessagingManager {
+		data.ActivityCategories = h.computeActivityCategoryCounts(pd.Group.ID, now)
+	}
 
-	// Emails par valeur de destinataire — alimente le tooltip côté UI.
-	emailsByRecipient := h.buildRecipientEmails(pd.Group.ID, now)
+	// Destinataires accessibles à CET utilisateur : alimente la liste du
+	// formulaire, les tooltips, et borne la résolution à l'envoi.
+	recipientOpts, emailsByRecipient := h.buildScopedRecipients(pd, now)
+	data.Recipients = recipientOpts
+
+	// Compteur affiché à l'ouverture, avant toute sélection. Pour un
+	// gestionnaire c'est l'effectif du groupe, cohérent avec « Tout le monde »
+	// en tête de liste ; pour les autres, ce serait divulguer cet effectif à
+	// qui ne peut écrire qu'à deux ou trois personnes. On aligne donc le
+	// compteur sur le premier destinataire réellement proposé.
+	if !isMessagingManager {
+		data.CountAll = 0
+		data.CountMembers = 0
+		data.CountManagers = 0
+		if len(recipientOpts) > 0 {
+			data.CountAll = recipientOpts[0].Count
+		}
+	}
 
 	// Destinataire éphémère : ?distribOrders=YYYY-MM-DD → tous les membres
 	// ayant commandé pour une distribution de cette date dans ce groupe.
 	if dateStr := c.Query("distribOrders"); dateStr != "" {
 		if d, err := time.Parse("2006-01-02", dateStr); err == nil {
-			emails := h.distribOrdersEmails(pd.Group.ID, d)
+			var scopedCatalogID uint
+			if catalogIDStr := c.Query("catalog"); catalogIDStr != "" {
+				if cid, err := strconv.ParseUint(catalogIDStr, 10, 64); err == nil {
+					scopedCatalogID = uint(cid)
+				}
+			}
+			emails := h.distribOrdersEmails(pd.Group.ID, d, scopedCatalogID)
 			key := "distribOrders-" + dateStr
+			if scopedCatalogID != 0 {
+				key = fmt.Sprintf("distribOrders-%s-cat%d", dateStr, scopedCatalogID)
+			}
 			emailsByRecipient[key] = emails
 			label := fmt.Sprintf("Clients de la commande du %02d/%02d/%d",
 				d.Day(), int(d.Month()), d.Year())
+			if scopedCatalogID != 0 {
+				var cat model.Catalog
+				if h.db.First(&cat, scopedCatalogID).Error == nil {
+					label = fmt.Sprintf("Clients du catalogue %q (%02d/%02d/%d)",
+						cat.Name, d.Day(), int(d.Month()), d.Year())
+				}
+			}
 			data.TempRecipient = &RecipientOption{
 				Value:   key,
 				Name:    label,
@@ -1445,8 +1686,10 @@ func (h *PagesHandler) MessagesPage(c *gin.Context) {
 			}
 			h.db.Create(&msg)
 
-			// Résout la liste des destinataires.
-			emailsByRecipient := h.buildRecipientEmails(pd.Group.ID, now)
+			// Résout sur la carte DÉJÀ restreinte aux droits de l'utilisateur,
+			// et non sur l'ensemble des catégories. C'est ce qui empêche un
+			// adhérent de poster `recipients=all` : la valeur n'existe pas dans
+			// sa carte, la résolution est vide et l'envoi s'arrête.
 			recipients := emailsByRecipient[recipientsValue]
 
 			if len(recipients) == 0 {

@@ -8,7 +8,6 @@ import type { ProductInfo, VendorInfo } from "../types/shop";
 import { ShopTopBar } from "./Shop/ShopTopBar";
 import { Header } from "./Shop/Header";
 import { CategoryNav } from "./Shop/CategoryNav";
-import { SubCategoryNav } from "./Shop/SubCategoryNav";
 import { CategorySection } from "./Shop/CategorySection";
 import { ProductModal } from "./Shop/ProductModal";
 import { CartPanel } from "./Shop/CartPanel";
@@ -41,7 +40,6 @@ export function ShopPage() {
   const cartItemsCount = useCartStore((s) => s.items.length);
   const cartMd = useCartStore((s) => s.multiDistribId);
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
-  const [activeSubcategory, setActiveSubcategory] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [tagFilters, setTagFilters] = useState<Set<TagFilter>>(new Set());
   const [isSticky, setIsSticky] = useState(false);
@@ -68,17 +66,9 @@ export function ShopPage() {
       return next;
     });
 
-  const activeCategoryInfo = useMemo(
-    () =>
-      activeCategory != null
-        ? categories.find((c) => c.id === activeCategory) ?? null
-        : null,
-    [categories, activeCategory],
-  );
 
   const handleSelectCategory = (id: number | null) => {
     setActiveCategory(id);
-    setActiveSubcategory(null);
   };
 
   useEffect(() => {
@@ -144,14 +134,6 @@ export function ShopPage() {
     if (!catalog) return [];
     let cats = catalog.categories;
     if (activeCategory != null) cats = cats.filter((c) => c.info.id === activeCategory);
-    if (activeSubcategory != null) {
-      cats = cats
-        .map((c) => ({
-          ...c,
-          subcategories: c.subcategories.filter((sc) => sc.info.id === activeSubcategory),
-        }))
-        .filter((c) => c.subcategories.length > 0);
-    }
     if (search || tagFilters.size > 0) {
       const q = search.toLowerCase();
       cats = cats
@@ -172,7 +154,7 @@ export function ShopPage() {
         .filter((c) => c.subcategories.length > 0);
     }
     return cats;
-  }, [catalog, activeCategory, activeSubcategory, search, tagFilters]);
+  }, [catalog, activeCategory, search, tagFilters]);
 
   if (!Number.isInteger(multiDistribId) || multiDistribId <= 0) {
     return (
@@ -230,11 +212,6 @@ export function ShopPage() {
           compact={isSticky}
         />
 
-        <SubCategoryNav
-          category={activeCategoryInfo}
-          activeSubId={activeSubcategory}
-          onSelect={setActiveSubcategory}
-        />
       </div>
 
       <ProductFilters active={tagFilters} onToggle={toggleTag} />

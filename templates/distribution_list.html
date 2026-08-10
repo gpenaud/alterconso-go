@@ -41,22 +41,22 @@
     <tr>
       <td>{{.SmartQty}}</td>
       <td>{{.ProductName}}</td>
-      <td>{{printf "%.2f" .ProductPrice}} €</td>
-      <td>{{printf "%.2f" .SubTotal}} €</td>
-      <td>{{printf "%.2f" .Fees}} €</td>
-      <td>{{printf "%.2f" .Total}} €</td>
+      <td>{{price .ProductPrice}} €</td>
+      <td>{{price .SubTotal}} €</td>
+      <td>{{price .Fees}} €</td>
+      <td>{{price .Total}} €</td>
       <td style="width:20%;"></td>
     </tr>
     {{end}}
     <tr class="total">
       <td colspan="5" class="text-right">TOTAL</td>
-      <td>{{printf "%.2f" .UserTotal}} €</td>
+      <td>{{price .UserTotal}} €</td>
       <td></td>
     </tr>
     {{end}}
     <tr style="font-size:1.2em;background:#ddd;">
       <td colspan="5" class="text-right"><b>Total général :</b></td>
-      <td><b>{{printf "%.2f" .GrandTotal}} €</b></td>
+      <td><b>{{price .GrandTotal}} €</b></td>
       <td></td>
     </tr>
   </table>

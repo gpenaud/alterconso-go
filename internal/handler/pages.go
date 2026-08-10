@@ -22,7 +22,6 @@ import (
 // ---- Template helpers ----
 
 var funcMap = template.FuncMap{
-	"not": func(v bool) bool { return !v },
 	"deref": func(s *string) string {
 		if s == nil {
 			return ""
@@ -89,6 +88,32 @@ var funcMap = template.FuncMap{
 		}
 		return s
 	},
+	// price formate un montant en omettant les centimes quand ils sont nuls :
+	// « 2 » plutôt que « 2.00 », « 2.50 » inchangé.
+	//
+	// Séparateur décimal : le point, comme les `printf "%.2f"` qu'il remplace
+	// dans les templates. Passer à la virgule changerait l'affichage de tous
+	// les montants du site, ce qui n'est pas l'objet.
+	"price": formatPrice,
+
+	// priceFr : même règle, mais avec la virgule française. Réservé aux champs
+	// de formulaire, qui l'utilisaient déjà.
+	"priceFr": func(v float64) string {
+		return strings.Replace(formatPrice(v), ".", ",", 1)
+	},
+}
+
+// formatPrice rend un montant sans centimes superflus.
+//
+// La comparaison porte sur le montant ARRONDI au centime, pas sur la valeur
+// brute : un float64 issu d'un calcul vaut souvent 1.9999999999 là où l'on
+// attend 2, et un simple `v == math.Trunc(v)` afficherait alors « 2.00 ».
+func formatPrice(v float64) string {
+	cents := math.Round(v * 100)
+	if math.Mod(cents, 100) == 0 {
+		return strconv.FormatFloat(cents/100, 'f', 0, 64)
+	}
+	return strconv.FormatFloat(cents/100, 'f', 2, 64)
 }
 
 func loadTemplates(names ...string) (*template.Template, error) {
@@ -123,6 +148,9 @@ type PageData struct {
 	Redirect       string
 	Container      string
 	HideNav        bool
+	// impersonation (« se connecter en tant que »)
+	IsImpersonating  bool
+	ImpersonatorName string
 	// home page
 	Groups        []model.Group
 	MultiDistribs []MultiDistribView
@@ -165,6 +193,7 @@ type PageData struct {
 	TotalPages       int
 	CurrentPage      int
 	WaitingListCount int
+	SearchQuery      string
 }
 
 // CanManageCatalog retourne true si l'utilisateur peut gérer le catalogue donné.
@@ -325,6 +354,15 @@ func (h *PagesHandler) buildPageData(c *gin.Context) PageData {
 		pd.User = &user
 	}
 
+	// Usurpation d'identité en cours : charge le nom du vrai utilisateur pour le bandeau.
+	if claims.ImpersonatorID != 0 {
+		pd.IsImpersonating = true
+		var impersonator model.User
+		if err := h.db.First(&impersonator, claims.ImpersonatorID).Error; err == nil {
+			pd.ImpersonatorName = impersonator.FirstName + " " + impersonator.LastName
+		}
+	}
+
 	if claims.GroupID != 0 {
 		var group model.Group
 		if err := h.db.Preload("Logo").First(&group, claims.GroupID).Error; err == nil {
@@ -333,8 +371,10 @@ func (h *PagesHandler) buildPageData(c *gin.Context) PageData {
 				pd.LogoURL = FileURL(group.Logo.ID, h.cfg.Key, group.Logo.Name)
 			}
 		}
-		// Check manager right (avec bypass admin site-wide)
-		ug := loadGroupAccess(h.db, claims.UserID, claims.GroupID)
+		// Check manager right (avec bypass admin site-wide).
+		// groupAccess réutilise le cache posé par RequireGroupRight quand la
+		// route porte le middleware d'autorisation (évite une 2e requête).
+		ug := groupAccess(c, h.db, claims.UserID, claims.GroupID)
 		if ug != nil {
 			pd.IsGroupManager = ug.IsGroupManager()
 			pd.HasMembership = pd.IsGroupManager || ug.HasRight(model.RightMembership)
@@ -387,6 +427,82 @@ func (h *PagesHandler) Logout(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/user/login")
 }
 
+// ---- Impersonation (« se connecter en tant que ») ----
+
+// MemberLoginAs bascule la session vers un autre membre du groupe courant.
+// Protégé par le middleware reqMembership (gestionnaire ou droit « gestion des membres »).
+func (h *PagesHandler) MemberLoginAs(c *gin.Context) {
+	claims := middleware.GetClaims(c)
+	if claims == nil {
+		c.Redirect(http.StatusFound, "/user/login")
+		return
+	}
+
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || id == 0 {
+		c.String(http.StatusBadRequest, "id invalide")
+		return
+	}
+	targetID := uint(id)
+
+	// La cible doit être membre du groupe courant de l'acteur (empêche d'usurper
+	// un utilisateur arbitraire par son id).
+	var ug model.UserGroup
+	if err := h.db.Where("user_id = ? AND group_id = ?", targetID, claims.GroupID).First(&ug).Error; err != nil {
+		c.Redirect(http.StatusFound, "/member")
+		return
+	}
+
+	// Conserve l'usurpateur d'origine si déjà en usurpation, afin que « revenir »
+	// ramène toujours au vrai compte.
+	impersonator := claims.ImpersonatorID
+	if impersonator == 0 {
+		impersonator = claims.UserID
+	}
+	// Rien à faire si on cible son propre compte (réel ou usurpateur).
+	if targetID == claims.UserID || targetID == impersonator {
+		c.Redirect(http.StatusFound, "/member/view/"+c.Param("id"))
+		return
+	}
+
+	token, err := h.issueTokenAs(targetID, claims.GroupID, impersonator)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "erreur token")
+		return
+	}
+	c.SetCookie("token", token, 3600*24*7, "/", "", false, true)
+	c.Redirect(http.StatusFound, "/home")
+}
+
+// ImpersonateReturn met fin à une usurpation et restaure le compte usurpateur.
+func (h *PagesHandler) ImpersonateReturn(c *gin.Context) {
+	claims := middleware.GetClaims(c)
+	if claims == nil || claims.ImpersonatorID == 0 {
+		c.Redirect(http.StatusFound, "/home")
+		return
+	}
+
+	// Restaure le groupe courant s'il est toujours valide pour l'usurpateur
+	// (le membre usurpé a pu changer de groupe entre-temps).
+	returnGroup := claims.GroupID
+	var ug model.UserGroup
+	if h.db.Where("user_id = ? AND group_id = ?", claims.ImpersonatorID, returnGroup).First(&ug).Error != nil {
+		returnGroup = 0
+	}
+
+	token, err := h.issueTokenAs(claims.ImpersonatorID, returnGroup, 0)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "erreur token")
+		return
+	}
+	c.SetCookie("token", token, 3600*24*7, "/", "", false, true)
+	if returnGroup == 0 {
+		c.Redirect(http.StatusFound, "/user/choose")
+		return
+	}
+	c.Redirect(http.StatusFound, "/member")
+}
+
 // ---- Group selection ----
 
 func (h *PagesHandler) ChoosePage(c *gin.Context) {
@@ -421,7 +537,7 @@ func (h *PagesHandler) ChoosePage(c *gin.Context) {
 				}
 			}
 			if allowed {
-				newToken, err := h.issueToken(claims.UserID, groupID)
+				newToken, err := h.issueTokenAs(claims.UserID, groupID, claims.ImpersonatorID)
 				if err == nil {
 					c.SetCookie("token", newToken, 3600*24*7, "/", "", false, true)
 					c.Redirect(http.StatusFound, "/home")
@@ -446,7 +562,7 @@ func (h *PagesHandler) ChoosePage(c *gin.Context) {
 
 		// Auto-redirect pour les users normaux avec un seul groupe.
 		if len(groupIDs) == 1 && claims.GroupID != groupIDs[0] {
-			newToken, err := h.issueToken(claims.UserID, groupIDs[0])
+			newToken, err := h.issueTokenAs(claims.UserID, groupIDs[0], claims.ImpersonatorID)
 			if err == nil {
 				c.SetCookie("token", newToken, 3600*24*7, "/", "", false, true)
 				c.Redirect(http.StatusFound, "/home")
@@ -937,15 +1053,26 @@ func (h *PagesHandler) MemberPage(c *gin.Context) {
 		page = 1
 	}
 
+	search := strings.TrimSpace(c.Query("q"))
+
+	// Requête de base partagée pour le COUNT et le SELECT.
+	base := h.db.Model(&model.UserGroup{}).Where("user_groups.group_id = ?", pd.Group.ID)
+	if search != "" {
+		like := "%" + search + "%"
+		base = base.Joins("JOIN users ON users.id = user_groups.user_id").
+			Where("users.first_name LIKE ? OR users.last_name LIKE ? OR users.email LIKE ?",
+				like, like, like)
+	}
+
 	var totalCount int64
-	h.db.Model(&model.UserGroup{}).Where("group_id = ?", pd.Group.ID).Count(&totalCount)
+	base.Count(&totalCount)
 	totalPages := int(totalCount) / perPage
 	if int(totalCount)%perPage != 0 {
 		totalPages++
 	}
 
 	var ugs []model.UserGroup
-	h.db.Where("group_id = ?", pd.Group.ID).Preload("User").
+	base.Preload("User").
 		Offset((page - 1) * perPage).Limit(perPage).Find(&ugs)
 
 	// Adhésions de l'année courante pour les membres affichés (un seul SELECT
@@ -992,9 +1119,16 @@ func (h *PagesHandler) MemberPage(c *gin.Context) {
 		})
 	}
 
-	pd.TotalMembers = int(totalCount)
+	// Effectif total du groupe (indépendant d'une éventuelle recherche), pour
+	// le libellé « Membres du groupe (N) » de la barre latérale.
+	totalMembers := totalCount
+	if search != "" {
+		h.db.Model(&model.UserGroup{}).Where("group_id = ?", pd.Group.ID).Count(&totalMembers)
+	}
+	pd.TotalMembers = int(totalMembers)
 	pd.TotalPages = totalPages
 	pd.CurrentPage = page
+	pd.SearchQuery = search
 
 	var waitingCount int64
 	h.db.Model(&model.WaitingList{}).
@@ -1509,9 +1643,15 @@ func (h *PagesHandler) ensureGroupAdmin(groupID, userID uint) {
 // ---- Helpers ----
 
 func (h *PagesHandler) issueToken(userID, groupID uint) (string, error) {
+	return h.issueTokenAs(userID, groupID, 0)
+}
+
+// issueTokenAs émet un token en conservant l'id de l'usurpateur (0 = pas d'usurpation).
+func (h *PagesHandler) issueTokenAs(userID, groupID, impersonatorID uint) (string, error) {
 	claims := &middleware.Claims{
-		UserID:  userID,
-		GroupID: groupID,
+		UserID:         userID,
+		GroupID:        groupID,
+		ImpersonatorID: impersonatorID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * 7 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

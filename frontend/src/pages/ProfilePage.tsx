@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { formatPrice } from "../utils/format";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchAccount, updateAccount } from '../api/account'
 import { Layout } from '../components/Layout'
@@ -81,7 +82,7 @@ export function ProfilePage() {
                       <tr key={i} className="border-b border-gray-100">
                         <td className="py-2 px-6 text-ac-green-dark">{o.productName}</td>
                         <td className="py-2">{o.smartQty}</td>
-                        <td className="py-2 px-6 text-right">{o.total.toFixed(2)} €</td>
+                        <td className="py-2 px-6 text-right">{formatPrice(o.total)}</td>
                       </tr>
                     ))}
                   </tbody>

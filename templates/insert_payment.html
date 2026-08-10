@@ -7,7 +7,7 @@
         Membre : <b>{{.Member.FirstName}} {{.Member.LastName}}</b><br/>
         Solde actuel :
         <span style="font-weight:bold;color:{{if lt .Balance 0.0}}#C00{{else}}#080{{end}}">
-          {{printf "%.2f" .Balance}} €
+          {{price .Balance}} €
         </span>
       </p>
       <form method="POST">

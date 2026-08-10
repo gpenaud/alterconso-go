@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { formatPrice } from "../utils/format";
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { getMembers } from '../api/members'
@@ -79,7 +80,7 @@ export function MembersPage() {
                           </span>
                         )}
                         <span className={`text-sm font-semibold ${balanceColor}`}>
-                          {m.balance >= 0 ? '+' : ''}{m.balance.toFixed(2)} €
+                          {m.balance >= 0 ? '+' : ''}{formatPrice(m.balance)}
                         </span>
                       </div>
                     </div>

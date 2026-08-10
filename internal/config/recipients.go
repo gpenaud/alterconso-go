@@ -73,6 +73,32 @@ type RecipientCategory struct {
 // MessagesConfig regroupe la configuration de la page messages.
 type MessagesConfig struct {
 	RecipientCategories []RecipientCategory `yaml:"recipient_categories"`
+
+	// TechnicalContacts : destinataires joignables par TOUT utilisateur, y
+	// compris un simple adhérent sans aucun droit.
+	//
+	// Des adresses fixes, et non des comptes : ces contacts existent hors du
+	// modèle de droits (support, hébergeur, association porteuse) et doivent
+	// rester joignables même si aucun compte ne leur correspond dans le groupe.
+	//
+	//   messages:
+	//     technical_contacts:
+	//       - name: "Support technique"
+	//         emails: ["support@exemple.org"]
+	//
+	// Vide : un simple adhérent ne peut alors joindre que les responsables de
+	// son groupe.
+	TechnicalContacts []TechnicalContact `yaml:"technical_contacts"`
+
+	// GroupManagersLabel : libellé de l'entrée qui regroupe les responsables du
+	// groupe, proposée à tout utilisateur. Défaut : « Responsables du groupe ».
+	GroupManagersLabel string `yaml:"group_managers_label"`
+}
+
+// TechnicalContact est un destinataire fixe, défini en configuration.
+type TechnicalContact struct {
+	Name   string   `yaml:"name"`
+	Emails []string `yaml:"emails"`
 }
 
 // ParsedRecipientPattern porte les champs dérivés d'une expression-pattern et

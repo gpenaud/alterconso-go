@@ -1,9 +1,7 @@
 package model
 
 import (
-	"crypto/md5"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
@@ -108,18 +106,18 @@ func (u *User) Name() string {
 	return strings.ToUpper(u.LastName) + " " + u.FirstName
 }
 
-// SetPassword encode le mot de passe avec MD5 + clé applicative.
-// TODO: migrer vers bcrypt pour les nouveaux comptes.
-func (u *User) SetPassword(plain, appKey string) {
-	raw := appKey + strings.TrimSpace(plain)
-	u.Pass = fmt.Sprintf("%x", md5.Sum([]byte(raw)))
+// SetPassword encode le mot de passe avec le schéma cible (bcrypt, b2:).
+// Le paramètre appKey est conservé pour compatibilité d'appel mais n'est plus
+// utilisé : le schéma cible ne dépend d'aucun pepper applicatif.
+func (u *User) SetPassword(plain, _ string) {
+	u.Pass = HashPassword(plain)
 }
 
-// CheckPassword vérifie le mot de passe.
-func (u *User) CheckPassword(plain, appKey string) bool {
-	raw := appKey + strings.TrimSpace(plain)
-	hash := fmt.Sprintf("%x", md5.Sum([]byte(raw)))
-	return u.Pass == hash
+// CheckPassword vérifie le mot de passe quel que soit son schéma de stockage
+// (legacy MD5, bm: bcrypt(md5), b2: bcrypt). needsRehash signale qu'une
+// connexion réussie devrait réécrire le hash vers le schéma cible.
+func (u *User) CheckPassword(plain, appKey string) (ok, needsRehash bool) {
+	return VerifyPassword(u.Pass, plain, appKey)
 }
 
 // IsFullyRegistered retourne true si le compte est activé (mot de passe défini).

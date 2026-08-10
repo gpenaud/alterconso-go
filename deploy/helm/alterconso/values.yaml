@@ -134,6 +134,35 @@ ingress:
   #       - alterconso.example.com
   #       - www.alterconso.example.com
 
+# ─── Traefik IngressRoute (routing par header HTTP) ────────────────────────
+# Alternative à l'Ingress standard quand tu veux router selon des critères
+# que l'API Ingress ne supporte pas nativement (headers, query params,
+# path regex, etc.). Use case typique : déployer une nouvelle version sur
+# le hostname de prod sans la rendre publique — un header magique dirige
+# le trafic vers cette release, le trafic normal continue d'aller à l'ancien
+# Ingress (géré hors-chart).
+#
+# ⚠️ CRD spécifique à Traefik. Sur d'autres controllers (nginx, contour),
+# utiliser l'Ingress standard avec annotations équivalentes.
+traefikRoute:
+  enabled: false
+  # Entrypoints Traefik à brancher.
+  #   web       → port 80 (HTTP)
+  #   websecure → port 443 (HTTPS, requiert tls renseigné)
+  entryPoints:
+    - websecure
+  # Règles de matching. Chaque entrée = Host + Headers (tous AND).
+  # Une IngressRoute avec Headers(...) est plus spécifique qu'une Ingress
+  # bare sur le même Host, donc Traefik la priorise.
+  rules:
+    - host: alterconso.example.com
+      headers:
+        X-Canary: "neo"
+  # TLS : Secret existant de type kubernetes.io/tls (même cert que l'Ingress
+  # de prod si tu partages le hostname). Vide = pas de TLS sur la route.
+  tls:
+    secretName: ""
+
 # ─── NetworkPolicy ─────────────────────────────────────────────────────────
 # Firewall L3/L4 au niveau pod. Default-deny : tout flux non explicitement
 # autorisé est bloqué.
@@ -203,7 +232,7 @@ database:
   #   - l'image mysql officielle bootstrappe la DB + user au boot via
   #     MYSQL_DATABASE / MYSQL_USER / MYSQL_PASSWORD env vars
   #   - db_host devient automatiquement <release-name>-mysql
-  #   - database.init.enabled est ignoré (l'image fait déjà le boulot)
+  #   - database.init.adminSecret est ignoré (l'image fait déjà le boulot)
   #
   # Pour de la prod HA, plutôt utiliser un opérateur MySQL externe
   # (Oracle MySQL Operator avec InnoDBCluster, Percona) en mode external.
@@ -221,19 +250,24 @@ database:
         cpu: 1
         memory: 1Gi
 
-  # ─── Init Job (pertinent en mode external uniquement) ─────────────────────
+  # ─── Init DB (initContainer, pertinent en mode external uniquement) ──────
+  # Implémenté comme initContainer 'init-db' dans le pod app (cf
+  # templates/deployment.yaml), exécuté après wait-for-db.
+  # Déclenchement transparent :
+  #   - embedded.enabled=true    → skip (bitnami/mysql provisionne au boot)
+  #   - external + adminSecret=""→ skip (DB supposée déjà provisionnée)
+  #   - external + adminSecret renseigné → init-db tourne à chaque démarrage
+  #     de pod, requêtes idempotentes (IF NOT EXISTS / ALTER USER), couvre
+  #     aussi les rotations de DB_PASSWORD côté Secret app.
   init:
-    # true → un Job CREATE DATABASE / CREATE USER / GRANT s'exécute avant
-    # le déploiement. Utile la 1re fois et lors des rotations de password.
-    # Auto-skip en mode embedded.
-    enabled: false
+    # Secret externe (typiquement géré via SOPS hors-chart) contenant les
+    # credentials admin nécessaires aux CREATE/GRANT.
+    # Clés attendues : rootUser et rootPassword (convention du Secret admin
+    # généré par MySQL Operator pour les InnoDBCluster).
+    adminSecret: ""
     # Image avec le client mysql.
     image: mysql:8.4
-    # Secret externe (typiquement géré via SOPS hors-chart) qui contient
-    # les credentials admin nécessaires aux CREATE/GRANT.
-    # Doit avoir les clés MYSQL_ADMIN_USER et MYSQL_ADMIN_PASSWORD.
-    adminSecret: ""
-    # Le Job tourne ~5 secondes — quelques requêtes SQL. Resources minimales.
+    # L'initContainer tourne ~5 secondes — quelques requêtes SQL.
     resources:
       requests:
         cpu: 50m
@@ -272,6 +306,8 @@ config:
     last_name: Admin
 
   messages:
+    # Proposées aux SEULS gestionnaires : ces catégories découpent l'ensemble
+    # des membres du groupe.
     recipient_categories:
       - name: "Membres réguliers"
         pattern: ">= 3 commandes sur 3m"
@@ -280,7 +316,20 @@ config:
       - name: "Membres inactifs"
         pattern: "< 1 commande sur 6m"
 
+    # Libellé de l'entrée regroupant les responsables du groupe (tout membre).
+    group_managers_label: "Responsables du groupe"
+
+    # Contacts joignables par TOUT membre, adhérents compris. Adresses fixes,
+    # indépendantes des comptes du groupe. Vide = un adhérent ne peut joindre
+    # que les responsables de son groupe.
+    technical_contacts: []
+    # - name: "Responsable technique"
+    #   emails: ["technique@exemple.org"]
+
   notifications:
+    # Active/désactive globalement l'envoi des notifications email par le cron.
+    # Si false, recipient_category n'est pas validé au boot.
+    enabled: true
     recipient_category: "Membres réguliers"
 
 # ─── Secrets ────────────────────────────────────────────────────────────────

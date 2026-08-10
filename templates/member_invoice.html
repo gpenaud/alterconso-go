@@ -44,19 +44,19 @@
       <tr>
         <td>{{.SmartQty}}</td>
         <td>{{.ProductName}}</td>
-        <td style="text-align:right;">{{printf "%.2f" .Total}} €</td>
+        <td style="text-align:right;">{{price .Total}} €</td>
       </tr>
       {{end}}
       <tr class="total">
         <td colspan="2" style="text-align:right;">Total {{.VendorName}}</td>
-        <td style="text-align:right;">{{printf "%.2f" .Total}} €</td>
+        <td style="text-align:right;">{{price .Total}} €</td>
       </tr>
     </tbody>
   </table>
   {{end}}
 
   <div class="grand-total">
-    Total général : {{printf "%.2f" .GrandTotal}} €
+    Total général : {{price .GrandTotal}} €
   </div>
 
   <script>window.addEventListener("load", function(){ window.print(); });</script>

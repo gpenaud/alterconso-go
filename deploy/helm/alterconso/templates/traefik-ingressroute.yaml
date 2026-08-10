@@ -1,0 +1,30 @@
+{{- if .Values.traefikRoute.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "alterconso.fullname" . }}
+  labels:
+    {{- include "alterconso.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    {{- toYaml .Values.traefikRoute.entryPoints | nindent 4 }}
+  routes:
+    {{- range .Values.traefikRoute.rules }}
+    - kind: Rule
+      # Concaténation Host(...) && Headers(...) && ... — tous AND.
+      # On strip les newlines dans le rendu Helm via >- pour avoir une
+      # seule ligne sémantique côté Traefik.
+      match: >-
+        Host(`{{ .host }}`)
+        {{- range $k, $v := .headers }}
+        && Headers(`{{ $k }}`, `{{ $v }}`)
+        {{- end }}
+      services:
+        - name: {{ include "alterconso.fullname" $ }}
+          port: {{ $.Values.service.port }}
+    {{- end }}
+  {{- if .Values.traefikRoute.tls.secretName }}
+  tls:
+    secretName: {{ .Values.traefikRoute.tls.secretName }}
+  {{- end }}
+{{- end }}

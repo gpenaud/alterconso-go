@@ -25,3 +25,6 @@ docs/
 
 # Helm sub-charts téléchargés par helm dep update (Chart.lock suffit)
 deploy/helm/alterconso/charts/
+
+# Cache local de DevSpace (état de session, logs) — propre au poste.
+.devspace/

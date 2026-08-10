@@ -276,7 +276,7 @@ func (h *PagesHandler) CatalogAdminProductsPage(c *gin.Context) {
 			qt = *p.Qt
 		}
 		qtLabel := fmt.Sprintf("%s %s", floatToFractionStr(qt), unit)
-		priceLabel := fmt.Sprintf("%.2f €", p.Price)
+		priceLabel := formatPrice(p.Price) + " €"
 		data.ProductViews = append(data.ProductViews, ProductView{
 			ID:            p.ID,
 			Name:          p.Name,
@@ -312,6 +312,134 @@ type ProductEditData struct {
 	ImageURL string
 }
 
+// applyProductForm reporte les champs du formulaire produit sur p.
+//
+// Partagé par la création et l'édition : les deux servent le même template,
+// donc le même jeu de champs. Les séparer les ferait diverger à la première
+// colonne ajoutée.
+//
+// Le champ `stock` du formulaire n'est volontairement pas repris : l'édition ne
+// le traitait pas non plus, et le stock se pilote ailleurs. L'ajouter ici
+// changerait le comportement de l'édition existante.
+func applyProductForm(c *gin.Context, p *model.Product) {
+	p.Name = c.PostForm("name")
+
+	if ref := c.PostForm("ref"); ref != "" {
+		p.Ref = &ref
+	} else {
+		p.Ref = nil
+	}
+	if desc := c.PostForm("description"); desc != "" {
+		p.Description = &desc
+	} else {
+		p.Description = nil
+	}
+
+	// La virgule décimale est acceptée : le formulaire est en français et le
+	// champ prix est libre.
+	if v, err := strconv.ParseFloat(strings.ReplaceAll(c.PostForm("price"), ",", "."), 64); err == nil {
+		p.Price = v
+	}
+	if v, err := strconv.ParseFloat(c.PostForm("vat"), 64); err == nil {
+		p.VAT = v
+	}
+	if qt, err := parseFraction(c.PostForm("qt")); err == nil {
+		p.Qt = &qt
+	} else {
+		p.Qt = nil
+	}
+
+	p.UnitType = model.UnitType(c.PostForm("unit_type"))
+	p.Organic = c.PostForm("organic") == "1"
+	p.VariablePrice = c.PostForm("variable_price") == "1"
+	p.MultiWeight = c.PostForm("multi_weight") == "1"
+	p.Active = c.PostForm("active") == "1"
+
+	if rf := strings.TrimSpace(c.PostForm("resale_from")); rf != "" {
+		p.ResaleFrom = &rf
+	} else {
+		p.ResaleFrom = nil
+	}
+}
+
+// productColumns décrit p sous forme de colonnes, pour un UPDATE qui doit
+// écrire aussi les valeurs nulles (false, 0, NULL).
+func productColumns(p *model.Product) map[string]interface{} {
+	return map[string]interface{}{
+		"name":           p.Name,
+		"ref":            p.Ref,
+		"description":    p.Description,
+		"qt":             p.Qt,
+		"price":          p.Price,
+		"vat":            p.VAT,
+		"unit_type":      p.UnitType,
+		"organic":        p.Organic,
+		"variable_price": p.VariablePrice,
+		"multi_weight":   p.MultiWeight,
+		"active":         p.Active,
+		"resale_from":    p.ResaleFrom,
+	}
+}
+
+// ---- /contractAdmin/products/:catalogId/new ----
+
+// CatalogAdminProductNewPage crée un produit dans le catalogue courant.
+//
+// Sert le MÊME template que l'édition : le formulaire poste sur l'URL courante
+// (pas d'attribut action), donc il fonctionne à l'identique pour les deux. Seul
+// le titre change, selon que le produit a déjà un ID.
+func (h *PagesHandler) CatalogAdminProductNewPage(c *gin.Context) {
+	data, ok := h.loadCatalogAdmin(c, "products")
+	if !ok {
+		return
+	}
+
+	// Valeurs par défaut d'un produit neuf, alignées sur celles du modèle :
+	// un produit se crée actif, à la pièce.
+	product := model.Product{
+		CatalogID: data.Catalog.ID,
+		Active:    true,
+		UnitType:  model.UnitTypePiece,
+	}
+
+	if c.Request.Method == "POST" {
+		applyProductForm(c, &product)
+
+		// Le catalogue vient de l'URL, jamais du formulaire : sans cette
+		// réaffectation, un POST forgé pourrait déposer un produit dans le
+		// catalogue d'un autre producteur. `loadCatalogAdmin` a déjà vérifié
+		// que l'utilisateur administre bien celui-ci.
+		product.CatalogID = data.Catalog.ID
+
+		if strings.TrimSpace(product.Name) == "" {
+			c.String(http.StatusBadRequest, "le nom du produit est obligatoire")
+			return
+		}
+
+		if err := h.db.Create(&product).Error; err != nil {
+			c.String(http.StatusInternalServerError, "création impossible: %v", err)
+			return
+		}
+
+		c.Redirect(http.StatusFound, fmt.Sprintf("/contractAdmin/products/%d", data.Catalog.ID))
+		return
+	}
+
+	// GET : formulaire vierge. Pas d'ImageURL — la photo s'ajoute depuis la
+	// liste une fois le produit créé, comme pour les produits existants.
+	newData := ProductEditData{CatalogAdminData: data, Product: product}
+	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_product_edit.html")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err)
+		return
+	}
+	if err := t.ExecuteTemplate(c.Writer, "base", newData); err != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err)
+	}
+}
+
+// ---- /contractAdmin/products/:catalogId/edit/:productId ----
+
 func (h *PagesHandler) CatalogAdminProductEditPage(c *gin.Context) {
 	data, ok := h.loadCatalogAdmin(c, "products")
 	if !ok {
@@ -329,54 +457,11 @@ func (h *PagesHandler) CatalogAdminProductEditPage(c *gin.Context) {
 	}
 
 	if c.Request.Method == "POST" {
-		product.Name = c.PostForm("name")
-		if ref := c.PostForm("ref"); ref != "" {
-			product.Ref = &ref
-		} else {
-			product.Ref = nil
-		}
-		if desc := c.PostForm("description"); desc != "" {
-			product.Description = &desc
-		} else {
-			product.Description = nil
-		}
-		if p, err := strconv.ParseFloat(c.PostForm("price"), 64); err == nil {
-			product.Price = p
-		}
-		if v, err := strconv.ParseFloat(c.PostForm("vat"), 64); err == nil {
-			product.VAT = v
-		}
-		if qt, err := parseFraction(c.PostForm("qt")); err == nil {
-			product.Qt = &qt
-		} else {
-			product.Qt = nil
-		}
-		product.UnitType = model.UnitType(c.PostForm("unit_type"))
-		product.Organic = c.PostForm("organic") == "1"
-		product.VariablePrice = c.PostForm("variable_price") == "1"
-		product.MultiWeight = c.PostForm("multi_weight") == "1"
-		product.HasFloatQt = c.PostForm("has_float_qt") == "1"
-		product.Active = c.PostForm("active") == "1"
-		if rf := strings.TrimSpace(c.PostForm("resale_from")); rf != "" {
-			product.ResaleFrom = &rf
-		} else {
-			product.ResaleFrom = nil
-		}
-		h.db.Model(&model.Product{}).Where("id = ?", product.ID).Updates(map[string]interface{}{
-			"name":           product.Name,
-			"ref":            product.Ref,
-			"description":    product.Description,
-			"qt":             product.Qt,
-			"price":          product.Price,
-			"vat":            product.VAT,
-			"unit_type":      product.UnitType,
-			"organic":        product.Organic,
-			"variable_price": product.VariablePrice,
-			"multi_weight":   product.MultiWeight,
-			"has_float_qt":   product.HasFloatQt,
-			"active":         product.Active,
-			"resale_from":    product.ResaleFrom,
-		})
+		applyProductForm(c, &product)
+		// Updates avec une map, et non la struct : GORM ignore les valeurs
+		// nulles d'une struct, si bien que décocher « bio » ou « actif » ne
+		// serait jamais enregistré.
+		h.db.Model(&model.Product{}).Where("id = ?", product.ID).Updates(productColumns(&product))
 		c.Redirect(http.StatusFound, fmt.Sprintf("/contractAdmin/products/%d", data.Catalog.ID))
 		return
 	}
@@ -800,8 +885,9 @@ func (h *PagesHandler) loadCatalogAdmin(c *gin.Context, tab string) (CatalogAdmi
 
 type EmargementConfigData struct {
 	PageData
-	DateISO  string
-	DayLabel string
+	DateISO    string
+	DayLabel   string
+	CatalogID  uint
 }
 
 type EmargementMember struct {
@@ -846,10 +932,18 @@ func (h *PagesHandler) DistributionListByDateConfigPage(c *gin.Context) {
 		c.String(http.StatusBadRequest, "date invalide")
 		return
 	}
+	var scopedCatalogID uint
+	if catalogIDStr := c.Query("catalog"); catalogIDStr != "" {
+		if cid, err := strconv.ParseUint(catalogIDStr, 10, 64); err == nil {
+			scopedCatalogID = uint(cid)
+		}
+	}
+
 	data := EmargementConfigData{
-		PageData: pd,
-		DateISO:  dateStr,
-		DayLabel: frDayLabel(date),
+		PageData:  pd,
+		DateISO:   dateStr,
+		DayLabel:  frDayLabel(date),
+		CatalogID: scopedCatalogID,
 	}
 	data.Title = "Liste d'émargement — " + data.DayLabel
 
@@ -882,6 +976,13 @@ func (h *PagesHandler) DistributionListByDatePrintPage(c *gin.Context) {
 
 	dayStart := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 	dayEnd := dayStart.AddDate(0, 0, 1)
+
+	var scopedCatalogID uint
+	if catalogIDStr := c.Query("catalog"); catalogIDStr != "" {
+		if cid, err := strconv.ParseUint(catalogIDStr, 10, 64); err == nil {
+			scopedCatalogID = uint(cid)
+		}
+	}
 
 	var md model.MultiDistrib
 	if err := h.db.Where("group_id = ? AND distrib_start_date >= ? AND distrib_start_date < ?",
@@ -918,6 +1019,9 @@ func (h *PagesHandler) DistributionListByDatePrintPage(c *gin.Context) {
 	userOrder := []uint{}
 
 	for _, distrib := range md.Distributions {
+		if scopedCatalogID != 0 && distrib.CatalogID != scopedCatalogID {
+			continue
+		}
 		var orders []model.UserOrder
 		h.db.Where("distribution_id = ?", distrib.ID).
 			Preload("User").
@@ -937,7 +1041,11 @@ func (h *PagesHandler) DistributionListByDatePrintPage(c *gin.Context) {
 				}
 				userOrder = append(userOrder, o.UserID)
 			}
-			fees := o.TotalPrice() - o.Quantity*o.ProductPrice
+			subTotalNoFees := o.Quantity * o.ProductPrice
+			if o.ForcedPrice != nil {
+				subTotalNoFees = *o.ForcedPrice
+			}
+			fees := o.TotalPrice() - subTotalNoFees
 			line := EmargementLine{
 				Qty:         formatQty(o.Quantity, o.Product.UnitType),
 				ProductName: o.Product.Name,
@@ -1018,6 +1126,10 @@ func (h *PagesHandler) ContractAdminVendorsByDatePage(c *gin.Context) {
 	pd := h.buildPageData(c)
 	if pd.User == nil || pd.Group == nil {
 		c.Redirect(http.StatusFound, "/user/choose")
+		return
+	}
+	if !pd.IsGroupManager && !pd.HasCatalogAdmin {
+		c.String(http.StatusForbidden, "accès refusé")
 		return
 	}
 
@@ -1192,6 +1304,15 @@ type OrdersByDateLine struct {
 	Total       float64
 	Paid        bool
 	ImageURL    string
+	VariablePrice    bool    // true si Product.VariablePrice — autorise l'input prix forcé
+	HasForcedPrice   bool    // true si un prix forcé est saisi
+	ForcedPriceValue float64 // valeur du prix forcé (significatif si HasForcedPrice)
+	EstimatedTotal   float64 // Quantity × UnitPrice (toujours, indépendant du prix forcé)
+	FeesRate         float64 // o.FeesRate snapshoté — pour recompute live côté JS
+	OverStock        bool    // total commandé pour ce produit > Product.Stock
+	StockAvailable   float64 // Product.Stock (info de référence) — significatif si StockTracked
+	StockTotalOrdered float64 // somme des quantités commandées pour ce produit (sur la distrib)
+	StockTracked     bool    // produit avec gestion de stock
 }
 
 var frDays = [7]string{"Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"}
@@ -1207,6 +1328,10 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
+	if !pd.IsGroupManager && !pd.HasCatalogAdmin {
+		c.String(http.StatusForbidden, "accès refusé")
+		return
+	}
 
 	dateStr := c.Param("date")
 	date, err := time.Parse("2006-01-02", dateStr)
@@ -1217,6 +1342,13 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 
 	dayStart := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 	dayEnd := dayStart.AddDate(0, 0, 1)
+
+	var scopedCatalogID uint
+	if catalogIDStr := c.Query("catalog"); catalogIDStr != "" {
+		if cid, err := strconv.ParseUint(catalogIDStr, 10, 64); err == nil {
+			scopedCatalogID = uint(cid)
+		}
+	}
 
 	var md model.MultiDistrib
 	if err := h.db.Where("group_id = ? AND distrib_start_date >= ? AND distrib_start_date < ?",
@@ -1238,7 +1370,24 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 	userMap := make(map[uint]*userEntry)
 	userOrder := []uint{}
 
+	// Première passe : agréger les quantités commandées par produit (pour
+	// repérer un dépassement de stock).
+	totalQtyByProduct := make(map[uint]float64)
 	for _, distrib := range md.Distributions {
+		if scopedCatalogID != 0 && distrib.CatalogID != scopedCatalogID {
+			continue
+		}
+		var orders []model.UserOrder
+		h.db.Where("distribution_id = ?", distrib.ID).Find(&orders)
+		for _, o := range orders {
+			totalQtyByProduct[o.ProductID] += o.Quantity
+		}
+	}
+
+	for _, distrib := range md.Distributions {
+		if scopedCatalogID != 0 && distrib.CatalogID != scopedCatalogID {
+			continue
+		}
 		var orders []model.UserOrder
 		h.db.Where("distribution_id = ?", distrib.ID).
 			Preload("User").
@@ -1253,7 +1402,11 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 				}
 				userOrder = append(userOrder, o.UserID)
 			}
-			fees := o.TotalPrice() - o.Quantity*o.ProductPrice
+			subTotalNoFees := o.Quantity * o.ProductPrice
+			if o.ForcedPrice != nil {
+				subTotalNoFees = *o.ForcedPrice
+			}
+			fees := o.TotalPrice() - subTotalNoFees
 			ref := ""
 			if o.Product.Ref != nil {
 				ref = *o.Product.Ref
@@ -1263,22 +1416,40 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 				imgURL = FileURL(o.Product.Image.ID, h.cfg.Key, o.Product.Image.Name)
 			}
 			line := OrdersByDateLine{
-				OrderID:     o.ID,
-				CatalogName: distrib.Catalog.Name,
-				CatalogID:   distrib.CatalogID,
-				DistribID:   distrib.ID,
-				ProductID:   o.ProductID,
-				Qty:         formatQty(o.Quantity, o.Product.UnitType),
-				Quantity:    o.Quantity,
-				Ref:         ref,
-				ProductName: o.Product.Name,
-				UnitLabel:   unitLabelFor(o.Product.UnitType),
-				UnitPrice:   o.ProductPrice,
-				SubTotal:    o.Quantity * o.ProductPrice,
-				Fees:        fees,
-				Total:       o.TotalPrice(),
-				Paid:        o.Paid,
-				ImageURL:    imgURL,
+				OrderID:        o.ID,
+				CatalogName:    distrib.Catalog.Name,
+				CatalogID:      distrib.CatalogID,
+				DistribID:      distrib.ID,
+				ProductID:      o.ProductID,
+				Qty:            formatQty(o.Quantity, o.Product.UnitType),
+				Quantity:       o.Quantity,
+				Ref:            ref,
+				ProductName:    o.Product.Name,
+				UnitLabel:      unitLabelFor(o.Product.UnitType),
+				UnitPrice:      o.ProductPrice,
+				SubTotal:       subTotalNoFees,
+				Fees:           fees,
+				Total:          o.TotalPrice(),
+				Paid:           o.Paid,
+				ImageURL:       imgURL,
+				VariablePrice:  o.Product.VariablePrice,
+				HasForcedPrice: o.ForcedPrice != nil,
+				EstimatedTotal: o.Quantity * o.ProductPrice,
+				FeesRate:       o.FeesRate,
+			}
+			if o.Product.StockTracked {
+				stock := 0.0
+				if o.Product.Stock != nil {
+					stock = *o.Product.Stock
+				}
+				totalOrdered := totalQtyByProduct[o.ProductID]
+				line.StockTracked = true
+				line.StockAvailable = stock
+				line.StockTotalOrdered = totalOrdered
+				line.OverStock = totalOrdered > stock
+			}
+			if o.ForcedPrice != nil {
+				line.ForcedPriceValue = *o.ForcedPrice
 			}
 			userMap[o.UserID].lines = append(userMap[o.UserID].lines, line)
 			userMap[o.UserID].total += o.TotalPrice()
@@ -1298,12 +1469,10 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 	if md.Place.ID != 0 {
 		data.Place = md.Place.Name
 	}
-	if catalogIDStr := c.Query("catalog"); catalogIDStr != "" {
-		if cid, err := strconv.ParseUint(catalogIDStr, 10, 64); err == nil {
-			var cat model.Catalog
-			if h.db.Preload("Vendor").First(&cat, cid).Error == nil {
-				data.Catalog = cat
-			}
+	if scopedCatalogID != 0 {
+		var cat model.Catalog
+		if h.db.Preload("Vendor").First(&cat, scopedCatalogID).Error == nil {
+			data.Catalog = cat
 		}
 	}
 	data.Title = "Distribution du " + data.DayLabel
@@ -1323,6 +1492,9 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 	}
 
 	for _, distrib := range md.Distributions {
+		if scopedCatalogID != 0 && distrib.CatalogID != scopedCatalogID {
+			continue
+		}
 		ac := AvailableCatalog{CatalogName: distrib.Catalog.Name}
 		for _, p := range distrib.Catalog.Products {
 			if !p.Active {
@@ -1377,6 +1549,10 @@ func (h *PagesHandler) ContractAdminOrdersByDateCSV(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
+	if !pd.IsGroupManager && !pd.HasCatalogAdmin {
+		c.String(http.StatusForbidden, "accès refusé")
+		return
+	}
 
 	dateStr := c.Param("date")
 	date, err := time.ParseInLocation("2006-01-02", dateStr, time.Local)
@@ -1387,6 +1563,13 @@ func (h *PagesHandler) ContractAdminOrdersByDateCSV(c *gin.Context) {
 
 	dayStart := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
 	dayEnd := dayStart.AddDate(0, 0, 1)
+
+	var scopedCatalogID uint
+	if catalogIDStr := c.Query("catalog"); catalogIDStr != "" {
+		if cid, err := strconv.ParseUint(catalogIDStr, 10, 64); err == nil {
+			scopedCatalogID = uint(cid)
+		}
+	}
 
 	var md model.MultiDistrib
 	if err := h.db.Where("group_id = ? AND distrib_start_date >= ? AND distrib_start_date < ?",
@@ -1406,6 +1589,9 @@ func (h *PagesHandler) ContractAdminOrdersByDateCSV(c *gin.Context) {
 	w.WriteString("Membre;Catalogue;Qté;Réf.;Produit;P.U.;Sous-total;Frais;Total\n")
 
 	for _, distrib := range md.Distributions {
+		if scopedCatalogID != 0 && distrib.CatalogID != scopedCatalogID {
+			continue
+		}
 		var orders []model.UserOrder
 		h.db.Where("distribution_id = ?", distrib.ID).
 			Preload("User").
@@ -1418,7 +1604,11 @@ func (h *PagesHandler) ContractAdminOrdersByDateCSV(c *gin.Context) {
 			if o.Product.Ref != nil {
 				ref = *o.Product.Ref
 			}
-			fees := o.TotalPrice() - o.Quantity*o.ProductPrice
+			subTotalNoFees := o.Quantity * o.ProductPrice
+			if o.ForcedPrice != nil {
+				subTotalNoFees = *o.ForcedPrice
+			}
+			fees := o.TotalPrice() - subTotalNoFees
 			memberName := o.User.FirstName + " " + o.User.LastName
 			line := fmt.Sprintf("%s;%s;%s;%s;%s;%.2f;%.2f;%.2f;%.2f\n",
 				memberName,
@@ -1427,7 +1617,7 @@ func (h *PagesHandler) ContractAdminOrdersByDateCSV(c *gin.Context) {
 				ref,
 				o.Product.Name,
 				o.ProductPrice,
-				o.Quantity*o.ProductPrice,
+				subTotalNoFees,
 				fees,
 				o.TotalPrice(),
 			)
@@ -1781,6 +1971,13 @@ func (h *PagesHandler) MemberOrderPage(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
+	// Outil d'admin agissant sur la commande d'un membre arbitraire (:userId).
+	// Sans ce gate, IDOR : tout membre pourrait lire/modifier la commande d'un
+	// autre via le paramètre d'URL. Réservé gestionnaire / droit catalogue.
+	if !pd.IsGroupManager && !pd.HasCatalogAdmin {
+		c.String(http.StatusForbidden, "accès refusé")
+		return
+	}
 
 	mdIDStr := c.Param("multiDistribId")
 	mdID, err := strconv.ParseUint(mdIDStr, 10, 64)
@@ -1794,6 +1991,13 @@ func (h *PagesHandler) MemberOrderPage(c *gin.Context) {
 	if err != nil {
 		c.String(http.StatusBadRequest, "userId invalide")
 		return
+	}
+
+	var scopedCatalogID uint
+	if catalogIDStr := c.Query("catalog"); catalogIDStr != "" {
+		if cid, err := strconv.ParseUint(catalogIDStr, 10, 64); err == nil {
+			scopedCatalogID = uint(cid)
+		}
 	}
 
 	var md model.MultiDistrib
@@ -1814,6 +2018,9 @@ func (h *PagesHandler) MemberOrderPage(c *gin.Context) {
 	if c.Request.Method == "POST" {
 		c.Request.ParseForm()
 		for _, distrib := range md.Distributions {
+			if scopedCatalogID != 0 && distrib.CatalogID != scopedCatalogID {
+				continue
+			}
 			for _, p := range distrib.Catalog.Products {
 				key := fmt.Sprintf("qty_%d_%d", distrib.ID, p.ID)
 				valStr := c.PostForm(key)
@@ -1852,6 +2059,9 @@ func (h *PagesHandler) MemberOrderPage(c *gin.Context) {
 		back := c.Query("back")
 		if back == "" {
 			back = fmt.Sprintf("/contractAdmin/memberOrder/%d/%d", mdID, targetUID)
+			if scopedCatalogID != 0 {
+				back += fmt.Sprintf("?catalog=%d", scopedCatalogID)
+			}
 		}
 		c.Redirect(http.StatusFound, back)
 		return
@@ -1860,6 +2070,9 @@ func (h *PagesHandler) MemberOrderPage(c *gin.Context) {
 	// Load existing orders for this user on this multi-distrib
 	orderMap := make(map[string]model.UserOrder)
 	for _, distrib := range md.Distributions {
+		if scopedCatalogID != 0 && distrib.CatalogID != scopedCatalogID {
+			continue
+		}
 		var orders []model.UserOrder
 		h.db.Where("distribution_id = ? AND user_id = ?", distrib.ID, targetUID).Find(&orders)
 		for _, o := range orders {
@@ -1881,6 +2094,9 @@ func (h *PagesHandler) MemberOrderPage(c *gin.Context) {
 	data.Category = "distribution"
 
 	for _, distrib := range md.Distributions {
+		if scopedCatalogID != 0 && distrib.CatalogID != scopedCatalogID {
+			continue
+		}
 		cat := MemberOrderCatalog{
 			CatalogID:   distrib.CatalogID,
 			CatalogName: distrib.Catalog.Name,
@@ -1940,6 +2156,12 @@ func (h *PagesHandler) UpdateMemberOrders(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "non autorisé"})
 		return
 	}
+	// Écrit la commande d'un membre arbitraire (:userId) → même IDOR que
+	// MemberOrderPage. Réservé gestionnaire / droit catalogue.
+	if !pd.IsGroupManager && !pd.HasCatalogAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "accès refusé"})
+		return
+	}
 	mdIDStr := c.Param("multiDistribId")
 	userIDStr := c.Param("userId")
 	mdID, _ := strconv.ParseUint(mdIDStr, 10, 64)
@@ -1956,7 +2178,6 @@ func (h *PagesHandler) UpdateMemberOrders(c *gin.Context) {
 			continue
 		}
 		qty, _ := strconv.ParseFloat(strings.TrimSpace(vals[0]), 64)
-		paid := c.PostForm("paid_"+orderIDStr) == "1"
 
 		var o model.UserOrder
 		if h.db.First(&o, orderID).Error != nil {
@@ -1964,12 +2185,21 @@ func (h *PagesHandler) UpdateMemberOrders(c *gin.Context) {
 		}
 		if qty <= 0 {
 			h.db.Delete(&o)
-		} else {
-			h.db.Model(&o).Updates(map[string]interface{}{
-				"quantity": qty,
-				"paid":     paid,
-			})
+			continue
 		}
+
+		updates := map[string]interface{}{
+			"quantity": qty,
+		}
+
+		forcedRaw := strings.TrimSpace(c.PostForm("forced_price_" + orderIDStr))
+		if forcedRaw == "" {
+			updates["forced_price"] = nil
+		} else if fp, err := strconv.ParseFloat(forcedRaw, 64); err == nil && fp >= 0 {
+			updates["forced_price"] = fp
+		}
+
+		h.db.Model(&o).Updates(updates)
 	}
 
 	redirectURL := c.Query("back")
@@ -1989,19 +2219,20 @@ type addProductReq struct {
 }
 
 type addProductResp struct {
-	OrderID     uint    `json:"orderId"`
-	ProductID   uint    `json:"productId"`
-	DistribID   uint    `json:"distribId"`
-	ProductName string  `json:"productName"`
-	Ref         string  `json:"ref"`
-	ImageURL    string  `json:"imageUrl"`
-	UnitPrice   float64 `json:"unitPrice"`
-	Quantity    float64 `json:"quantity"`
-	QuantityStr string  `json:"quantityStr"`
-	SubTotal    float64 `json:"subTotal"`
-	Total       float64 `json:"total"`
-	MemberTotal float64 `json:"memberTotal"`
-	Created     bool    `json:"created"`
+	OrderID       uint    `json:"orderId"`
+	ProductID     uint    `json:"productId"`
+	DistribID     uint    `json:"distribId"`
+	ProductName   string  `json:"productName"`
+	Ref           string  `json:"ref"`
+	ImageURL      string  `json:"imageUrl"`
+	UnitPrice     float64 `json:"unitPrice"`
+	Quantity      float64 `json:"quantity"`
+	QuantityStr   string  `json:"quantityStr"`
+	SubTotal      float64 `json:"subTotal"`
+	Total         float64 `json:"total"`
+	MemberTotal   float64 `json:"memberTotal"`
+	Created       bool    `json:"created"`
+	VariablePrice bool    `json:"variablePrice"`
 }
 
 func (h *PagesHandler) AddMemberProduct(c *gin.Context) {
@@ -2013,6 +2244,13 @@ func (h *PagesHandler) AddMemberProduct(c *gin.Context) {
 
 	mdID, _ := strconv.ParseUint(c.Param("multiDistribId"), 10, 64)
 	userID, _ := strconv.ParseUint(c.Param("userId"), 10, 64)
+
+	var scopedCatalogID uint
+	if catalogIDStr := c.Query("catalog"); catalogIDStr != "" {
+		if cid, err := strconv.ParseUint(catalogIDStr, 10, 64); err == nil {
+			scopedCatalogID = uint(cid)
+		}
+	}
 
 	var req addProductReq
 	if err := c.BindJSON(&req); err != nil {
@@ -2028,6 +2266,11 @@ func (h *PagesHandler) AddMemberProduct(c *gin.Context) {
 		Where("id = ? AND multi_distrib_id = ?", req.DistribID, mdID).
 		First(&distrib).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "distribution introuvable"})
+		return
+	}
+
+	if scopedCatalogID != 0 && distrib.CatalogID != scopedCatalogID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "produit hors du catalogue courant"})
 		return
 	}
 
@@ -2093,19 +2336,20 @@ func (h *PagesHandler) AddMemberProduct(c *gin.Context) {
 	total := subTotal * (1 + feesRate/100)
 
 	c.JSON(http.StatusOK, addProductResp{
-		OrderID:     existing.ID,
-		ProductID:   prod.ID,
-		DistribID:   distrib.ID,
-		ProductName: prod.Name,
-		Ref:         ref,
-		ImageURL:    imageURL,
-		UnitPrice:   prod.Price,
-		Quantity:    existing.Quantity,
-		QuantityStr: strconv.FormatFloat(existing.Quantity, 'f', -1, 64),
-		SubTotal:    subTotal,
-		Total:       total,
-		MemberTotal: memberTotal,
-		Created:     created,
+		OrderID:       existing.ID,
+		ProductID:     prod.ID,
+		DistribID:     distrib.ID,
+		ProductName:   prod.Name,
+		Ref:           ref,
+		ImageURL:      imageURL,
+		UnitPrice:     prod.Price,
+		Quantity:      existing.Quantity,
+		QuantityStr:   strconv.FormatFloat(existing.Quantity, 'f', -1, 64),
+		SubTotal:      subTotal,
+		Total:         total,
+		MemberTotal:   memberTotal,
+		Created:       created,
+		VariablePrice: prod.VariablePrice,
 	})
 }
 

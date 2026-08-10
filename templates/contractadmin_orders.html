@@ -23,16 +23,16 @@
   <tr>
     <td>{{.SmartQty}}</td>
     <td>{{.ProductName}}</td>
-    <td>{{printf "%.2f" .ProductPrice}} €</td>
-    <td>{{printf "%.2f" .SubTotal}} €</td>
-    <td>{{printf "%.2f" .Fees}} €</td>
-    <td>{{printf "%.2f" .Total}} €</td>
+    <td>{{price .ProductPrice}} €</td>
+    <td>{{price .SubTotal}} €</td>
+    <td>{{price .Fees}} €</td>
+    <td>{{price .Total}} €</td>
     <td>{{if .Paid}}<i class="icon icon-check"></i>{{else}}<i class="icon icon-delete"></i>{{end}}</td>
   </tr>
   {{end}}
   <tr style="background:#ddd;">
     <td colspan="5" class="text-right">Total</td>
-    <td><b>{{printf "%.2f" .Total}} €</b></td>
+    <td><b>{{price .Total}} €</b></td>
     <td></td>
   </tr>
   {{end}}

@@ -141,22 +141,22 @@ tr.member-total td {
       <td>{{$line.ProductName}}</td>
       <td style="color:#555;font-size:0.9em;">{{$line.CatalogName}}</td>
       {{if not $noprice}}
-      <td style="text-align:right;">{{printf "%.2f" $line.UnitPrice}} €</td>
-      <td style="text-align:right;">{{printf "%.2f" $line.Total}} €</td>
+      <td style="text-align:right;">{{price $line.UnitPrice}} €</td>
+      <td style="text-align:right;">{{price $line.Total}} €</td>
       {{end}}
     </tr>
     {{end}}
     {{if not $noprice}}
     <tr class="member-total">
       <td colspan="6" style="text-align:right;font-size:0.9em;">Total {{$m.UserName}}</td>
-      <td style="text-align:right;">{{printf "%.2f" $m.MemberTotal}} €</td>
+      <td style="text-align:right;">{{price $m.MemberTotal}} €</td>
     </tr>
     {{end}}
   {{end}}
   </tbody>
 </table>
 
-<div class="grand-total">Total de toutes les commandes : {{printf "%.2f" .GrandTotal}} €</div>
+<div class="grand-total">Total de toutes les commandes : {{price .GrandTotal}} €</div>
 
 {{else}}
 <p style="color:#888;margin-top:12px;">Aucune commande pour cette distribution.</p>

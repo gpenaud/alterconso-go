@@ -32,6 +32,10 @@ type UserOrder struct {
 	ProductPrice float64 `gorm:"default:0" json:"productPrice"`
 	FeesRate     float64 `gorm:"default:0" json:"feesRate"`
 
+	// Prix forcé par le producteur après pesée. Si non nil, remplace
+	// Quantity × ProductPrice dans TotalPrice() (les frais s'appliquent ensuite).
+	ForcedPrice *float64 `json:"forcedPrice,omitempty"`
+
 	Paid bool `gorm:"default:false" json:"paid"`
 
 	// Distribution associée (commandes variables)
@@ -70,7 +74,14 @@ func (o *UserOrder) CanModify() bool {
 }
 
 // TotalPrice retourne le prix total TTC de la commande avec frais.
+// Si ForcedPrice est défini (prix après pesée saisi par le producteur), il
+// remplace Quantity × ProductPrice ; les frais s'appliquent ensuite.
 func (o *UserOrder) TotalPrice() float64 {
-	base := o.Quantity * o.ProductPrice
+	var base float64
+	if o.ForcedPrice != nil {
+		base = *o.ForcedPrice
+	} else {
+		base = o.Quantity * o.ProductPrice
+	}
 	return base * (1 + o.FeesRate/100)
 }

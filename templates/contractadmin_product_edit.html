@@ -1,7 +1,9 @@
 {{define "content"}}
 {{template "contractadmin_nav" .}}
 
-<h3 style="font-style:italic;">Modifier un produit</h3>
+{{/* Même template pour la création et l'édition : le formulaire poste sur
+     l'URL courante. Un produit sans ID n'existe pas encore en base. */}}
+<h3 style="font-style:italic;">{{if .Product.ID}}Modifier un produit{{else}}Nouveau produit{{end}}</h3>
 
 <form method="POST" class="form-horizontal" style="max-width:720px;">
 
@@ -27,7 +29,9 @@
   <div class="form-group">
     <label class="col-sm-3 control-label">Prix *</label>
     <div class="col-sm-9">
-      <input type="number" name="price" step="0.01" class="form-control" value="{{printf "%.2f" .Product.Price}}" required />
+      <input type="text" name="price" inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?"
+             class="form-control" value="{{priceFr .Product.Price}}" required
+             onblur="var v=parseFloat(this.value.replace(',','.')); if(!isNaN(v)) this.value = v.toFixed(2).replace('.', ',');" />
     </div>
   </div>
 
@@ -48,21 +52,19 @@
 
   <div class="form-group">
     <label class="col-sm-3 control-label">Unité de base</label>
-    <div class="col-sm-9">
+    <div class="col-sm-9" style="display:flex;gap:16px;align-items:center;">
       {{$u := .Product.UnitType}}
-      <label style="font-weight:normal;display:block;"><input type="radio" name="unit_type" value="Piece" {{if or (eq $u "Piece") (eq $u "Unit")}}checked{{end}} /> Pièce</label>
-      <label style="font-weight:normal;display:block;"><input type="radio" name="unit_type" value="Kilogram"   {{if eq $u "Kilogram"}}checked{{end}} /> Kilogrammes</label>
-      <label style="font-weight:normal;display:block;"><input type="radio" name="unit_type" value="Gram"       {{if eq $u "Gram"}}checked{{end}} /> Grammes</label>
-      <label style="font-weight:normal;display:block;"><input type="radio" name="unit_type" value="Litre"      {{if eq $u "Litre"}}checked{{end}} /> Litres</label>
-      <label style="font-weight:normal;display:block;"><input type="radio" name="unit_type" value="Centilitre" {{if eq $u "Centilitre"}}checked{{end}} /> Centilitres</label>
-      <label style="font-weight:normal;display:block;"><input type="radio" name="unit_type" value="Millilitre" {{if eq $u "Millilitre"}}checked{{end}} /> Millilitres</label>
-    </div>
-  </div>
-
-  <div class="form-group">
-    <label class="col-sm-3 control-label">Quantité</label>
-    <div class="col-sm-9">
+      <select name="unit_type" class="form-control" style="flex:1;max-width:220px;">
+        <option value="Piece"      {{if or (eq $u "Piece") (eq $u "Unit")}}selected{{end}}>Pièce</option>
+        <option value="Kilogram"   {{if eq $u "Kilogram"}}selected{{end}}>Kilogrammes</option>
+        <option value="Gram"       {{if eq $u "Gram"}}selected{{end}}>Grammes</option>
+        <option value="Litre"      {{if eq $u "Litre"}}selected{{end}}>Litres</option>
+        <option value="Centilitre" {{if eq $u "Centilitre"}}selected{{end}}>Centilitres</option>
+        <option value="Millilitre" {{if eq $u "Millilitre"}}selected{{end}}>Millilitres</option>
+      </select>
+      <label style="margin:0;font-weight:normal;color:#555;white-space:nowrap;">Quantité</label>
       <input type="text" name="qt" class="form-control" placeholder="ex: 1, 1/2, 1/4"
+        style="flex:1;max-width:220px;"
         value="{{if .Product.Qt}}{{qtDisplay .Product.Qt}}{{else}}1{{end}}" />
     </div>
   </div>
@@ -83,19 +85,20 @@
   <div class="form-group">
     <label class="col-sm-3 control-label">Options</label>
     <div class="col-sm-9">
-      <label style="font-weight:normal;display:block;">
+      <label style="font-weight:normal;display:block;"
+             title="Affiche un badge « Bio » sur la fiche produit dans la boutique.">
         <input type="checkbox" name="organic" value="1" {{if .Product.Organic}}checked{{end}} /> Agriculture biologique
       </label>
-      <label style="font-weight:normal;display:block;">
+      <label style="font-weight:normal;display:block;"
+             title="Permet au producteur de saisir un « Prix total après pesée » par ligne de commande pour ce produit, qui remplace alors quantité × prix unitaire dans la facture.">
         <input type="checkbox" name="variable_price" value="1" {{if .Product.VariablePrice}}checked{{end}} /> Prix variable selon pesée
       </label>
-      <label style="font-weight:normal;display:block;">
-        <input type="checkbox" name="multi_weight" value="1" {{if .Product.MultiWeight}}checked{{end}} /> Multi-pesée
+      <label style="font-weight:normal;display:block;"
+             title="Affiche un badge « Commandé en gros » sur la fiche produit dans la boutique.">
+        <input type="checkbox" name="multi_weight" value="1" {{if .Product.MultiWeight}}checked{{end}} /> Vente en gros
       </label>
-      <label style="font-weight:normal;display:block;">
-        <input type="checkbox" name="has_float_qt" value="1" {{if .Product.HasFloatQt}}checked{{end}} /> Autoriser les quantités non entières
-      </label>
-      <label style="font-weight:normal;display:block;">
+      <label style="font-weight:normal;display:block;"
+             title="Décocher pour retirer le produit du catalogue sans le supprimer (il n'apparaît plus dans la boutique ni dans les commandes).">
         <input type="checkbox" name="active" value="1" {{if .Product.Active}}checked{{end}} /> Disponible
       </label>
     </div>

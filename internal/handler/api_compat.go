@@ -39,13 +39,20 @@ func (h *CompatHandler) UserLogin(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"error": gin.H{"message": "Email ou mot de passe incorrect."}})
 		return
 	}
-	if !user.CheckPassword(password, h.cfg.Key) {
+	ok, needsRehash := user.CheckPassword(password, h.cfg.Key)
+	if !ok {
 		c.JSON(http.StatusOK, gin.H{"error": gin.H{"message": "Email ou mot de passe incorrect."}})
 		return
 	}
 	if user.EmailVerifiedAt == nil {
 		c.JSON(http.StatusOK, gin.H{"error": gin.H{"message": "Votre compte n'est pas encore activé. Vérifiez votre boîte mail."}})
 		return
+	}
+
+	// Migration opportuniste : on détient le clair, on réécrit vers bcrypt (b2:).
+	if needsRehash {
+		user.SetPassword(password, "")
+		h.db.Model(&user).Update("pass", user.Pass)
 	}
 
 	now := time.Now()
@@ -727,6 +734,41 @@ func (h *CompatHandler) ShopCategories(c *gin.Context) {
 
 func (h *CompatHandler) ProductCategories(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "categories": []gin.H{}})
+}
+
+// ---- GET /api/session ----
+
+// SessionInfo décrit la session courante pour les écrans servis par la SPA.
+//
+// Les pages rendues par Go affichent le bandeau « connecté en tant que » depuis
+// design.html, via PageData.IsImpersonating. Les routes SPA (/shop, /login,
+// /profile, /groups) sont servies par frontend/dist/index.html sans passer par
+// un template : aucun bandeau ne les entoure, et l'utilisateur perdait à la
+// fois l'avertissement et le lien de retour. Cet endpoint donne au front les
+// mêmes informations.
+func (h *CompatHandler) SessionInfo(c *gin.Context) {
+	out := gin.H{"impersonating": false}
+
+	claims := middleware.GetClaims(c)
+	if claims == nil {
+		c.JSON(http.StatusOK, out)
+		return
+	}
+
+	var u model.User
+	if h.db.First(&u, claims.UserID).Error == nil {
+		out["userName"] = strings.TrimSpace(u.FirstName + " " + u.LastName)
+	}
+
+	if claims.ImpersonatorID != 0 {
+		out["impersonating"] = true
+		var imp model.User
+		if h.db.First(&imp, claims.ImpersonatorID).Error == nil {
+			out["impersonatorName"] = strings.TrimSpace(imp.FirstName + " " + imp.LastName)
+		}
+	}
+
+	c.JSON(http.StatusOK, out)
 }
 
 // ---- POST /api/shop/submit/:multiDistribId ----

@@ -65,14 +65,19 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/mysql
+          # Pas d'auth dans la probe : mysqladmin ping renvoie exit 0 dès
+          # que le serveur répond au protocole MySQL, même sans credentials
+          # (auth fail = "Access denied" en stderr mais exit 0). Ajouter
+          # -p$(VAR) ne marcherait pas de toute façon — k8s ne substitue
+          # pas les $(VAR) dans probe.exec.command.
           livenessProbe:
             exec:
-              command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p$(MYSQL_ROOT_PASSWORD)"]
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1"]
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
             exec:
-              command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p$(MYSQL_ROOT_PASSWORD)"]
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1"]
             initialDelaySeconds: 5
             periodSeconds: 5
           resources:

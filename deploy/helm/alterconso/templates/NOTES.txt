@@ -33,11 +33,12 @@ DB MySQL embedded déployée :
 
 DB externe utilisée :
   Host : {{ .Values.database.external.host }}:{{ .Values.database.external.port }}
-{{- if .Values.database.init.enabled }}
-  Init Job : tournera en pre-install/pre-upgrade pour créer DB + user.
-             Vérifier l'historique des Jobs :
-               kubectl get job -n {{ .Release.Namespace }} \
-                 -l app.kubernetes.io/instance={{ .Release.Name }}
+{{- if .Values.database.init.adminSecret }}
+  Init DB : initContainer 'init-db' dans le pod app — crée DB + user + grants
+            à chaque démarrage (idempotent). Vérifier les logs :
+              kubectl logs -n {{ .Release.Namespace }} \
+                -l app.kubernetes.io/instance={{ .Release.Name }} \
+                -c init-db
 {{- end }}
 {{- end }}
 

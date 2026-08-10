@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { formatPrice } from "../utils/format";
 import { useParams } from 'react-router-dom'
 import { getBalance, getOperations } from '../api/finance'
 import { Layout } from '../components/Layout'
@@ -41,12 +42,12 @@ export function FinancesPage() {
             <p className="text-sm text-gray-500 mb-1">Solde actuel</p>
             <p className={`text-4xl font-bold ${balanceColor}`}>
               {balance !== undefined
-                ? `${balance >= 0 ? '+' : ''}${balance.toFixed(2)} €`
+                ? `${balance >= 0 ? '+' : ''}${formatPrice(balance)}`
                 : '—'}
             </p>
             {balance !== undefined && balance < 0 && (
               <p className="text-sm text-red-500 mt-2">
-                Vous avez une dette de {Math.abs(balance).toFixed(2)} €.
+                Vous avez une dette de {formatPrice(Math.abs(balance))}.
               </p>
             )}
           </div>
@@ -81,7 +82,7 @@ export function FinancesPage() {
                     </p>
                   </div>
                   <span className={`text-sm font-bold shrink-0 ${op.amount >= 0 ? 'text-ac-green-dark' : 'text-red-600'}`}>
-                    {op.amount >= 0 ? '+' : ''}{op.amount.toFixed(2)} €
+                    {op.amount >= 0 ? '+' : ''}{formatPrice(op.amount)}
                   </span>
                 </div>
               ))}

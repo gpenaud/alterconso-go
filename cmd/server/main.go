@@ -18,6 +18,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 	"time"
@@ -33,7 +34,41 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// runRehash exécute le batch d'enrobage bcrypt des mots de passe MD5 legacy,
+// puis quitte. Réutilise exactement la même config/DB que le serveur, donc
+// lançable depuis l'image distroless via `/app/alterconso rehash` (kubectl
+// exec sur le pod, ou Job k8s args:["rehash"]).
+func runRehash(args []string) {
+	fs := flag.NewFlagSet("rehash", flag.ExitOnError)
+	dryRun := fs.Bool("dry-run", false, "ne rien écrire, juste compter les lignes legacy")
+	batchSize := fs.Int("batch", 200, "taille des lots")
+	_ = fs.Parse(args)
+
+	// Le batch n'envoie aucune notification : on neutralise la validation du
+	// bloc notifications (recipient_category) sans rapport avec le rehash, pour
+	// rester auto-suffisant quelle que soit la config de l'image/du Job.
+	_ = os.Setenv("NOTIFICATIONS_ENABLED", "false")
+
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+	database, err := db.Connect(cfg)
+	if err != nil {
+		log.Fatalf("db: %v", err)
+	}
+	if _, _, _, err := db.RehashLegacyPasswords(database, *dryRun, *batchSize); err != nil {
+		log.Fatalf("rehash: %v", err)
+	}
+}
+
 func main() {
+	// Sous-commandes one-shot (maintenance). Défaut sans argument = serveur.
+	if len(os.Args) > 1 && os.Args[1] == "rehash" {
+		runRehash(os.Args[2:])
+		return
+	}
+
 	// Config
 	cfg, err := config.Load()
 	if err != nil {

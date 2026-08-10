@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { formatPrice } from "../utils/format";
 import { useParams } from 'react-router-dom'
 import { getGroupFinances, validateDistribution } from '../api/admin'
 import { getDistributions } from '../api/distributions'
@@ -53,7 +54,7 @@ export function AdminPage() {
                 <div className="px-4 py-3">
                   <p className="text-xs text-gray-500">{s.label}</p>
                   <p className={`text-xl font-bold mt-1 ${s.color}`}>
-                    {s.unit !== '' ? `${(s.value as number).toFixed(2)} €` : s.value}
+                    {s.unit !== '' ? `${formatPrice((s.value as number))}` : s.value}
                   </p>
                 </div>
               </Card>
@@ -107,7 +108,7 @@ export function AdminPage() {
                     <p className="text-xs text-gray-400 truncate">{m.email}</p>
                   </div>
                   <span className={`text-sm font-bold shrink-0 ${m.balance >= 0 ? 'text-ac-green-dark' : 'text-red-600'}`}>
-                    {m.balance >= 0 ? '+' : ''}{m.balance.toFixed(2)} €
+                    {m.balance >= 0 ? '+' : ''}{formatPrice(m.balance)}
                   </span>
                 </div>
               ))}

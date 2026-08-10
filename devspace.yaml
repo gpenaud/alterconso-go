@@ -1,0 +1,653 @@
+version: v2beta1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Développement local d'alterconso en live reload, derrière
+# https://alterconso.localhost avec un certificat mkcert.
+#
+#   devspace run cluster-up     # crée le cluster k3d dédié (idempotent)
+#   devspace dev                # déploie puis ouvre la boucle de dev
+#   devspace purge              # retire l'application, garde le cluster
+#   devspace run cluster-down   # supprime le cluster
+#
+# Le cluster est PROPRE AU PROJET (k3d, donc k3s dans Docker) plutôt que
+# partagé : il se recrée en une trentaine de secondes, ce qui règle d'un coup
+# les dérives d'un cluster de longue vie — règles réseau perdues après une
+# suspension, contrôleur d'Ingress désactivé, ports déjà pris.
+#
+# CE QUI TOURNE OÙ
+#
+#   MySQL      sub-chart embarqué du chart alterconso (database.embedded)
+#   backend    `go run ./cmd/server` sur :8080, relancé à chaque modif Go
+#   frontend   serveur de dev Vite sur :5173 — uniquement si UI_PORT=5173
+#
+# L'interface servie par l'Ingress se choisit avec UI_PORT (voir plus bas) :
+# 8080 pour les templates Go, ce que rend la production, ou 5173 pour la SPA
+# React avec HMR.
+#
+#   devspace run db-import      # recopie la base de production dans le local
+#
+# L'image de dev n'est pas celle de production : le Dockerfile produit un
+# distroless sans toolchain, incapable de compiler quoi que ce soit. On lui
+# substitue une image Go à laquelle on ajoute Node au démarrage.
+# ─────────────────────────────────────────────────────────────────────────────
+
+vars:
+  NAMESPACE: default
+  RELEASE: alterconso
+  HOST: alterconso.localhost
+  CHART_PATH: ./deploy/helm/alterconso
+  TLS_SECRET: alterconso-localhost-tls
+
+  # Cluster k3d dédié. k3d préfixe toujours le contexte par `k3d-`.
+  CLUSTER: alterconso
+  KUBE_CONTEXT: k3d-alterconso
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Interface servie par l'Ingress
+  #
+  #   8080  templates Go — CE QUE SERT LA PRODUCTION (défaut)
+  #   5173  SPA React servie par Vite, avec HMR
+  #
+  # Les deux interfaces coexistent dans l'application : Go rend les templates
+  # XHTML sur ses routes, et ne bascule sur la SPA que via NoRoute. Vite, lui,
+  # intercepte TOUT et ne sert que la SPA — d'où un rendu très différent de la
+  # production si l'Ingress pointe sur lui.
+  #
+  # Bascule ponctuelle, sans modifier ce fichier :
+  #   devspace dev --var UI_PORT=5173
+  #
+  # En 8080, Vite n'est pas démarré : les templates ne lui doivent rien, et le
+  # rechargement passe par le redémarrage du backend (toute modification d'un
+  # fichier de templates/ le déclenche, au même titre qu'un fichier .go).
+  UI_PORT: "8080"
+
+  # Doivent rester cohérentes avec le Dockerfile.
+  GO_IMAGE: golang:1.23-alpine
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Certificat mkcert
+#
+# Émis sur le poste puis poussé comme Secret TLS, plutôt que délégué à
+# cert-manager : aucune dépendance à installer dans le cluster, et le
+# certificat est signé par l'autorité mkcert DÉJÀ dans le magasin du
+# navigateur — donc reconnu sans avertissement.
+#
+# `mkcert -install` est supposé fait. Sinon : mkcert -install
+# ─────────────────────────────────────────────────────────────────────────────
+hooks:
+  - name: mkcert-tls-secret
+    events: ["before:deploy"]
+    command: |
+      set -e
+      command -v mkcert >/dev/null || { echo "mkcert introuvable — installe-le d'abord"; exit 1; }
+
+      DIR=$(mktemp -d)
+      trap 'rm -rf "$DIR"' EXIT
+      mkcert -cert-file "$DIR/tls.crt" -key-file "$DIR/tls.key" ${HOST} >/dev/null 2>&1
+
+      # --context explicite : le hook s'exécute dans un shell ordinaire, qui
+      # suit le `current-context` du kubeconfig et non celui choisi par
+      # DevSpace. Un current-context absent ou pointant ailleurs ferait échouer
+      # le hook — ou, pire, créerait le secret sur le mauvais cluster.
+      #
+      # create --dry-run | apply : rejouable, là où `create` seul échouerait
+      # au deuxième `devspace dev`.
+      KCTL="kubectl --context ${devspace.context} --namespace ${devspace.namespace}"
+
+      $KCTL create secret tls ${TLS_SECRET} \
+        --cert="$DIR/tls.crt" --key="$DIR/tls.key" \
+        --dry-run=client -o yaml | $KCTL apply -f -
+
+      echo ">> certificat mkcert en place pour ${HOST}"
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Résolution des noms externes depuis le pod.
+  #
+  # Kubernetes fixe `ndots:5` par défaut : tout nom comptant moins de cinq
+  # points est d'abord essayé SUFFIXÉ par chaque domaine de recherche, et le
+  # nom absolu n'est tenté qu'en dernier. Or les pods héritent du domaine de
+  # recherche du poste — ici `ts.alter-it.eu`, via Tailscale — sur lequel un
+  # wildcard DNS répond à n'importe quoi :
+  #
+  #   dl-cdn.alpinelinux.org.ts.alter-it.eu → alter-it.eu → 72.62.185.244
+  #
+  # Résultat : `apk add` contactait le Traefik d'infra01 au lieu du miroir
+  # Alpine, et échouait sur un certificat qui n'avait rien à voir —
+  # « CN=TRAEFIK DEFAULT CERT ». Tout téléchargement externe est concerné,
+  # npm compris.
+  #
+  # ndots:1 rétablit l'ordre attendu : un nom contenant au moins un point est
+  # résolu tel quel d'abord. Les noms de services courts (`alterconso-mysql`)
+  # continuent de passer par les domaines de recherche.
+  #
+  # Le chart n'expose pas dnsConfig, d'où ce patch. Il recrée le pod, mais
+  # s'exécute avant que DevSpace ne s'y attache.
+  - name: dns-ndots
+    events: ["after:deploy"]
+    command: |
+      set -e
+      kubectl --context ${devspace.context} --namespace ${devspace.namespace} \
+        patch deployment ${RELEASE} --type=merge -p \
+        '{"spec":{"template":{"spec":{"dnsConfig":{"options":[{"name":"ndots","value":"1"}]}}}}}'
+      echo ">> ndots:1 appliqué (contourne le wildcard ts.alter-it.eu)"
+
+deployments:
+  # ───────────────────────────────────────────────────────────────────────────
+  # L'application et sa base, via le chart du dépôt.
+  #
+  # Aucun contrôleur d'Ingress n'est déployé ici : le cluster k3d embarque
+  # Traefik, et les ports 80/443 de la machine lui sont mappés à la création
+  # du cluster (`devspace run cluster-up`).
+  #
+  alterconso:
+    namespace: ${NAMESPACE}
+    helm:
+      chart:
+        path: ${CHART_PATH}
+      values:
+        image:
+          repository: ghcr.io/gpenaud/alterconso
+          tag: latest
+        ingress:
+          enabled: false
+
+        # Les valeurs du chart (256 Mio) dimensionnent un binaire Go compilé,
+        # servi depuis une image distroless. Le conteneur de développement, lui,
+        # COMPILE — et fait tourner Vite et npm en parallèle. À 256 Mio il est
+        # tué pendant l'installation des dépendances, la synchronisation perd sa
+        # connexion, le conteneur redémarre, et le cycle se répète sans fin :
+        #
+        #   lastState.terminated: reason=OOMKilled exitCode=137
+        #
+        # Ces valeurs ne concernent que le développement local ; la production
+        # garde celles du chart.
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: "2"
+            memory: 3Gi
+
+        # Fuseau horaire du backend.
+        #
+        # Sans TZ, le processus Go tourne en UTC alors que les dates sont
+        # stockées « nues » et saisies en heure française : une ouverture de
+        # commande enregistrée à 09:00 ne se déclenche qu'à 11:00 réelles en
+        # été. `time.Now()` sert de référence à toute la logique métier
+        # (CanOrderNow, crons, notifications), d'où un décalage systématique.
+        #
+        # ⚠ La production n'a PAS cette variable : elle subit donc le même
+        # décalage. Ce réglage local est en avance sur elle.
+        extraEnv:
+          - name: TZ
+            value: Europe/Paris
+
+        database:
+          embedded:
+            enabled: true
+        config:
+          host: ${HOST}
+
+          # Destinataires joignables par un adhérent sans droits. Sans au moins
+          # une entrée ici, il ne voit que « Responsables du groupe » — c'est
+          # de la configuration, pas un défaut de la page.
+          messages:
+            technical_contacts:
+              - name: "Responsable technique"
+                emails: ["technique@alter-it.eu"]
+        secrets:
+          DB_PASSWORD: "alterconso"
+          MYSQL_ROOT_PASSWORD: "alterconso"
+          # Valeurs de développement, sans valeur de secret. Les régénérer pour
+          # tout usage réel : openssl rand -hex 32
+          JWT_SECRET: "0000000000000000000000000000000000000000000000000000000000000001"
+          APP_KEY: "0000000000000000000000000000000000000000000000000000000000000002"
+          SUPERADMIN_PASSWORD: "alterconso"
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Exposition de l'interface de développement.
+  #
+  # Un Service distinct de celui du chart, qui cible ${UI_PORT} sur le pod de
+  # dev — 8080 pour les templates Go, 5173 pour Vite. Un Service peut viser un
+  # port non déclaré en containerPort, aucun des deux n'a à figurer dans le
+  # Deployment.
+  # ───────────────────────────────────────────────────────────────────────────
+  alterconso-dev-ingress:
+    namespace: ${NAMESPACE}
+    kubectl:
+      inlineManifest: |
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: ${RELEASE}-dev-ui
+        spec:
+          selector:
+            app.kubernetes.io/instance: ${RELEASE}
+
+            # Discriminant indispensable. Le sub-chart MySQL porte les mêmes
+            # `name` et `instance` que l'application : sans lui, le Service
+            # retient DEUX endpoints — dont le pod MySQL, qui n'écoute pas sur
+            # 5173. Traefik alterne alors entre les deux et une requête sur deux
+            # part en 502.
+            #
+            # `devspace.sh/replaced` n'est posé que sur le pod dont DevSpace a
+            # substitué l'image, donc exactement celui qui fait tourner Vite.
+            # Corollaire : ce Service n'a d'endpoint qu'en session `devspace
+            # dev`, ce qui est précisément son objet.
+            devspace.sh/replaced: "true"
+          ports:
+            - name: ui
+              port: 5173
+              targetPort: ${UI_PORT}
+        ---
+        apiVersion: networking.k8s.io/v1
+        kind: Ingress
+        metadata:
+          name: ${RELEASE}-dev
+          annotations:
+            # k3s expose 443 sur l'entrypoint `websecure`.
+            traefik.ingress.kubernetes.io/router.entrypoints: websecure
+        spec:
+          ingressClassName: traefik
+          tls:
+            - hosts: ["${HOST}"]
+              secretName: ${TLS_SECRET}
+          rules:
+            - host: ${HOST}
+              http:
+                paths:
+                  - path: /
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: ${RELEASE}-dev-ui
+                        port:
+                          number: 5173
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Boucle de développement
+# ─────────────────────────────────────────────────────────────────────────────
+dev:
+  app:
+    namespace: ${NAMESPACE}
+
+    # Sélection par IMAGE, et non par labels.
+    #
+    # Le sub-chart MySQL hérite des mêmes `app.kubernetes.io/name` et
+    # `/instance` que l'application : un labelSelector sur ces deux clés
+    # désigne les deux pods, et DevSpace choisit le premier venu. Il s'est
+    # attaché à `alterconso-mysql-0`, y a synchronisé les sources, puis a
+    # échoué faute d'y trouver son utilitaire de redémarrage :
+    #
+    #   Selected pod alterconso-mysql-0
+    #   the restart container utility script is not present in the container
+    #
+    # Seul MySQL porte `component: mysql`, mais un labelSelector ne sait pas
+    # exclure. L'image, elle, est sans ambiguïté.
+    imageSelector: ghcr.io/gpenaud/alterconso:latest
+
+    # Remplace l'image distroless, qui n'a ni compilateur ni shell.
+    devImage: ${GO_IMAGE}
+
+    # Ports joignables depuis le poste sans passer par l'Ingress — utile pour
+    # interroger l'API directement ou brancher un débogueur.
+    ports:
+      - port: "8080:8080"
+      - port: "5173:5173"
+
+    sync:
+      # Sources Go : toute modification relance le processus, donc recompile.
+      # `frontend` est exclu ici pour ne pas redémarrer le backend à chaque
+      # frappe dans un composant React — Vite s'en charge tout seul.
+      - path: ./:/app
+        excludePaths:
+          - .git/
+          - frontend/
+          - deploy/
+          - dump.sql
+          - "*.tgz"
+
+          # `docs/` N'EST PAS exclu : malgré son nom, ce n'est pas de la
+          # documentation mais le paquet Swagger généré, importé par le code
+          # (`github.com/gpenaud/alterconso/docs`) et copié par le Dockerfile.
+          # L'exclure fait échouer la compilation :
+          #
+          #   go get github.com/gpenaud/alterconso/docs
+
+          # Monté en lecture seule par le chart, depuis un ConfigMap : la
+          # synchronisation échouerait sur tout le lot, pas seulement sur ce
+          # fichier.
+          #
+          #   create /app/config.yaml: read-only file system
+          #
+          # L'exclure est de toute façon le bon choix : en cluster, la config
+          # vient du chart (values.config), pas du fichier du dépôt — le
+          # synchroniser masquerait la première par le second.
+          - config.yaml
+
+          # Même raison, et c'est celui qui gagne : internal/config lit `.env`
+          # en priorité. Le `.env` du poste vise un MySQL local, ce qui envoie
+          # le backend sur la mauvaise adresse une fois dans le cluster :
+          #
+          #   failed to connect to database: dial tcp [::1]:3306: connection refused
+          #
+          # Sans lui, la configuration vient du config.yaml monté par le chart,
+          # qui pointe sur le service `alterconso-mysql`.
+          - .env
+        onUpload:
+          restartContainer: true
+
+      # Sources du frontend : synchronisées sans redémarrage, Vite détecte et
+      # pousse le HMR. node_modules reste dans le conteneur (binaires compilés
+      # pour Alpine, incompatibles avec ceux du poste).
+      - path: ./frontend:/app/frontend
+        excludePaths:
+          - node_modules/
+          - dist/
+
+    # `sh -c` plutôt qu'un ENTRYPOINT : deux processus à mener de front, et
+    # DevSpace relance cette commande entière à chaque modification Go.
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        cd /app
+
+        # L'image Go n'a pas Node. Installation au démarrage plutôt que dans une
+        # image dédiée à construire et publier : ~15 s au premier lancement, et
+        # rien à maintenir.
+        # tzdata en plus de Node : Alpine n'embarque AUCUNE donnée de fuseau.
+        # Sans elle, Go ne sait pas résoudre TZ=Europe/Paris et retombe
+        # silencieusement sur UTC — la variable d'environnement seule ne suffit
+        # pas. L'image de production, elle, copie /usr/share/zoneinfo depuis
+        # l'étape de build.
+        command -v node >/dev/null || apk add --no-cache nodejs npm tzdata
+
+        # Test sur le BINAIRE, pas sur le répertoire : node_modules est
+        # persisté dans un volume, et une installation interrompue (le conteneur
+        # a été tué par l'OOM en plein npm install) y laisse une arborescence
+        # partielle. Le répertoire existant, l'installation était sautée à
+        # chaque démarrage, et Vite échouait sur :
+        #
+        #   Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite'
+        if [ ! -x frontend/node_modules/.bin/vite ]; then
+          echo ">> installation des dépendances frontend"
+          (cd frontend && npm install --no-audit --no-fund)
+        fi
+
+        # Vite en tâche de fond, Go au premier plan : c'est la sortie du
+        # processus principal que DevSpace surveille, et le backend qui doit
+        # être relancé à chaque modification.
+        #
+        # Lancé SEULEMENT s'il n'écoute pas déjà. DevSpace relance cette commande
+        # sans arrêter le conteneur : l'instance précédente survit, et une
+        # seconde se rabat de port en port en laissant l'Ingress devant un
+        # serveur mort —
+        #
+        #   Port 5173 is in use, trying another one...
+        #
+        # Le garder en vie est d'ailleurs préférable : modifier du Go ne doit pas
+        # recharger le frontend.
+        if [ "${UI_PORT}" != "5173" ]; then
+          echo ">> interface : templates Go (UI_PORT=${UI_PORT}), Vite non démarré"
+
+          # L'application ne se limite pas aux templates : le fallback NoRoute
+          # sert frontend/dist/index.html pour /login, /profile, /groups et
+          # /shop/. Sans build, ces routes répondent « page not found » — la
+          # production, elle, embarque le dist produit par le Dockerfile.
+          #
+          # Construit une seule fois puis conservé (persistPaths) : en mode
+          # templates on ne travaille pas sur React, inutile de le refaire à
+          # chaque redémarrage. Pour reconstruire : supprimer frontend/dist
+          # dans le conteneur, ou repasser en UI_PORT=5173.
+          if [ ! -f frontend/dist/index.html ]; then
+            echo ">> construction du frontend (routes SPA : /shop, /login, /groups…)"
+            (cd frontend && npm run build)
+          fi
+        elif ! netstat -tln 2>/dev/null | grep -q ":5173"; then
+          echo ">> démarrage du serveur de développement Vite"
+          (cd frontend && npx vite --config vite.config.devspace.ts) &
+        else
+          echo ">> Vite déjà en écoute sur 5173, conservé"
+        fi
+
+        echo ">> compilation et démarrage du backend"
+        exec go run ./cmd/server
+
+    # Conservé entre deux redémarrages du conteneur — donc entre deux
+    # modifications d'un fichier Go, puisque chacune relance la commande.
+    persistPaths:
+      # Sources des dépendances Go (`go mod download`).
+      - path: /go/pkg/mod
+
+      # Cache de COMPILATION. Distinct du précédent, et c'est lui qui compte :
+      # sans lui, `go run` reconstruit tous les paquets à chaque relance, y
+      # compris ceux qui n'ont pas bougé. Avec, seul le code modifié est
+      # recompilé.
+      - path: /root/.cache/go-build
+
+      # Dépendances npm : évite de rejouer `npm install`, que le script ne
+      # déclenche que si le répertoire est vide.
+      - path: /app/frontend/node_modules
+
+      # Build du frontend, servi par Go sur les routes SPA en mode templates.
+      # Persisté pour ne pas le reconstruire à chaque redémarrage du backend.
+      - path: /app/frontend/dist
+
+      # Cache des paquets Alpine, pour que `apk add nodejs npm` n'aille pas
+      # rechercher les archives sur le réseau à chaque redémarrage.
+      - path: /var/cache/apk
+
+# Comme le hook, ces commandes tournent dans un shell ordinaire : --context est
+# explicite pour ne pas dépendre du current-context du kubeconfig.
+commands:
+  # ───────────────────────────────────────────────────────────────────────────
+  # Cycle de vie du cluster.
+  #
+  # Une commande et non un hook : DevSpace résout le contexte kube AVANT
+  # d'exécuter le moindre hook, donc un hook ne peut pas créer le cluster dont
+  # il aurait besoin — `devspace dev` échouerait d'abord sur un contexte
+  # introuvable.
+  #
+  # Le mapping des ports est fixé ICI, à la création : k3d publie 80 et 443 de
+  # la machine vers son load balancer, qui les route vers le Traefik embarqué
+  # dans k3s. Rien à déployer côté Ingress.
+  # ───────────────────────────────────────────────────────────────────────────
+  cluster-up:
+    description: "Crée le cluster k3d dédié (sans effet s'il existe déjà)"
+    command: |
+      set -e
+      command -v k3d >/dev/null || { echo "k3d introuvable — https://k3d.io"; exit 1; }
+
+      if k3d cluster list ${CLUSTER} >/dev/null 2>&1; then
+        echo ">> cluster ${CLUSTER} déjà présent"
+        k3d cluster start ${CLUSTER} >/dev/null 2>&1 || true
+      else
+        echo ">> création du cluster ${CLUSTER}"
+        k3d cluster create ${CLUSTER} \
+          --port "80:80@loadbalancer" \
+          --port "443:443@loadbalancer" \
+          --k3s-arg "--disable=metrics-server@server:0" \
+          --wait
+      fi
+
+      # Kubeconfig écrit dans un fichier dédié, à côté des autres. `k3d
+      # kubeconfig merge` refuse de choisir quand KUBECONFIG liste plusieurs
+      # fichiers ; un fichier par cluster évite la question.
+      mkdir -p "$HOME/.kubernetes/kubeconfigs"
+      KUBECONFIG= k3d kubeconfig get ${CLUSTER} > "$HOME/.kubernetes/kubeconfigs/${CLUSTER}"
+      chmod 600 "$HOME/.kubernetes/kubeconfigs/${CLUSTER}"
+
+      # Résolution DNS sortante.
+      #
+      # CoreDNS suit par défaut le /etc/resolv.conf du nœud, lequel désigne la
+      # passerelle du réseau Docker. Celle-ci ne répond pas ici, et TOUTE
+      # résolution externe échoue depuis les pods — `apk add` en premier :
+      #
+      #   WARNING: fetching https://dl-cdn.alpinelinux.org/... : temporary error
+      #   ERROR: unable to select packages: nodejs (no such package)
+      #
+      # La sortie Internet elle-même fonctionne : seul le résolveur est muet.
+      # On le remplace donc par un résolveur public.
+      KC="--kubeconfig $HOME/.kubernetes/kubeconfigs/${CLUSTER}"
+      kubectl $KC -n kube-system get cm coredns -o yaml \
+        | sed 's|forward . /etc/resolv.conf|forward . 1.1.1.1 8.8.8.8|' \
+        | kubectl $KC apply -f - >/dev/null
+      kubectl $KC -n kube-system rollout restart deploy/coredns >/dev/null
+      kubectl $KC -n kube-system rollout status deploy/coredns --timeout=90s >/dev/null
+      echo ">> DNS du cluster redirigé vers 1.1.1.1"
+
+      echo ">> contexte ${KUBE_CONTEXT} prêt"
+      echo "   export KUBECONFIG=$HOME/.kubernetes/kubeconfigs/${CLUSTER}"
+
+  cluster-down:
+    description: "Supprime le cluster k3d dédié"
+    command: |
+      k3d cluster delete ${CLUSTER}
+      rm -f "$HOME/.kubernetes/kubeconfigs/${CLUSTER}"
+
+  logs:
+    description: "Suit les logs du pod applicatif"
+    command: |
+      kubectl --context ${devspace.context} -n ${devspace.namespace} \
+        logs -f -l app.kubernetes.io/instance=${RELEASE} --tail=100
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Import de la base de production dans l'instance locale.
+  #
+  #   devspace run db-import
+  #
+  # ⚠ ÉCRASE la base locale. La source est lue en `--single-transaction`, donc
+  # sans verrou : l'opération est sans effet sur la production.
+  #
+  # Le dump traverse deux moteurs différents — MariaDB 11.4 côté infra01, MySQL
+  # 8.4 en local — d'où la normalisation des collations : MariaDB 11 émet des
+  # `utf8mb4_uca1400_*` que MySQL ne connaît pas et refuse à l'import.
+  #
+  # Les variables shell s'écrivent SANS accolades : DevSpace résout lui-même les
+  # ${...} du fichier et réclamerait interactivement une variable inconnue.
+  # ───────────────────────────────────────────────────────────────────────────
+  db-import:
+    description: "Importe la base alterconso d'infra01 dans l'instance locale (ÉCRASE le local)"
+    command: |
+      set -eu
+
+      SRC_CONTEXT=admin@infra01
+      SRC_NS=controller-database
+      SRC_POD=mariadb-0
+      SRC_DB=lp-alterconso
+
+      DST_CONTEXT=${devspace.context}
+      DST_NS=${devspace.namespace}
+      DST_POD=${RELEASE}-mysql
+      DST_DB=alterconso
+
+      echo ">> source      : $SRC_CONTEXT / $SRC_DB"
+      echo ">> destination : $DST_CONTEXT / $DST_DB"
+
+      SRC_PW=$(kubectl --context "$SRC_CONTEXT" -n "$SRC_NS" get secret database \
+        -o jsonpath='{.data.mariadb-root}' | base64 -d)
+
+      # Base recréée d'abord : sans ça, un import interrompu laisse un mélange
+      # d'anciennes et de nouvelles tables, et la commande n'est plus rejouable.
+      echo ">> réinitialisation de la base locale"
+      kubectl --context "$DST_CONTEXT" -n "$DST_NS" exec "$DST_POD-0" -- \
+        env MYSQL_PWD=alterconso mysql -uroot -e \
+        "DROP DATABASE IF EXISTS \`$DST_DB\`; CREATE DATABASE \`$DST_DB\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+      echo ">> export en cours…"
+      # --hex-blob est indispensable : la base contient des BLOB (images). Sans
+      # lui, mariadb-dump les écrit en octets bruts, que le `sed` de conversion
+      # des collations corrompt — l'import s'arrête sur une erreur de syntaxe
+      # au milieu d'un PNG :
+      #
+      #   ERROR 1064 (42000) at line 578: ... near ''?PNG\r\n\Z\n...
+      kubectl --context "$SRC_CONTEXT" -n "$SRC_NS" exec "$SRC_POD" -- \
+        env MYSQL_PWD="$SRC_PW" mariadb-dump -uroot \
+          --single-transaction --no-tablespaces --skip-lock-tables \
+          --hex-blob --routines --events --default-character-set=utf8mb4 \
+          "$SRC_DB" \
+      | sed -E 's/utf8mb4_uca1400[a-z0-9_]*/utf8mb4_unicode_ci/g; s/uca1400[a-z0-9_]*/utf8mb4_unicode_ci/g' \
+      | kubectl --context "$DST_CONTEXT" -n "$DST_NS" exec -i "$DST_POD-0" -- \
+          env MYSQL_PWD=alterconso mysql -uroot --default-character-set=utf8mb4 "$DST_DB"
+
+      echo ">> tables importées :"
+      kubectl --context "$DST_CONTEXT" -n "$DST_NS" exec "$DST_POD-0" -- \
+        env MYSQL_PWD=alterconso mysql -uroot -N -e \
+        "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DST_DB';"
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Construction et publication de l'image.
+  #
+  #   devspace run publish
+  #
+  # Le build est celui du Dockerfile du dépôt — multi-étapes, frontend compilé
+  # par Vite puis binaire Go, image finale distroless. Rien à voir avec l'image
+  # de développement (golang:alpine), qui ne sert qu'à `devspace dev`.
+  #
+  # ⚠ Pousse sur un registre public. `latest` est un tag mouvant : ce que tu
+  # publies ici devient ce que déploiera le prochain `helm upgrade` des clusters
+  # qui suivent ce tag.
+  # ───────────────────────────────────────────────────────────────────────────
+  publish:
+    description: "Construit l'image et la pousse en latest + tag de version sur ghcr.io"
+    command: |
+      set -eu
+      IMAGE=ghcr.io/gpenaud/alterconso
+
+      # Alimente l'ARG VERSION du Dockerfile : sans ça le binaire s'annonce
+      # « dev ». `--dirty` signale un arbre modifié.
+      VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo dev)
+
+      # Publier depuis un arbre modifié produit une image que RIEN ne permet de
+      # reconstruire : le tag de version désigne un commit qui ne contient pas
+      # le code embarqué. Contournable en connaissance de cause :
+      #   ALLOW_DIRTY=true devspace run publish
+      ALLOW_DIRTY=$(printenv ALLOW_DIRTY 2>/dev/null || echo false)
+      case "$VERSION" in
+        *-dirty)
+          if [ "$ALLOW_DIRTY" != "true" ]; then
+            echo "!! arbre de travail modifié ($(git status --short | wc -l) fichiers)."
+            echo "   Commite d'abord, ou force avec ALLOW_DIRTY=true."
+            exit 1
+          fi
+          echo ">> arbre modifié, publication forcée"
+          ;;
+      esac
+
+      echo ">> version : $VERSION"
+
+      # Deux tags pour un seul build : `latest`, que suivent les déploiements,
+      # et le tag de version, qui seul permet de revenir en arrière — `latest`
+      # étant mouvant, il ne désigne plus rien une fois écrasé.
+      docker build --build-arg VERSION="$VERSION" \
+        -t "$IMAGE:latest" -t "$IMAGE:$VERSION" .
+
+      docker push "$IMAGE:latest"
+      docker push "$IMAGE:$VERSION"
+
+      echo ">> publié :"
+      echo "   $IMAGE:latest"
+      echo "   $IMAGE:$VERSION"
+      docker image inspect "$IMAGE:latest" --format '   digest {{index .RepoDigests 0}}' 2>/dev/null || true
+
+  db:
+    description: "Ouvre un client MySQL sur la base embarquée"
+    command: |
+      kubectl --context ${devspace.context} -n ${devspace.namespace} \
+        exec -it statefulset/${RELEASE}-mysql -- \
+        mysql -ualterconso -palterconso alterconso
+
+  cert:
+    description: "Réémet le certificat mkcert et remplace le Secret TLS"
+    command: |
+      set -e
+      DIR=$(mktemp -d)
+      trap 'rm -rf "$DIR"' EXIT
+      mkcert -cert-file "$DIR/tls.crt" -key-file "$DIR/tls.key" ${HOST}
+      KCTL="kubectl --context ${devspace.context} --namespace ${devspace.namespace}"
+      $KCTL create secret tls ${TLS_SECRET} \
+        --cert="$DIR/tls.crt" --key="$DIR/tls.key" \
+        --dry-run=client -o yaml | $KCTL apply -f -

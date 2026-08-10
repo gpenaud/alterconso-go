@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gpenaud/alterconso/internal/config"
 	"github.com/gpenaud/alterconso/internal/middleware"
+	"github.com/gpenaud/alterconso/internal/model"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
@@ -49,9 +50,25 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 
 	// ---- Frontend pages (original Haxe UI) ----
 	pagesH := NewPagesHandler(db, cfg)
+
+	// Autorisation centralisée (fail-closed) pour les clusters admin.
+	// La logique de droits reste celle du modèle existant (model.Right +
+	// UserGroup.HasRight/IsGroupManager) ; ici on la DÉCLARE par route.
+	// Les routes membre/publiques ne portent PAS ces middlewares.
+	// Les contrôles fins par objet (catalogue/propriété) restent dans les
+	// handlers en défense en profondeur.
+	reqManager := pagesH.RequireGroupRight()                          // GroupAdmin requis
+	// Pas de reqMessages : /messages est désormais ouverte à tout membre, le
+	// droit Messages n'élargit plus l'accès mais le périmètre des
+	// destinataires (cf. buildScopedRecipients).
+	reqCatalog := pagesH.RequireGroupRight(model.RightCatalogAdmin)   // gestionnaire ou CatalogAdmin
+	reqDBAdmin := pagesH.RequireGroupRight(model.RightDatabaseAdmin)  // gestionnaire ou DatabaseAdmin
+	reqMembership := pagesH.RequireGroupRight(model.RightMembership)  // gestionnaire ou Membership
+
 	r.GET("/", func(c *gin.Context) { c.Redirect(302, "/home") })
 	r.GET("/user/login", pagesH.LoginPage)
 	r.GET("/user/logout", pagesH.Logout)
+	r.GET("/user/return", pageAuth, pagesH.ImpersonateReturn)
 	r.GET("/user/choose", pageAuth, pagesH.ChoosePage)
 	r.GET("/home", pageAuth, pagesH.HomePage)
 	r.GET("/contract/view/:id", pageAuth, pagesH.ContractViewPage)
@@ -62,100 +79,107 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/member", pageAuth, pagesH.MemberPage)
 	r.GET("/distribution", pageAuth, pagesH.DistributionPage)
 	r.GET("/amap", pageAuth, pagesH.AmapPage)
-	r.GET("/amapadmin", pageAuth, pagesH.AmapAdminPage)
-	r.GET("/amapadmin/edit", pageAuth, pagesH.AmapAdminEditPage)
-	r.POST("/amapadmin/update", pageAuth, pagesH.AmapAdminUpdate)
-	r.POST("/amapadmin/logo", pageAuth, pagesH.AmapAdminLogoUpload)
-	r.GET("/amapadmin/logo/delete", pageAuth, pagesH.AmapAdminLogoDelete)
-	r.GET("/amapadmin/rights", pageAuth, pagesH.AmapAdminRightsPage)
-	r.GET("/amapadmin/rights/add", pageAuth, pagesH.AmapAdminRightsAddPage)
-	r.POST("/amapadmin/rights/add", pageAuth, pagesH.AmapAdminRightsAddPage)
-	r.GET("/amapadmin/rights/edit/:userId", pageAuth, pagesH.AmapAdminRightsEditPage)
-	r.POST("/amapadmin/rights/edit/:userId", pageAuth, pagesH.AmapAdminRightsEditPage)
-	r.GET("/amapadmin/vatRates", pageAuth, pagesH.AmapAdminVatRatesPage)
-	r.POST("/amapadmin/vatRates", pageAuth, pagesH.AmapAdminVatRatesUpdate)
-	r.GET("/amapadmin/volunteers", pageAuth, pagesH.AmapAdminVolunteersPage)
-	r.GET("/amapadmin/membership", pageAuth, pagesH.AmapAdminMembershipPage)
-	r.POST("/amapadmin/membership", pageAuth, pagesH.AmapAdminMembershipUpdate)
-	r.GET("/amapadmin/currency", pageAuth, pagesH.AmapAdminCurrencyPage)
-	r.POST("/amapadmin/currency", pageAuth, pagesH.AmapAdminCurrencyUpdate)
-	r.GET("/amapadmin/documents", pageAuth, pagesH.AmapAdminDocumentsPage)
-	r.POST("/amapadmin/documents", pageAuth, pagesH.AmapAdminDocumentsUpload)
-	r.GET("/amapadmin/documents/delete/:id", pageAuth, pagesH.AmapAdminDocumentsDelete)
+	r.GET("/amapadmin", pageAuth, reqManager, pagesH.AmapAdminPage)
+	r.GET("/amapadmin/edit", pageAuth, reqManager, pagesH.AmapAdminEditPage)
+	r.POST("/amapadmin/update", pageAuth, reqManager, pagesH.AmapAdminUpdate)
+	r.POST("/amapadmin/logo", pageAuth, reqManager, pagesH.AmapAdminLogoUpload)
+	r.GET("/amapadmin/logo/delete", pageAuth, reqManager, pagesH.AmapAdminLogoDelete)
+	r.GET("/amapadmin/rights", pageAuth, reqManager, pagesH.AmapAdminRightsPage)
+	r.GET("/amapadmin/rights/add", pageAuth, reqManager, pagesH.AmapAdminRightsAddPage)
+	r.POST("/amapadmin/rights/add", pageAuth, reqManager, pagesH.AmapAdminRightsAddPage)
+	r.GET("/amapadmin/rights/edit/:userId", pageAuth, reqManager, pagesH.AmapAdminRightsEditPage)
+	r.POST("/amapadmin/rights/edit/:userId", pageAuth, reqManager, pagesH.AmapAdminRightsEditPage)
+	r.GET("/amapadmin/vatRates", pageAuth, reqManager, pagesH.AmapAdminVatRatesPage)
+	r.POST("/amapadmin/vatRates", pageAuth, reqManager, pagesH.AmapAdminVatRatesUpdate)
+	r.GET("/amapadmin/volunteers", pageAuth, reqManager, pagesH.AmapAdminVolunteersPage)
+	r.GET("/amapadmin/membership", pageAuth, reqManager, pagesH.AmapAdminMembershipPage)
+	r.POST("/amapadmin/membership", pageAuth, reqManager, pagesH.AmapAdminMembershipUpdate)
+	r.GET("/amapadmin/currency", pageAuth, reqManager, pagesH.AmapAdminCurrencyPage)
+	r.POST("/amapadmin/currency", pageAuth, reqManager, pagesH.AmapAdminCurrencyUpdate)
+	r.GET("/amapadmin/documents", pageAuth, reqManager, pagesH.AmapAdminDocumentsPage)
+	r.POST("/amapadmin/documents", pageAuth, reqManager, pagesH.AmapAdminDocumentsUpload)
+	r.GET("/amapadmin/documents/delete/:id", pageAuth, reqManager, pagesH.AmapAdminDocumentsDelete)
 
-	// ---- Admin base de données (gated on HasDatabaseAdmin) ----
-	r.GET("/admin/db", pageAuth, pagesH.AdminDBIndex)
-	r.GET("/admin/db/:slug", pageAuth, pagesH.AdminDBList)
-	r.GET("/admin/db/:slug/new", pageAuth, pagesH.AdminDBNew)
-	r.POST("/admin/db/:slug/new", pageAuth, pagesH.AdminDBCreate)
-	r.GET("/admin/db/:slug/edit/:id", pageAuth, pagesH.AdminDBEdit)
-	r.POST("/admin/db/:slug/edit/:id", pageAuth, pagesH.AdminDBSave)
-	r.POST("/admin/db/:slug/delete/:id", pageAuth, pagesH.AdminDBDelete)
+	// ---- Admin base de données (droit DatabaseAdmin) ----
+	r.GET("/admin/db", pageAuth, reqDBAdmin, pagesH.AdminDBIndex)
+	r.GET("/admin/db/:slug", pageAuth, reqDBAdmin, pagesH.AdminDBList)
+	r.GET("/admin/db/:slug/new", pageAuth, reqDBAdmin, pagesH.AdminDBNew)
+	r.POST("/admin/db/:slug/new", pageAuth, reqDBAdmin, pagesH.AdminDBCreate)
+	r.GET("/admin/db/:slug/edit/:id", pageAuth, reqDBAdmin, pagesH.AdminDBEdit)
+	r.POST("/admin/db/:slug/edit/:id", pageAuth, reqDBAdmin, pagesH.AdminDBSave)
+	r.POST("/admin/db/:slug/delete/:id", pageAuth, reqDBAdmin, pagesH.AdminDBDelete)
 
 	// Group creation
 	r.GET("/group/create/", pageAuth, pagesH.GroupCreatePage)
 	r.POST("/group/create/", pageAuth, pagesH.GroupCreatePage)
 	r.GET("/group/:id", pagesH.GroupPublicPage)
-	r.GET("/contractAdmin", pageAuth, pagesH.ContractAdminPage)
+	r.GET("/contractAdmin", pageAuth, reqCatalog, pagesH.ContractAdminPage)
 
-	// Member sub-pages
-	r.GET("/member/view/:id", pageAuth, pagesH.MemberViewPage)
-	r.GET("/member/payments/:id", pageAuth, pagesH.MemberPaymentsPage)
+	// Member sub-pages (gestion de membres = gestionnaire).
+	// /member/balance et /member/invoice restent membre (consultation perso) —
+	// à valider produit, non verrouillés ici pour ne pas casser l'accès membre.
+	r.GET("/member/view/:id", pageAuth, reqMembership, pagesH.MemberViewPage)
+	r.GET("/member/loginAs/:id", pageAuth, reqMembership, pagesH.MemberLoginAs)
+	r.GET("/member/payments/:id", pageAuth, reqMembership, pagesH.MemberPaymentsPage)
 	r.GET("/member/balance", pageAuth, pagesH.MemberBalancePage)
-	r.GET("/member/insert", pageAuth, pagesH.MemberInsertPage)
-	r.POST("/member/insert", pageAuth, pagesH.MemberInsertPage)
-	r.GET("/member/edit/:id", pageAuth, pagesH.MemberEditPage)
-	r.POST("/member/edit/:id", pageAuth, pagesH.MemberEditPage)
-	r.GET("/member/delete/:id", pageAuth, pagesH.MemberDelete)
-	r.POST("/member/fullDelete/:id", pageAuth, pagesH.MemberFullDelete)
-	r.GET("/member/waiting", pageAuth, pagesH.MemberWaitingPage)
+	r.GET("/member/insert", pageAuth, reqMembership, pagesH.MemberInsertPage)
+	r.POST("/member/insert", pageAuth, reqMembership, pagesH.MemberInsertPage)
+	r.GET("/member/edit/:id", pageAuth, reqMembership, pagesH.MemberEditPage)
+	r.POST("/member/edit/:id", pageAuth, reqMembership, pagesH.MemberEditPage)
+	r.GET("/member/delete/:id", pageAuth, reqMembership, pagesH.MemberDelete)
+	r.POST("/member/fullDelete/:id", pageAuth, reqManager, pagesH.MemberFullDelete)
+	r.GET("/member/waiting", pageAuth, reqManager, pagesH.MemberWaitingPage)
 	r.GET("/member/invoice/:multiDistribId", pageAuth, pagesH.MemberInvoicePage)
-	r.POST("/member/membership/:id", pageAuth, pagesH.MembershipUpsert)
+	r.POST("/member/membership/:id", pageAuth, reqMembership, pagesH.MembershipUpsert)
 
 	// ContractAdmin sub-pages
-	r.GET("/contractAdmin/ordersByDate/:date/:groupId", pageAuth, pagesH.ContractAdminOrdersByDatePage)
-	r.GET("/contractAdmin/vendorsByDate/:date/:groupId", pageAuth, pagesH.ContractAdminVendorsByDatePage)
-	r.GET("/contractAdmin/ordersByDate/:date/:groupId/csv", pageAuth, pagesH.ContractAdminOrdersByDateCSV)
-	r.GET("/contractAdmin/view/:id", pageAuth, pagesH.CatalogAdminViewPage)
-	r.GET("/contractAdmin/edit/:id", pageAuth, pagesH.CatalogAdminEditPage)
-	r.POST("/contractAdmin/edit/:id", pageAuth, pagesH.CatalogAdminEditPage)
-	r.GET("/contractAdmin/duplicate/:id", pageAuth, pagesH.CatalogAdminDuplicatePage)
-	r.POST("/contractAdmin/duplicate/:id", pageAuth, pagesH.CatalogAdminDuplicatePage)
-	r.GET("/contractAdmin/products/:id", pageAuth, pagesH.CatalogAdminProductsPage)
-	r.GET("/contractAdmin/products/:id/importcsv", pageAuth, pagesH.CatalogAdminProductsImportCSV)
-	r.POST("/contractAdmin/products/:id/importcsv", pageAuth, pagesH.CatalogAdminProductsImportCSV)
-	r.POST("/contractAdmin/products/:id/bulkAction", pageAuth, pagesH.CatalogAdminProductsBulkAction)
-	r.GET("/contractAdmin/products/:id/edit/:productId", pageAuth, pagesH.CatalogAdminProductEditPage)
-	r.POST("/contractAdmin/products/:id/edit/:productId", pageAuth, pagesH.CatalogAdminProductEditPage)
-	r.GET("/contractAdmin/products/:id/photo/:productId", pageAuth, pagesH.CatalogAdminProductPhotoPage)
-	r.POST("/contractAdmin/products/:id/photo/:productId", pageAuth, pagesH.CatalogAdminProductPhotoPage)
-	r.GET("/contractAdmin/products/:id/delete/:productId", pageAuth, pagesH.CatalogAdminProductDeletePage)
-	r.GET("/contractAdmin/distributions/:id", pageAuth, pagesH.CatalogAdminDistributionsPage)
-	r.POST("/contractAdmin/distributions/:id", pageAuth, pagesH.CatalogAdminDistributionsPage)
-	r.GET("/contractAdmin/orders/:id", pageAuth, pagesH.CatalogAdminOrdersPage)
-	r.GET("/contractAdmin/selectDistrib/:id", pageAuth, pagesH.CatalogAdminSelectDistribPage)
-	r.GET("/contractAdmin/memberOrder/:multiDistribId/:userId", pageAuth, pagesH.MemberOrderPage)
-	r.POST("/contractAdmin/memberOrder/:multiDistribId/:userId", pageAuth, pagesH.MemberOrderPage)
-	r.POST("/contractAdmin/updateOrders/:multiDistribId/:userId", pageAuth, pagesH.UpdateMemberOrders)
-	r.POST("/contractAdmin/addProduct/:multiDistribId/:userId", pageAuth, pagesH.AddMemberProduct)
-	r.POST("/contractAdmin/deleteOrder/:multiDistribId/:userId/:orderId", pageAuth, pagesH.DeleteMemberOrder)
-	r.GET("/contractAdmin/subscriptions/:id", pageAuth, pagesH.CatalogAdminSubscriptionsPage)
+	r.GET("/contractAdmin/ordersByDate/:date/:groupId", pageAuth, reqCatalog, pagesH.ContractAdminOrdersByDatePage)
+	r.GET("/contractAdmin/vendorsByDate/:date/:groupId", pageAuth, reqCatalog, pagesH.ContractAdminVendorsByDatePage)
+	r.GET("/contractAdmin/ordersByDate/:date/:groupId/csv", pageAuth, reqCatalog, pagesH.ContractAdminOrdersByDateCSV)
+	r.GET("/contractAdmin/view/:id", pageAuth, reqCatalog, pagesH.CatalogAdminViewPage)
+	r.GET("/contractAdmin/edit/:id", pageAuth, reqCatalog, pagesH.CatalogAdminEditPage)
+	r.POST("/contractAdmin/edit/:id", pageAuth, reqCatalog, pagesH.CatalogAdminEditPage)
+	r.GET("/contractAdmin/duplicate/:id", pageAuth, reqCatalog, pagesH.CatalogAdminDuplicatePage)
+	r.POST("/contractAdmin/duplicate/:id", pageAuth, reqCatalog, pagesH.CatalogAdminDuplicatePage)
+	r.GET("/contractAdmin/products/:id", pageAuth, reqCatalog, pagesH.CatalogAdminProductsPage)
+	r.GET("/contractAdmin/products/:id/importcsv", pageAuth, reqCatalog, pagesH.CatalogAdminProductsImportCSV)
+	r.POST("/contractAdmin/products/:id/importcsv", pageAuth, reqCatalog, pagesH.CatalogAdminProductsImportCSV)
+	r.POST("/contractAdmin/products/:id/bulkAction", pageAuth, reqCatalog, pagesH.CatalogAdminProductsBulkAction)
+	r.GET("/contractAdmin/products/:id/new", pageAuth, reqCatalog, pagesH.CatalogAdminProductNewPage)
+	r.POST("/contractAdmin/products/:id/new", pageAuth, reqCatalog, pagesH.CatalogAdminProductNewPage)
+	r.GET("/contractAdmin/products/:id/edit/:productId", pageAuth, reqCatalog, pagesH.CatalogAdminProductEditPage)
+	r.POST("/contractAdmin/products/:id/edit/:productId", pageAuth, reqCatalog, pagesH.CatalogAdminProductEditPage)
+	r.GET("/contractAdmin/products/:id/photo/:productId", pageAuth, reqCatalog, pagesH.CatalogAdminProductPhotoPage)
+	r.POST("/contractAdmin/products/:id/photo/:productId", pageAuth, reqCatalog, pagesH.CatalogAdminProductPhotoPage)
+	r.GET("/contractAdmin/products/:id/delete/:productId", pageAuth, reqCatalog, pagesH.CatalogAdminProductDeletePage)
+	r.GET("/contractAdmin/distributions/:id", pageAuth, reqCatalog, pagesH.CatalogAdminDistributionsPage)
+	r.POST("/contractAdmin/distributions/:id", pageAuth, reqCatalog, pagesH.CatalogAdminDistributionsPage)
+	r.GET("/contractAdmin/orders/:id", pageAuth, reqCatalog, pagesH.CatalogAdminOrdersPage)
+	r.GET("/contractAdmin/selectDistrib/:id", pageAuth, reqCatalog, pagesH.CatalogAdminSelectDistribPage)
+	r.GET("/contractAdmin/memberOrder/:multiDistribId/:userId", pageAuth, reqCatalog, pagesH.MemberOrderPage)
+	r.POST("/contractAdmin/memberOrder/:multiDistribId/:userId", pageAuth, reqCatalog, pagesH.MemberOrderPage)
+	r.POST("/contractAdmin/updateOrders/:multiDistribId/:userId", pageAuth, reqCatalog, pagesH.UpdateMemberOrders)
+	r.POST("/contractAdmin/addProduct/:multiDistribId/:userId", pageAuth, reqCatalog, pagesH.AddMemberProduct)
+	r.POST("/contractAdmin/deleteOrder/:multiDistribId/:userId/:orderId", pageAuth, reqCatalog, pagesH.DeleteMemberOrder)
+	r.GET("/contractAdmin/subscriptions/:id", pageAuth, reqCatalog, pagesH.CatalogAdminSubscriptionsPage)
 
 	// Distribution admin
-	r.GET("/distribution/editMd/:id", pageAuth, pagesH.DistributionEditMdPage)
-	r.POST("/distribution/editMd/:id", pageAuth, pagesH.DistributionEditMdPage)
-	r.GET("/distribution/deleteMd/:id", pageAuth, pagesH.DistributionDeleteMdPage)
-	r.GET("/distribution/insertMd", pageAuth, pagesH.DistributionInsertMdPage)
-	r.POST("/distribution/insertMd", pageAuth, pagesH.DistributionInsertMdPage)
-	r.GET("/distribution/insertMdCycle", pageAuth, pagesH.DistributionInsertMdCyclePage)
-	r.POST("/distribution/insertMdCycle", pageAuth, pagesH.DistributionInsertMdCyclePage)
-	r.GET("/distribution/validate/:id", pageAuth, pagesH.DistributionValidatePage)
-	r.GET("/distribution/inviteFarmers/:id", pageAuth, pagesH.DistributionInviteFarmersPage)
-	r.GET("/distribution/notAttend/:id", pageAuth, pagesH.DistributionNotAttendPage)
-	r.GET("/distribution/shift/:id", pageAuth, pagesH.DistributionShiftPage)
-	r.POST("/distribution/shift/:id", pageAuth, pagesH.DistributionShiftPage)
-	r.GET("/edit/:id", pageAuth, pagesH.DistributionEditDatesPage)
-	r.POST("/edit/:id", pageAuth, pagesH.DistributionEditDatesPage)
+	r.GET("/distribution/editMd/:id", pageAuth, reqManager, pagesH.DistributionEditMdPage)
+	r.POST("/distribution/editMd/:id", pageAuth, reqManager, pagesH.DistributionEditMdPage)
+	r.GET("/distribution/deleteMd/:id", pageAuth, reqManager, pagesH.DistributionDeleteMdPage)
+	r.GET("/distribution/insertMd", pageAuth, reqManager, pagesH.DistributionInsertMdPage)
+	r.POST("/distribution/insertMd", pageAuth, reqManager, pagesH.DistributionInsertMdPage)
+	r.GET("/distribution/insertMdCycle", pageAuth, reqManager, pagesH.DistributionInsertMdCyclePage)
+	r.POST("/distribution/insertMdCycle", pageAuth, reqManager, pagesH.DistributionInsertMdCyclePage)
+	r.GET("/distribution/validate/:id", pageAuth, reqManager, pagesH.DistributionValidatePage)
+	r.GET("/distribution/inviteFarmers/:id", pageAuth, reqManager, pagesH.DistributionInviteFarmersPage)
+	r.GET("/distribution/notAttend/:id", pageAuth, reqManager, pagesH.DistributionNotAttendPage)
+	r.GET("/distribution/shift/:id", pageAuth, reqManager, pagesH.DistributionShiftPage)
+	r.POST("/distribution/shift/:id", pageAuth, reqManager, pagesH.DistributionShiftPage)
+	r.GET("/edit/:id", pageAuth, reqManager, pagesH.DistributionEditDatesPage)
+	r.POST("/edit/:id", pageAuth, reqManager, pagesH.DistributionEditDatesPage)
+	// Self-service membre (se désinscrire / s'inscrire à un créneau bénévole,
+	// consulter les listes de distribution) : NON verrouillé volontairement.
 	r.GET("/distribution/volunteers/:id/unregister", pageAuth, pagesH.VolunteerUnregisterPage)
 	r.GET("/distribution/volunteersCalendar", pageAuth, pagesH.VolunteersCalendarPage)
 	r.POST("/distribution/volunteersCalendar/join", pageAuth, pagesH.VolunteersCalendarJoin)
@@ -163,22 +187,28 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/distribution/list/:id", pageAuth, pagesH.DistributionListPage)
 	r.GET("/distribution/listByDate/:date/:groupId", pageAuth, pagesH.DistributionListByDateConfigPage)
 	r.GET("/distribution/listByDate/:date/:groupId/print", pageAuth, pagesH.DistributionListByDatePrintPage)
-	r.GET("/distribution/volunteersSummary/:id", pageAuth, pagesH.VolunteersSummaryPage)
-	r.POST("/distribution/volunteersSummary/:id", pageAuth, pagesH.VolunteersSummaryPage)
-	r.GET("/distribution/roles/:id", pageAuth, pagesH.DistribRolesPage)
-	r.POST("/distribution/roles/:id", pageAuth, pagesH.DistribRolesPage)
+	r.GET("/distribution/volunteersSummary/:id", pageAuth, reqManager, pagesH.VolunteersSummaryPage)
+	r.POST("/distribution/volunteersSummary/:id", pageAuth, reqManager, pagesH.VolunteersSummaryPage)
+	r.GET("/distribution/roles/:id", pageAuth, reqManager, pagesH.DistribRolesPage)
+	r.POST("/distribution/roles/:id", pageAuth, reqManager, pagesH.DistribRolesPage)
 	r.GET("/distribution/volunteersParticipation", pageAuth, pagesH.VolunteersParticipationPage)
 
 	// Vendor
 	r.GET("/vendor/view/:id", pageAuth, pagesH.VendorViewPage)
 
 	// Messages
+	// Ouverte à tout membre connecté : le handler restreint les destinataires
+	// selon les droits (gestionnaire → tout le groupe ; responsable de
+	// catalogue → ses clients ; adhérent → responsables et contacts
+	// techniques). Le filtrage ne peut pas vivre dans un middleware, qui ne
+	// sait qu'autoriser ou refuser la route entière.
 	r.GET("/messages", pageAuth, pagesH.MessagesPage)
 	r.POST("/messages", pageAuth, pagesH.MessagesPage)
 
-	// Transactions
-	r.GET("/transaction/insertPayment/:memberId", pageAuth, pagesH.InsertPaymentPage)
-	r.POST("/transaction/insertPayment/:memberId", pageAuth, pagesH.InsertPaymentPage)
+	// Transactions (saisie de paiement = gestionnaire ou droit Membership,
+	// cohérent avec le gate interne de InsertPaymentPage)
+	r.GET("/transaction/insertPayment/:memberId", pageAuth, reqMembership, pagesH.InsertPaymentPage)
+	r.POST("/transaction/insertPayment/:memberId", pageAuth, reqMembership, pagesH.InsertPaymentPage)
 
 	// Auth
 	r.GET("/user/forgottenPassword", pagesH.ForgotPasswordPage)
@@ -205,6 +235,9 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	apiCompat.GET("/order/catalogs/:multiDistribId", compatH.OrderCatalogs)
 	apiCompat.GET("/order/get/:userId", compatH.OrderGet)
 	apiCompat.POST("/order/update/:userId", compatH.OrderUpdate)
+	// Session courante, pour que la SPA puisse afficher le bandeau
+	// d'impersonation que les pages Go rendent depuis design.html.
+	apiCompat.GET("/session", compatH.SessionInfo)
 	apiCompat.GET("/product/get/", compatH.ProductGet)
 	apiCompat.GET("/product/categories", compatH.ProductCategories)
 	apiCompat.GET("/planning/:groupId", compatH.Planning)

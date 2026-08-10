@@ -2,7 +2,7 @@ apiVersion: v2
 name: alterconso
 description: Gestion de groupements d'achat AMAP/CSA — backend Go + SPA React
 type: application
-version: 0.1.0
+version: 0.1.3
 appVersion: "0.1.0"
 home: https://github.com/gpenaud/alterconso-go
 sources:

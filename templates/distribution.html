@@ -109,7 +109,7 @@
       <div style="flex:1;padding:16px 10px;border:2px solid #ddd;border-radius:6px;text-align:center;">
         <div style="color:#aaa;margin-bottom:6px;font-size:0.9em;"><i class="icon icon-basket"></i> Commandes</div>
         <div style="font-size:2.8em;font-weight:300;color:#333;line-height:1.1;">{{.NbOrders}}</div>
-        <div style="color:#aaa;font-size:0.88em;margin-bottom:14px;">Commande(s)<br/>pour un total de <b style="color:#555;">{{printf "%.2f" .TotalAmount}} €</b></div>
+        <div style="color:#aaa;font-size:0.88em;margin-bottom:14px;">Commande(s)<br/>pour un total de <b style="color:#555;">{{price .TotalAmount}} €</b></div>
         <a href="/contractAdmin/ordersByDate/{{.DateISO}}/{{$.Group.ID}}" class="btn btn-default" style="width:160px;padding:5px 11px;">
           <i class="icon icon-basket"></i> Commandes
         </a>

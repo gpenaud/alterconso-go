@@ -57,9 +57,16 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	if !user.CheckPassword(req.Password, h.cfg.Key) {
+	ok, needsRehash := user.CheckPassword(req.Password, h.cfg.Key)
+	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "identifiants incorrects"})
 		return
+	}
+
+	// Migration opportuniste : on détient le clair, on réécrit vers bcrypt (b2:).
+	if needsRehash {
+		user.SetPassword(req.Password, "")
+		h.db.Model(&user).Update("pass", user.Pass)
 	}
 
 	// Mise à jour de la date de dernière connexion

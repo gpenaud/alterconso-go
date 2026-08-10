@@ -516,6 +516,10 @@ func (h *PagesHandler) DistributionInviteFarmersPage(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
+	if !pd.IsGroupManager {
+		c.String(http.StatusForbidden, "accès refusé")
+		return
+	}
 	mdID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.String(http.StatusBadRequest, "id invalide")
@@ -619,6 +623,10 @@ func (h *PagesHandler) DistributionShiftPage(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
+	if !pd.IsGroupManager {
+		c.String(http.StatusForbidden, "accès refusé")
+		return
+	}
 	distribID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.String(http.StatusBadRequest, "id invalide")
@@ -673,6 +681,10 @@ func (h *PagesHandler) DistributionEditDatesPage(c *gin.Context) {
 	pd := h.buildPageData(c)
 	if pd.User == nil || pd.Group == nil {
 		c.Redirect(http.StatusFound, "/user/choose")
+		return
+	}
+	if !pd.IsGroupManager {
+		c.String(http.StatusForbidden, "accès refusé")
 		return
 	}
 	distribID, err := strconv.ParseUint(c.Param("id"), 10, 64)

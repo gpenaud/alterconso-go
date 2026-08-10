@@ -16,7 +16,7 @@
         <tr style="font-size:1.3em;">
           <td colspan="3" class="text-right">Solde :</td>
           <td style="color:{{if lt .Balance 0.0}}#C00{{else}}#0C0{{end}};font-weight:bold;">
-            {{printf "%.2f" .Balance}} €
+            {{price .Balance}} €
           </td>
           <td>
             <a href="/transaction/insertPayment/{{.Member.ID}}" class="btn btn-primary btn-sm">
@@ -32,7 +32,7 @@
           <td>{{.Date}}</td>
           <td>{{.Type}}</td>
           <td>{{.Description}}</td>
-          <td>{{printf "%.2f" .Amount}} €</td>
+          <td>{{price .Amount}} €</td>
           <td>{{.PaymentType}}</td>
         </tr>
         {{else}}

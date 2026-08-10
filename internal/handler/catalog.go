@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gpenaud/alterconso/internal/middleware"
@@ -31,8 +32,15 @@ func (h *CatalogHandler) List(c *gin.Context) {
 	q := h.db.Where("group_id = ?", groupID).Preload("Vendor")
 
 	// Filtre actifs uniquement sauf si ?all=true
+	//
+	// La date vient de Go, pas du NOW() de MySQL : le serveur de base tourne en
+	// UTC (time_zone = SYSTEM) tandis que l'application suit Europe/Paris, si
+	// bien que les deux ne désignaient pas le même instant. C'était la seule
+	// comparaison de dates évaluée côté SQL — partout ailleurs la date est déjà
+	// passée en paramètre.
 	if c.Query("all") != "true" {
-		q = q.Where("(end_date IS NULL OR end_date >= NOW()) AND (start_date IS NULL OR start_date <= NOW())")
+		now := time.Now()
+		q = q.Where("(end_date IS NULL OR end_date >= ?) AND (start_date IS NULL OR start_date <= ?)", now, now)
 	}
 
 	var catalogs []model.Catalog

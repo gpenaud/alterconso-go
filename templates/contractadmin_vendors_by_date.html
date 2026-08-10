@@ -27,8 +27,8 @@
           <td>{{.Qty}}</td>
           <td>{{.Product}}</td>
           <td style="color:#888;font-size:0.9em;">{{.Ref}}</td>
-          <td>{{printf "%.2f" .UnitPrice}} €</td>
-          <td>{{printf "%.2f" .Total}} €</td>
+          <td>{{price .UnitPrice}} €</td>
+          <td>{{price .Total}} €</td>
         </tr>
         {{end}}
       </tbody>
@@ -36,7 +36,7 @@
         <tr style="background:#f5f5f5;">
           <td style="font-weight:bold;">Total</td>
           <td colspan="3"></td>
-          <td style="font-weight:bold;">{{printf "%.2f" .Total}} €</td>
+          <td style="font-weight:bold;">{{price .Total}} €</td>
         </tr>
       </tfoot>
     </table>

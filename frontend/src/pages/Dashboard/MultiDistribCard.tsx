@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatPrice } from "../../utils/format";
 import { Link } from "react-router-dom";
 import type { MultiDistribView } from "../../api/home";
 import { OrderDetailModal } from "./OrderDetailModal";
@@ -76,7 +77,7 @@ export function MultiDistribCard({ md }: { md: MultiDistribView }) {
               >
                 <i className="icon-basket" aria-hidden="true" />
                 {md.userOrders && md.userOrders.length > 0
-                  ? `Ma commande : ${md.userOrderTotal.toFixed(2)} €`
+                  ? `Ma commande : ${formatPrice(md.userOrderTotal)}`
                   : "Commander"}
               </Link>
               {md.orderEndDate && (
@@ -94,7 +95,7 @@ export function MultiDistribCard({ md }: { md: MultiDistribView }) {
                   className="inline-flex items-center gap-2 px-4 py-2 mb-3 rounded-md text-sm font-medium border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
                 >
                   <i className="icon-basket" aria-hidden="true" />
-                  Ma commande : {md.userOrderTotal.toFixed(2)} €
+                  Ma commande : {formatPrice(md.userOrderTotal)}
                 </button>
               )}
               {md.orderNotYetOpen ? (

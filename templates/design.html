@@ -1,5 +1,15 @@
 {{define "body"}}
 
+  {{if .IsImpersonating}}
+  <div style="background:#c0392b;color:#fff;padding:8px 14px;margin-top:10px;border-radius:6px;text-align:center;font-weight:bold;">
+    <i class="icon icon-user"></i>
+    Vous êtes connecté en tant que {{.User.FirstName}} {{.User.LastName}}
+    <a href="/user/return" style="color:#fff;text-decoration:underline;margin-left:14px;">
+      <i class="icon icon-chevron-left"></i> Revenir{{if .ImpersonatorName}} en tant que {{.ImpersonatorName}}{{end}}
+    </a>
+  </div>
+  {{end}}
+
   {{if .Redirect}}
   <script>
   document.addEventListener("DOMContentLoaded", function(event) {
@@ -70,8 +80,18 @@
         <li {{if eq .Category "amap"}}class="active"{{end}}>
           <a href="/amap"><i class="icon icon-farmer"></i> Producteurs</a>
         </li>
+        {{/* Messagerie : menu principal et non bloc admin, car ouverte à tout
+             membre. Ce que chacun peut y faire dépend de ses droits — un
+             adhérent n'y joint que les responsables et les contacts
+             techniques. */}}
+        <li {{if eq .Category "messages"}}class="active"{{end}}>
+          <a href="/messages"><i class="icon icon-mail"></i> Messagerie</a>
+        </li>
       </ul>
-      {{if or .IsGroupManager .HasMembership .HasMessages .HasCatalogAdmin}}
+      {{/* .HasMessages ne figure plus ici : la messagerie a rejoint le menu
+           principal, ce bloc n'en contient plus d'entrée. L'y laisser
+           afficherait un bloc admin vide à qui ne détient que ce droit. */}}
+      {{if or .IsGroupManager .HasMembership .HasCatalogAdmin}}
       <ul class="nav navbar-nav navbar-right admin">
         {{if or .IsGroupManager .HasMembership}}
         <li {{if eq .Category "member"}}class="active"{{end}}>
@@ -86,11 +106,6 @@
         {{if or .IsGroupManager .HasCatalogAdmin}}
         <li {{if eq .Category "contract"}}class="active"{{end}}>
           <a href="/contractAdmin"><i class="icon icon-book"></i> Catalogues</a>
-        </li>
-        {{end}}
-        {{if or .IsGroupManager .HasMessages}}
-        <li {{if eq .Category "messages"}}class="active"{{end}}>
-          <a href="/messages"><i class="icon icon-mail"></i> Messagerie</a>
         </li>
         {{end}}
         {{if .IsGroupManager}}

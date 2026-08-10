@@ -49,6 +49,8 @@ default_email: noreply@alterconso.fr
 # première catégorie qui matche dans l'ordre du fichier (du plus engagé au
 # moins engagé).
 messages:
+  # Catégories d'activité, proposées aux SEULS gestionnaires : elles découpent
+  # l'ensemble des membres du groupe.
   recipient_categories:
     - name: "Membres réguliers"
       pattern: ">= 3 commandes sur 3m"
@@ -57,10 +59,30 @@ messages:
     - name: "Membres inactifs"
       pattern: "< 1 commande sur 6m"
 
+  # Libellé de l'entrée regroupant les responsables du groupe, proposée à tout
+  # membre. Défaut : "Responsables du groupe".
+  group_managers_label: "Responsables du groupe"
+
+  # Contacts joignables par TOUT membre, y compris un adhérent sans droits.
+  #
+  # Des adresses fixes, et non des comptes : ces destinataires existent hors du
+  # modèle de droits (support, hébergeur, association porteuse) et doivent
+  # rester joignables même si aucun compte du groupe ne leur correspond.
+  #
+  # Vide ou absent : un adhérent ne peut alors joindre que les responsables de
+  # son groupe.
+  technical_contacts:
+    - name: "Responsable technique"
+      emails: ["technique@exemple.org"]
+
 # Notifications
 notifications:
+  # Active/désactive globalement l'envoi des notifications email par le cron
+  # (ouverture/fermeture commandes, rappels distrib). Surchargeable via
+  # NOTIFICATIONS_ENABLED=false. Si false, recipient_category n'est pas validé.
+  enabled: true
   # Catégorie (parmi messages.recipient_categories) dont les membres reçoivent
   # les notifications d'ouverture/fermeture des commandes.
   # Sémantique : pure correspondance par pattern, sans exclusivité mutuelle.
-  # Obligatoire — boot fatal si vide ou nom inconnu.
+  # Obligatoire si enabled — boot fatal si vide ou nom inconnu.
   recipient_category: "Membres réguliers"

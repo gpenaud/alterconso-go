@@ -13,6 +13,9 @@ import (
 type Claims struct {
 	UserID  uint `json:"userId"`
 	GroupID uint `json:"groupId"`
+	// ImpersonatorID est l'id du vrai utilisateur qui a fait « se connecter en tant que ».
+	// Non nul uniquement pendant une usurpation d'identité ; permet de « revenir ».
+	ImpersonatorID uint `json:"impersonatorId,omitempty"`
 	jwt.RegisteredClaims
 }
 

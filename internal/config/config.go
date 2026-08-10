@@ -60,11 +60,16 @@ type SuperAdminConfig struct {
 }
 
 type NotificationsConfig struct {
+	// Enabled active globalement l'envoi des notifications email par le cron
+	// (ouverture/fermeture commandes, rappels distrib). Défaut: true.
+	// Si false, RecipientCategory n'est pas validé au boot.
+	Enabled bool `yaml:"enabled"`
+
 	// RecipientCategory : nom d'une catégorie de messages.recipient_categories.
 	// Seuls les users matchant le pattern de cette catégorie reçoivent les
 	// notifications d'ouverture/fermeture de commandes.
 	// Sémantique : pure correspondance par pattern (pas d'exclusivité mutuelle).
-	// Obligatoire — boot fatal si vide ou si le nom ne correspond à aucune catégorie.
+	// Obligatoire si Enabled — boot fatal si vide ou si le nom ne correspond à aucune catégorie.
 	RecipientCategory string `yaml:"recipient_category"`
 }
 
@@ -131,21 +136,25 @@ func Load() (*Config, error) {
 		}
 	}
 
-	// notifications.recipient_category est obligatoire et doit pointer vers
-	// une messages.recipient_categories existante.
-	name := strings.TrimSpace(cfg.Notifications.RecipientCategory)
-	if name == "" {
-		return nil, fmt.Errorf("notifications.recipient_category is required (nom d'une messages.recipient_categories)")
-	}
-	found := false
-	for _, cat := range cfg.Messages.RecipientCategories {
-		if cat.Name == name {
-			found = true
-			break
+	// Si les notifications sont activées, recipient_category est obligatoire
+	// et doit pointer vers une messages.recipient_categories existante.
+	if cfg.Notifications.Enabled {
+		name := strings.TrimSpace(cfg.Notifications.RecipientCategory)
+		if name == "" {
+			return nil, fmt.Errorf("notifications.recipient_category is required when notifications.enabled (nom d'une messages.recipient_categories)")
 		}
-	}
-	if !found {
-		return nil, fmt.Errorf("notifications.recipient_category %q ne correspond à aucune messages.recipient_categories", name)
+		found := false
+		for _, cat := range cfg.Messages.RecipientCategories {
+			if cat.Name == name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("notifications.recipient_category %q ne correspond à aucune messages.recipient_categories", name)
+		}
+	} else {
+		log.Printf("[CONFIG] notifications désactivées (notifications.enabled=false)")
 	}
 
 	return cfg, nil
@@ -171,6 +180,7 @@ func defaults() *Config {
 		SMTPPort:       "587",
 		DefaultEmail:   "noreply@alterconso.fr",
 		Host:           "localhost",
+		Notifications:  NotificationsConfig{Enabled: true},
 	}
 }
 
@@ -238,6 +248,9 @@ func overrideFromEnv(cfg *Config) {
 	}
 	if v := os.Getenv("SUPERADMIN_PASSWORD"); v != "" {
 		cfg.SuperAdmin.Password = v
+	}
+	if v := os.Getenv("NOTIFICATIONS_ENABLED"); v != "" {
+		cfg.Notifications.Enabled = v == "true"
 	}
 }
 

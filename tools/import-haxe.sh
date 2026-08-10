@@ -29,11 +29,14 @@
 # ============================================================
 set -euo pipefail
 
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# SCRIPT_DIR=/home/gpenaud/work/alterconso
+
 INPUT="${1:-}"
 OUTPUT="${2:-$SCRIPT_DIR/import-go.sql}"
 
-if [[ -z "$INPUT" || ! -f "$INPUT" ]]; then
+if [[ -z "$INPUT" || ! -f "$INPUT" ]]; then 
   echo "Usage: $0 <last-backup.sql> [output.sql]"
   exit 1
 fi
@@ -49,6 +52,8 @@ TMP_DB="${TMP_DB:-alterconso_haxe_import}"
 MYSQL_OPTS=(-u "$DB_USER" -p"$DB_PASSWORD" -h "$DB_HOST" -P "$DB_PORT")
 MYSQL_ROOT_OPTS=(-u "$DB_ROOT_USER" -p"$DB_ROOT_PASSWORD" -h "$DB_HOST" -P "$DB_PORT")
 MYSQLDUMP_OPTS=(-u "$DB_USER" -p"$DB_PASSWORD" -h "$DB_HOST" -P "$DB_PORT")
+MYSQLDUMP_ROOT_OPTS=(-u "$DB_ROOT_USER" -p"$DB_ROOT_PASSWORD" -h "$DB_HOST" -P "$DB_PORT")
+
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
@@ -119,6 +124,34 @@ log "5/8 — application de migrate-haxe-to-gorm.sql..."
 mysql "${MYSQL_OPTS[@]}" "$TMP_DB" < "$SCRIPT_DIR/tools/migrate-haxe-to-gorm.sql" 2>&1 | grep -v "Warning" | tail -20 || true
 
 # ============================================================
+# Étape 5bis : droits "gestion du catalogue" (CatalogAdmin)
+# Attribue le droit CatalogAdmin au membre dont l'adresse mail
+# correspond à celle du responsable (contact) de chaque catalogue,
+# scopé aux ids des catalogues concernés :
+#   [{"right":"CatalogAdmin","params":["12","34"]}]
+# ============================================================
+log "5bis/8 — attribution des droits 'gestion du catalogue' aux responsables..."
+mysql "${MYSQL_OPTS[@]}" "$TMP_DB" 2>&1 <<'SQL' | grep -v "Warning" || true
+UPDATE user_groups ug
+JOIN (
+  SELECT
+    m.id        AS user_id,
+    c.group_id  AS group_id,
+    CONCAT(
+      '[{"right":"CatalogAdmin","params":[',
+      GROUP_CONCAT(DISTINCT CONCAT('"', c.id, '"') ORDER BY c.id SEPARATOR ','),
+      ']}]'
+    ) AS rights
+  FROM catalogs c
+  JOIN users r ON r.id = c.contact_id
+  JOIN users m ON LOWER(m.email) = LOWER(r.email)
+  WHERE r.email <> ''
+  GROUP BY m.id, c.group_id
+) g ON g.user_id = ug.user_id AND g.group_id = ug.group_id
+SET ug.rights = g.rights;
+SQL
+
+# ============================================================
 # Étape 6 : suppression des tables Haxe résiduelles
 # ============================================================
 log "6/8 — suppression des tables Haxe (PascalCase) sauf File..."
@@ -143,13 +176,15 @@ fi
 # Étape 7 : mysqldump propre
 # ============================================================
 log "7/8 — mysqldump vers $OUTPUT..."
-mysqldump "${MYSQLDUMP_OPTS[@]}" \
+mysqldump "${MYSQLDUMP_ROOT_OPTS[@]}" \
   --no-tablespaces \
   --skip-comments \
   --single-transaction \
   --default-character-set=utf8mb4 \
   --hex-blob \
-  "$TMP_DB" > "$OUTPUT" 2>/dev/null
+  --set-gtid-purged=OFF \
+  --skip-lock-tables \
+  "$TMP_DB" > "$OUTPUT"
 
 OUT_SIZE=$(stat -c%s "$OUTPUT")
 log "    dump généré : $(numfmt --to=iec-i --suffix=B $OUT_SIZE)"

@@ -10,7 +10,7 @@
           <div class="product-card" style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;"
             data-id="{{.ID}}"
             data-name="{{.Name}}"
-            data-price="{{printf "%.2f" .Price}}"
+            data-price="{{price .Price}}"
             data-vat="{{printf "%.1f" .VAT}}"
             data-qt="{{printf "%.0f" .Qt}}"
             data-unit="{{.UnitType}}"
@@ -21,7 +21,7 @@
             </div>
             <div>
               <a href="#" onclick="return false;" style="color:#5a8a00;font-style:italic;font-weight:bold;font-size:0.95em;">{{.Name}}</a>
-              <div style="font-size:1.05em;margin-top:4px;">{{printf "%.2f" .Price}} €</div>
+              <div style="font-size:1.05em;margin-top:4px;">{{price .Price}} €</div>
             </div>
           </div>
         </div>

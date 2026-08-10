@@ -39,9 +39,13 @@ func (s *CronService) Start(tick time.Duration) {
 
 // RunAll exécute toutes les tâches cron.
 func (s *CronService) RunAll() {
-	s.NotifyOrderOpenings()
-	s.NotifyOrderClosingSoon()
-	s.NotifyUpcomingDistributions()
+	if s.cfg.Notifications.Enabled {
+		s.NotifyOrderOpenings()
+		s.NotifyOrderClosingSoon()
+		s.NotifyUpcomingDistributions()
+	} else {
+		log.Printf("[CRON] notifications désactivées — étapes Notify* skippées")
+	}
 	s.AutoValidatePastDistributions()
 }
 

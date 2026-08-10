@@ -40,17 +40,14 @@ spec:
       {{- with .Values.priorityClassName }}
       priorityClassName: {{ . }}
       {{- end }}
-      {{- if .Values.waitForDatabase.enabled }}
+      {{- $initDbEnabled := and (not .Values.database.embedded.enabled) (ne .Values.database.init.adminSecret "") }}
+      {{- if or .Values.waitForDatabase.enabled $initDbEnabled }}
       initContainers:
-        # Attend que MySQL réponde au niveau protocole (pas juste TCP) avant
-        # de laisser démarrer l'app. Depuis MySQL 8, `mysqladmin ping` SANS
-        # credentials retourne exit 1 même quand le serveur tourne ("Access
-        # denied"), donc on doit passer DB_USER + DB_PASSWORD. Le user app
-        # existe à ce moment-là :
-        #   - mode embedded : créé par l'image mysql au boot via env vars
-        #   - mode external : créé par le db-init Job (pre-install hook)
-        # MYSQL_PWD est lu nativement par mysqladmin, évite de passer le
-        # password en argument visible dans `ps`.
+        {{- if .Values.waitForDatabase.enabled }}
+        # Attend que MySQL réponde au protocole MySQL (pas juste TCP open)
+        # avant de laisser démarrer l'app. mysqladmin ping renvoie exit 0
+        # dès que le serveur accepte des connexions au protocole, sans
+        # nécessiter d'auth (server alive = exit 0 même sur Access denied).
         - name: wait-for-db
           image: {{ .Values.waitForDatabase.image | quote }}
           env:
@@ -58,13 +55,6 @@ spec:
               value: {{ include "alterconso.dbHost" . | quote }}
             - name: DB_PORT
               value: {{ include "alterconso.dbPort" . | quote }}
-            - name: DB_USER
-              value: {{ .Values.config.db_user | quote }}
-            - name: MYSQL_PWD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "alterconso.secretName" . }}
-                  key: DB_PASSWORD
             - name: TIMEOUT
               value: {{ .Values.waitForDatabase.timeoutSeconds | quote }}
           command: ["/bin/sh", "-c"]
@@ -72,7 +62,7 @@ spec:
             - |
               set -eu
               elapsed=0
-              until mysqladmin ping -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" --connect-timeout=2 --silent 2>/dev/null; do
+              until mysqladmin ping -h "$DB_HOST" -P "$DB_PORT" --connect-timeout=2 --silent 2>/dev/null; do
                 if [ "$elapsed" -ge "$TIMEOUT" ]; then
                   echo "[wait-for-db] timeout: ${DB_HOST}:${DB_PORT} unreachable after ${TIMEOUT}s"
                   exit 1
@@ -82,6 +72,52 @@ spec:
                 elapsed=$((elapsed + 2))
               done
               echo "[wait-for-db] OK: ${DB_HOST}:${DB_PORT} ready"
+        {{- end }}
+        {{- if $initDbEnabled }}
+        # Crée la DB applicative + user + grants si pas déjà fait. Requêtes
+        # idempotentes (IF NOT EXISTS / ALTER USER), donc rejouées à chaque
+        # restart sans effet de bord — en bonus, ALTER USER aligne le password
+        # sur celui du Secret app, ce qui couvre les rotations transparentes.
+        - name: init-db
+          image: {{ .Values.database.init.image | quote }}
+          env:
+            - name: DB_HOST
+              value: {{ include "alterconso.dbHost" . | quote }}
+            - name: DB_PORT
+              value: {{ include "alterconso.dbPort" . | quote }}
+            - name: DB_NAME
+              value: {{ .Values.config.db_name | quote }}
+            - name: DB_USER
+              value: {{ .Values.config.db_user | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alterconso.secretName" . }}
+                  key: DB_PASSWORD
+            - name: MYSQL_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.init.adminSecret }}
+                  key: {{ .Values.database.init.passwordSecretKey }}
+          resources:
+            {{- toYaml .Values.database.init.resources | nindent 12 }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              echo "[init-db] target ${DB_HOST}:${DB_PORT} as root"
+              mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "root" <<SQL
+              CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`
+                CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+              CREATE USER IF NOT EXISTS '${DB_USER}'@'%'
+                IDENTIFIED BY '${DB_PASSWORD}';
+              ALTER USER '${DB_USER}'@'%'
+                IDENTIFIED BY '${DB_PASSWORD}';
+              GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%';
+              FLUSH PRIVILEGES;
+              SQL
+              echo "[init-db] OK: ${DB_NAME} / ${DB_USER} provisioned"
+        {{- end }}
       {{- end }}
       containers:
         - name: alterconso

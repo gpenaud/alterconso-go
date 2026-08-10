@@ -13,7 +13,7 @@
       <tr>
         <td>{{.ProductName}}</td>
         <td>{{.SmartQty}}</td>
-        <td>{{printf "%.2f" .Total}} €</td>
+        <td>{{price .Total}} €</td>
       </tr>
       {{end}}
     </table>

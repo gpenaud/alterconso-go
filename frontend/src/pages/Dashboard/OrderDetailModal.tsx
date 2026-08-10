@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { formatPrice } from "../../utils/format";
 import type { MultiDistribView } from "../../api/home";
 
 /**
@@ -73,12 +74,12 @@ export function OrderDetailModal({
                 <tr key={i} className="border-b border-gray-100">
                   <td className="py-2 pl-7">{o.smartQty}</td>
                   <td className="py-2 text-ac-green-dark">{o.productName}</td>
-                  <td className="py-2 text-right">{o.unitPrice.toFixed(2)} €</td>
-                  <td className="py-2 text-right">{o.subTotal.toFixed(2)} €</td>
+                  <td className="py-2 text-right">{formatPrice(o.unitPrice)}</td>
+                  <td className="py-2 text-right">{formatPrice(o.subTotal)}</td>
                   <td className="py-2 text-right text-gray-400">
-                    {o.fees > 0 ? `${o.fees.toFixed(2)} €` : ""}
+                    {o.fees > 0 ? `${formatPrice(o.fees)}` : ""}
                   </td>
-                  <td className="py-2 text-right pr-7">{o.total.toFixed(2)} €</td>
+                  <td className="py-2 text-right pr-7">{formatPrice(o.total)}</td>
                 </tr>
               ))}
             </tbody>
@@ -99,7 +100,7 @@ export function OrderDetailModal({
                   Total
                 </td>
                 <td className="py-3 text-right font-bold pr-7">
-                  {md.userOrderTotal.toFixed(2)} €
+                  {formatPrice(md.userOrderTotal)}
                 </td>
               </tr>
             </tfoot>

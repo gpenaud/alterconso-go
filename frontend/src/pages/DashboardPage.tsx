@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatPrice } from "../utils/format";
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { getGroup } from '../api/groups'
@@ -43,7 +44,7 @@ export function DashboardPage() {
             <div>
               <p className="text-sm text-gray-500">Mon solde</p>
               <p className={`text-2xl font-bold mt-0.5 ${balanceColor}`}>
-                {balance !== undefined ? `${balance >= 0 ? '+' : ''}${balance.toFixed(2)} €` : '—'}
+                {balance !== undefined ? `${balance >= 0 ? '+' : ''}${formatPrice(balance)}` : '—'}
               </p>
             </div>
           </div>
@@ -133,7 +134,7 @@ export function DashboardPage() {
                     </p>
                   </div>
                   <span className={`text-sm font-semibold ${op.amount >= 0 ? 'text-ac-green-dark' : 'text-red-600'}`}>
-                    {op.amount >= 0 ? '+' : ''}{op.amount.toFixed(2)} €
+                    {op.amount >= 0 ? '+' : ''}{formatPrice(op.amount)}
                   </span>
                 </div>
               ))
