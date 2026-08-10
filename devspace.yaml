@@ -177,8 +177,8 @@ deployments:
         # été. `time.Now()` sert de référence à toute la logique métier
         # (CanOrderNow, crons, notifications), d'où un décalage systématique.
         #
-        # ⚠ La production n'a PAS cette variable : elle subit donc le même
-        # décalage. Ce réglage local est en avance sur elle.
+        # La production porte le même réglage (values.yaml du HelmRelease dans
+        # flux-fleet) : les deux environnements sont alignés.
         extraEnv:
           - name: TZ
             value: Europe/Paris
