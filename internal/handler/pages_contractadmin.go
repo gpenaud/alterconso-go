@@ -538,7 +538,16 @@ func (h *PagesHandler) CatalogAdminProductEditPage(c *gin.Context) {
 		// Updates avec une map, et non la struct : GORM ignore les valeurs
 		// nulles d'une struct, si bien que décocher « bio » ou « actif » ne
 		// serait jamais enregistré.
-		h.db.Model(&model.Product{}).Where("id = ?", product.ID).Updates(productColumns(&product))
+		//
+		// L'erreur est signalée, et non ignorée comme elle l'était : un UPDATE
+		// rejeté — une chaîne invalide en UTF-8 suffit — laissait la page
+		// rediriger vers la liste comme après un succès. Rien n'était
+		// enregistré, et rien ne le disait.
+		if err := h.db.Model(&model.Product{}).Where("id = ?", product.ID).
+			Updates(productColumns(&product)).Error; err != nil {
+			c.String(http.StatusInternalServerError, "enregistrement impossible: %v", err)
+			return
+		}
 		c.Redirect(http.StatusFound, fmt.Sprintf("/contractAdmin/products/%d", data.Catalog.ID))
 		return
 	}
