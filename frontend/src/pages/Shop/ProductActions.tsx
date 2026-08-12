@@ -24,19 +24,33 @@ export function ProductActions({ product, displayVAT = false }: Props) {
 
   return (
     <div
+      // marginTop:auto colle le bandeau au bas de la carte, quelle que soit la
+      // longueur du nom ou du nombre de badges au-dessus. Les cartes d'une même
+      // ligne étant étirées à la même hauteur par la grille, leurs bandeaux
+      // s'alignent alors les uns avec les autres.
       className="flex items-start justify-between"
-      style={{ padding: "0 10px 8px" }}
+      style={{ padding: "0 10px 8px", marginTop: "auto" }}
     >
-      {/* Quantité + prix unitaire */}
+      {/* Quantité + prix unitaire.
+          Toujours rendus, même vides : deux lignes de hauteur fixe garantissent
+          que le prix et le bouton restent alignés d'une vignette à l'autre. */}
       <div className="flex flex-col text-left" style={{ minWidth: 0 }}>
-        {qtyLabel && (
-          <span style={{ fontWeight: 400, color: COLORS.darkGrey, fontSize: 22, lineHeight: 1.2 }}>
-            {qtyLabel}
-          </span>
-        )}
-        {unitPriceLabel && (
-          <span style={{ color: COLORS.mediumGrey, fontSize: 14 }}>{unitPriceLabel}</span>
-        )}
+        <span
+          style={{
+            fontWeight: 400,
+            color: COLORS.darkGrey,
+            fontSize: 22,
+            lineHeight: 1.2,
+            minHeight: "1.2em",
+          }}
+        >
+          {qtyLabel}
+        </span>
+        <span
+          style={{ color: COLORS.mediumGrey, fontSize: 14, minHeight: "1.2em" }}
+        >
+          {unitPriceLabel}
+        </span>
       </div>
 
       {/* Prix total + ligne TVA optionnelle (modale produit) */}

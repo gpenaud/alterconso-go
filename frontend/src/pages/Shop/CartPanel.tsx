@@ -229,8 +229,10 @@ export function CartPanel({ onClose, targetUserId, existingCatalogIds = [] }: Pr
           ) : (
             <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
               {items.map((it) => {
+                // Quantité absente = une unité, même convention qu'ailleurs :
+                // multiplier par zéro effaçait la ligne « 3 pièces ».
                 const qtyTotalLabel = smartQty(
-                  (it.qt ?? 0) * it.quantity,
+                  (it.qt ?? 1) * it.quantity,
                   it.unitType,
                 );
                 const lineTotal = it.price * it.quantity;

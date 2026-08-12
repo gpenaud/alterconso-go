@@ -28,6 +28,10 @@ export function ProductCard({ product, vendor, onClick }: Props) {
         boxShadow: "none",
         display: "flex",
         flexDirection: "column",
+        // La grille étire déjà les cartes d'une même ligne à la hauteur de la
+        // plus haute ; height:100% le rend explicite, et permet au bandeau bas
+        // de descendre au fond plutôt que de suivre le texte.
+        height: "100%",
       }}
     >
       <button
@@ -40,6 +44,11 @@ export function ProductCard({ product, vendor, onClick }: Props) {
           padding: 0,
           cursor: onClick ? "pointer" : "default",
           width: "100%",
+          // Occupe la hauteur restante : c'est cette zone qui absorbe l'écart
+          // entre cartes, et non le bandeau de commande.
+          flex: "1 1 auto",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
         {/* Image + avatar producteur en superposition (legacy farmerAvatar :

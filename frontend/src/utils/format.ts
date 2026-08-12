@@ -82,25 +82,32 @@ export function formatPrice(amount: number): string {
 /** Quantité + unité (port Haxe Formatting.smartQt utilisé sur la fiche produit).
  *   - 1 Piece → "1 pièce"
  *   - 0.5 Kg  → "0,50 Kg."
+ *
+ * Une quantité absente ou nulle en vaut une, comme partout ailleurs dans
+ * l'application : rendre une chaîne vide laissait la vignette sans quantité.
  */
 export function smartQty(qty: number | null | undefined, unit: Unit | number | null | undefined): string {
-  if (qty == null || qty === 0) return "";
-  return `${formatNum(qty)} ${unitLabel(unit, qty)}`;
+  const q = qty == null || qty === 0 ? 1 : qty;
+  return `${formatNum(q)} ${unitLabel(unit, q)}`;
 }
 
 /** Prix par unité (port Haxe Formatting.pricePerUnit).
  * Pour les très petits prix au gramme / cl / ml, convertit en /Kg ou /L.
+ *
+ * Quantité absente = une unité, même convention que smartQty. Un prix nul, en
+ * revanche, ne donne pas de prix unitaire : il n'y a rien à rapporter.
  */
 export function pricePerUnit(price: number, qty: number | null | undefined, unit: Unit | number | null | undefined): string {
-  if (!qty || !price) return "";
+  if (!price) return "";
+  const q = !qty ? 1 : qty;
   let u = typeof unit === "number" ? unitFromIndex(unit) : unit ?? null;
-  let p = price / qty;
+  let p = price / q;
   if (p < 1) {
     if (u === "Gram") { p *= 1000; u = "Kilogram"; }
     else if (u === "Centilitre") { p *= 100; u = "Litre"; }
     else if (u === "Millilitre") { p *= 1000; u = "Litre"; }
   }
-  return `${formatNum(p)} €/${unitLabel(u, qty)}`;
+  return `${formatNum(p)} €/${unitLabel(u, q)}`;
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────────

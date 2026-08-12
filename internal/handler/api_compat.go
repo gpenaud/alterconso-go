@@ -404,8 +404,12 @@ func productInfo(p model.Product) gin.H {
 	if p.Description != nil {
 		desc = *p.Description
 	}
-	qt := 0.0
-	if p.Qt != nil {
+	// Un produit sans quantité renseignée en vaut une : c'est la convention que
+	// suivent déjà les pages d'administration. Renvoyer zéro laissait le shop
+	// sans quantité ni prix unitaire à afficher, les deux se calculant à partir
+	// de cette valeur.
+	qt := 1.0
+	if p.Qt != nil && *p.Qt != 0 {
 		qt = *p.Qt
 	}
 	return gin.H{
