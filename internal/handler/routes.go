@@ -64,6 +64,9 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	reqCatalog := pagesH.RequireGroupRight(model.RightCatalogAdmin)   // gestionnaire ou CatalogAdmin
 	reqDBAdmin := pagesH.RequireGroupRight(model.RightDatabaseAdmin)  // gestionnaire ou DatabaseAdmin
 	reqMembership := pagesH.RequireGroupRight(model.RightMembership)  // gestionnaire ou Membership
+	// Plus étroit que reqManager : l'attribution des droits reste au
+	// responsable de groupe, au responsable technique et au superadmin.
+	reqRights := pagesH.RequireRightsManagement()
 
 	r.GET("/", func(c *gin.Context) { c.Redirect(302, "/home") })
 	r.GET("/user/login", pagesH.LoginPage)
@@ -84,11 +87,11 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.POST("/amapadmin/update", pageAuth, reqManager, pagesH.AmapAdminUpdate)
 	r.POST("/amapadmin/logo", pageAuth, reqManager, pagesH.AmapAdminLogoUpload)
 	r.GET("/amapadmin/logo/delete", pageAuth, reqManager, pagesH.AmapAdminLogoDelete)
-	r.GET("/amapadmin/rights", pageAuth, reqManager, pagesH.AmapAdminRightsPage)
-	r.GET("/amapadmin/rights/add", pageAuth, reqManager, pagesH.AmapAdminRightsAddPage)
-	r.POST("/amapadmin/rights/add", pageAuth, reqManager, pagesH.AmapAdminRightsAddPage)
-	r.GET("/amapadmin/rights/edit/:userId", pageAuth, reqManager, pagesH.AmapAdminRightsEditPage)
-	r.POST("/amapadmin/rights/edit/:userId", pageAuth, reqManager, pagesH.AmapAdminRightsEditPage)
+	r.GET("/amapadmin/rights", pageAuth, reqRights, pagesH.AmapAdminRightsPage)
+	r.GET("/amapadmin/rights/add", pageAuth, reqRights, pagesH.AmapAdminRightsAddPage)
+	r.POST("/amapadmin/rights/add", pageAuth, reqRights, pagesH.AmapAdminRightsAddPage)
+	r.GET("/amapadmin/rights/edit/:userId", pageAuth, reqRights, pagesH.AmapAdminRightsEditPage)
+	r.POST("/amapadmin/rights/edit/:userId", pageAuth, reqRights, pagesH.AmapAdminRightsEditPage)
 	r.GET("/amapadmin/vatRates", pageAuth, reqManager, pagesH.AmapAdminVatRatesPage)
 	r.POST("/amapadmin/vatRates", pageAuth, reqManager, pagesH.AmapAdminVatRatesUpdate)
 	r.GET("/amapadmin/volunteers", pageAuth, reqManager, pagesH.AmapAdminVolunteersPage)

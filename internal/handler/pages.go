@@ -140,6 +140,9 @@ type PageData struct {
 	HasMessages       bool
 	HasCatalogAdmin   bool
 	HasDatabaseAdmin  bool
+	// CanManageRights : peut attribuer les droits. Plus étroit que
+	// IsGroupManager, qui couvre aussi les « droits administrateur ».
+	CanManageRights   bool
 	AllowedCatalogIDs []uint // nil = tous (GroupManager ou CatalogAdmin global)
 	Category       string
 	Breadcrumb     []BreadcrumbItem
@@ -380,7 +383,10 @@ func (h *PagesHandler) buildPageData(c *gin.Context) PageData {
 			pd.HasMembership = pd.IsGroupManager || ug.HasRight(model.RightMembership)
 			pd.HasMessages = pd.IsGroupManager || ug.HasRight(model.RightMessages)
 			pd.HasCatalogAdmin = pd.IsGroupManager || ug.HasRight(model.RightCatalogAdmin)
-			pd.HasDatabaseAdmin = pd.IsGroupManager || ug.HasRight(model.RightDatabaseAdmin)
+			// Pas pd.IsGroupManager : les « droits administrateur » ouvrent tout
+			// sauf cette porte-ci.
+			pd.HasDatabaseAdmin = ug.CanAdminDatabase()
+			pd.CanManageRights = ug.CanManageRights()
 			if pd.HasCatalogAdmin && !pd.IsGroupManager {
 				for _, r := range ug.GetRights() {
 					if r.Right == model.RightCatalogAdmin {

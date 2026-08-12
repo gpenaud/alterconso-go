@@ -3,6 +3,9 @@
 <div class="col-md-9">
   <h2>Droits d'administration</h2>
   <div class="article">
+    {{if .Transfert}}
+    <div class="alert alert-info" style="margin-bottom:12px;">{{.Transfert}}</div>
+    {{end}}
     <a href="/amapadmin/rights/add" class="btn btn-default btn-sm" style="margin-bottom:12px;"><i class="icon icon-plus"></i> Ajouter un droit</a>
 
     {{if .RightUsers}}

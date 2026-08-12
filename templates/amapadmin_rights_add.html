@@ -18,8 +18,19 @@
 
       <div class="form-group">
         <label>Droits</label><br>
+        {{/* Rôles à titulaire unique : les accorder ici les retire à leur
+             détenteur actuel, d'où le rappel de son nom. */}}
         <label style="font-weight:normal;">
-          <input type="checkbox" name="right_group_admin"> Administrateur de groupe
+          <input type="checkbox" name="right_group_admin"> Responsable de groupe
+          {{if .GroupAdminHolder}}<span style="color:#999;">— actuellement {{.GroupAdminHolder}}, qui le perdra</span>{{end}}
+        </label><br>
+        {{/* Cumulable, contrairement aux deux rôles ci-dessus : plusieurs
+             personnes peuvent l'avoir. Ouvre tout sauf la base de données, et
+             ne fait pas entrer dans la liste des responsables du groupe — ces
+             derniers seuls reçoivent les messages qui leur sont adressés. */}}
+        <label style="font-weight:normal;">
+          <input type="checkbox" name="right_administration"> Droits administrateur
+          <span style="color:#999;">— tout sauf la base de données</span>
         </label><br>
         <label style="font-weight:normal;">
           <input type="checkbox" name="right_membership"> Gestion des membres
@@ -28,7 +39,8 @@
           <input type="checkbox" name="right_messages"> Messages
         </label><br>
         <label style="font-weight:normal;">
-          <input type="checkbox" name="right_database_admin"> Gestion de la base de données
+          <input type="checkbox" name="right_database_admin"> Responsable technique
+          {{if .TechAdminHolder}}<span style="color:#999;">— actuellement {{.TechAdminHolder}}, qui le perdra</span>{{end}}
         </label>
       </div>
 

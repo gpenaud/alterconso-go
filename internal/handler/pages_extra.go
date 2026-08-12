@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -522,6 +523,9 @@ func (h *PagesHandler) VolunteersParticipationPage(c *gin.Context) {
 type AmapAdminRightsData struct {
 	AmapAdminPageData
 	RightUsers []RightUserView
+
+	// Message annonçant qu'un rôle à titulaire unique a changé de mains.
+	Transfert string
 }
 
 type RightUserView struct {
@@ -532,11 +536,20 @@ type RightUserView struct {
 }
 
 func formatRightLabels(rights []model.UserRight, catalogMap map[string]string) []string {
-	// Si l'utilisateur est administrateur de groupe, les autres droits sont implicites.
+	// Le responsable de groupe a tous les droits : les énumérer n'apprendrait
+	// rien. Le rôle technique fait exception — il n'a qu'un titulaire, et savoir
+	// qui le porte compte, même si le responsable de groupe y accède aussi.
 	for _, r := range rights {
-		if r.Right == model.RightGroupAdmin {
-			return []string{"Administrateur de groupe"}
+		if r.Right != model.RightGroupAdmin && r.Right != model.RightAdministration {
+			continue
 		}
+		out := []string{r.Right.Label()}
+		for _, r2 := range rights {
+			if r2.Right == model.RightDatabaseAdmin {
+				out = append(out, model.RightDatabaseAdmin.Label())
+			}
+		}
+		return out
 	}
 	var labels []string
 	for _, r := range rights {
@@ -546,7 +559,7 @@ func formatRightLabels(rights []model.UserRight, catalogMap map[string]string) [
 		case model.RightMessages:
 			labels = append(labels, "Messages")
 		case model.RightDatabaseAdmin:
-			labels = append(labels, "Gestion de la base de données")
+			labels = append(labels, model.RightDatabaseAdmin.Label())
 		case model.RightCatalogAdmin:
 			if len(r.Params) == 0 {
 				labels = append(labels, "Gestion des catalogues : tous")
@@ -570,6 +583,10 @@ func (h *PagesHandler) AmapAdminRightsPage(c *gin.Context) {
 		return
 	}
 
+	// Posé par les formulaires quand un rôle à titulaire unique vient de
+	// changer de mains : celui qui le perd ne l'apprendrait pas autrement.
+	transfert := c.Query("transfert")
+
 	var ugs []model.UserGroup
 	h.db.Where("group_id = ?", base.Group.ID).Preload("User").Find(&ugs)
 
@@ -580,7 +597,7 @@ func (h *PagesHandler) AmapAdminRightsPage(c *gin.Context) {
 		catalogMap[strconv.FormatUint(uint64(cat.ID), 10)] = cat.Name
 	}
 
-	data := AmapAdminRightsData{AmapAdminPageData: base}
+	data := AmapAdminRightsData{AmapAdminPageData: base, Transfert: transfert}
 	data.Title = "Droits d'administration"
 
 	for _, ug := range ugs {
@@ -591,9 +608,16 @@ func (h *PagesHandler) AmapAdminRightsPage(c *gin.Context) {
 		if len(rights) == 0 && !isSA {
 			continue
 		}
-		labels := formatRightLabels(rights, catalogMap)
-		if isSA && len(labels) == 0 {
-			labels = []string{"Administrateur de groupe"}
+		// Le super-administrateur porte un rôle à part, qui ne se confond avec
+		// aucun de ceux du groupe : il les vaut tous, sur tous les groupes. Le
+		// compte par défaut de l'application détient aussi « GroupAdmin » en
+		// base, hérité de l'installation — l'énumérer le ferait passer pour le
+		// responsable de CE groupe, place qui revient à un membre.
+		var labels []string
+		if isSA {
+			labels = []string{model.LabelSuperAdmin}
+		} else {
+			labels = formatRightLabels(rights, catalogMap)
 		}
 		rv := RightUserView{
 			UserID:       ug.UserID,
@@ -678,6 +702,11 @@ type AmapAdminRightsAddData struct {
 	Catalogs []model.Catalog
 	Error    string
 	Success  string
+
+	// Titulaires actuels des rôles à titulaire unique, pour prévenir que les
+	// accorder ici les leur retirera.
+	GroupAdminHolder string
+	TechAdminHolder  string
 }
 
 func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
@@ -700,6 +729,13 @@ func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
 	}
 	data.Members = filtered
 	h.db.Where("group_id = ?", base.Group.ID).Find(&data.Catalogs)
+
+	if h := exclusiveHolder(h.db, base.Group.ID, 0, model.RightGroupAdmin); h != nil {
+		data.GroupAdminHolder = h.User.Name()
+	}
+	if h := exclusiveHolder(h.db, base.Group.ID, 0, model.RightDatabaseAdmin); h != nil {
+		data.TechAdminHolder = h.User.Name()
+	}
 
 	if c.Request.Method == http.MethodPost {
 		userIDStr := c.PostForm("user_id")
@@ -767,6 +803,9 @@ func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
 		if c.PostForm("right_database_admin") != "" {
 			addRight(model.RightDatabaseAdmin)
 		}
+		if c.PostForm("right_administration") != "" {
+			addRight(model.RightAdministration)
+		}
 		if c.PostForm("catalog_all") != "" {
 			addRight(model.RightCatalogAdmin)
 		} else {
@@ -777,10 +816,30 @@ func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
 			}
 		}
 
+		// Responsable de groupe et responsable technique n'ont qu'un titulaire :
+		// les accorder ici les retire à qui les détenait.
+		transfers, err := transferExclusiveRights(h.db, base.Group.ID, uint(userID), rights)
+		if err != nil {
+			data.Error = "Transfert impossible : " + err.Error()
+			renderRightsAdd(c, data)
+			return
+		}
+
 		import_json, _ := json.Marshal(rights)
 		ug.Rights = string(import_json)
-		h.db.Save(&ug)
-		c.Redirect(http.StatusFound, "/amapadmin/rights")
+		// Update ciblé sur la colonne, et non Save de la structure : Save
+		// réécrit aussi l'utilisateur associé chargé par Preload, dont la
+		// birth_date vaut « 0000-00-00 » pour 93 comptes issus de l'import.
+		// MySQL en mode strict refuse cette date, et tout l'enregistrement
+		// échouait — sans un mot, l'erreur n'étant pas inspectée.
+		if err := h.db.Model(&model.UserGroup{}).
+			Where("user_id = ? AND group_id = ?", ug.UserID, ug.GroupID).
+			Update("rights", ug.Rights).Error; err != nil {
+			data.Error = "Enregistrement impossible : " + err.Error()
+			renderRightsAdd(c, data)
+			return
+		}
+		c.Redirect(http.StatusFound, "/amapadmin/rights"+transferQuery(transfers))
 		return
 	}
 
@@ -808,9 +867,14 @@ type AmapAdminRightsEditData struct {
 	HasMembership    bool
 	HasMessages      bool
 	HasDatabaseAdmin bool
+	HasAdministration bool
 	HasAllCatalogs   bool
 	CatalogRights  map[string]bool
 	Error          string
+
+	// Titulaires actuels des rôles à titulaire unique, hors membre édité.
+	GroupAdminHolder string
+	TechAdminHolder  string
 }
 
 func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
@@ -849,6 +913,13 @@ func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
 	}
 	data.Title = "Modifier les droits"
 
+	if holder := exclusiveHolder(h.db, base.Group.ID, uint(userID), model.RightGroupAdmin); holder != nil {
+		data.GroupAdminHolder = holder.User.Name()
+	}
+	if holder := exclusiveHolder(h.db, base.Group.ID, uint(userID), model.RightDatabaseAdmin); holder != nil {
+		data.TechAdminHolder = holder.User.Name()
+	}
+
 	fillRightsState := func(rights []model.UserRight) {
 		for _, r := range rights {
 			switch r.Right {
@@ -860,6 +931,8 @@ func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
 				data.HasMessages = true
 			case model.RightDatabaseAdmin:
 				data.HasDatabaseAdmin = true
+			case model.RightAdministration:
+				data.HasAdministration = true
 			case model.RightCatalogAdmin:
 				if len(r.Params) == 0 {
 					data.HasAllCatalogs = true
@@ -883,6 +956,15 @@ func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
 		if c.PostForm("right_messages") != "" {
 			rights = append(rights, model.UserRight{Right: model.RightMessages})
 		}
+		// Absent de cette liste, le droit technique ne pouvait pas être accordé
+		// depuis ce formulaire, et son titulaire le perdait à la première
+		// modification de ses autres droits — le formulaire l'affichait pourtant.
+		if c.PostForm("right_database_admin") != "" {
+			rights = append(rights, model.UserRight{Right: model.RightDatabaseAdmin})
+		}
+		if c.PostForm("right_administration") != "" {
+			rights = append(rights, model.UserRight{Right: model.RightAdministration})
+		}
 		if c.PostForm("catalog_all") != "" {
 			rights = append(rights, model.UserRight{Right: model.RightCatalogAdmin})
 		} else {
@@ -898,15 +980,49 @@ func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
 			}
 		}
 
+		// Le groupe ne doit pas se retrouver sans responsable : le seul
+		// titulaire ne peut pas se retirer le rôle sans le passer à quelqu'un.
+		// Le superadmin global resterait un recours, mais plus aucun membre ne
+		// pourrait administrer le groupe.
+		if leavesGroupWithoutManager(h.db, base.Group.ID, uint(userID), rights) {
+			data.Error = "Ce membre est le seul responsable du groupe. Désignez d'abord quelqu'un d'autre."
+			fillRightsState(ug.GetRights())
+			renderRightsEdit(c, data)
+			return
+		}
+
+		transfers, err := transferExclusiveRights(h.db, base.Group.ID, uint(userID), rights)
+		if err != nil {
+			data.Error = "Transfert impossible : " + err.Error()
+			fillRightsState(ug.GetRights())
+			renderRightsEdit(c, data)
+			return
+		}
+
 		encoded, _ := json.Marshal(rights)
 		ug.Rights = string(encoded)
-		h.db.Save(&ug)
-		c.Redirect(http.StatusFound, "/amapadmin/rights")
+		// Update ciblé sur la colonne, et non Save de la structure : Save
+		// réécrit aussi l'utilisateur associé chargé par Preload, dont la
+		// birth_date vaut « 0000-00-00 » pour 93 comptes issus de l'import.
+		// MySQL en mode strict refuse cette date, et tout l'enregistrement
+		// échouait — sans un mot, l'erreur n'étant pas inspectée.
+		if err := h.db.Model(&model.UserGroup{}).
+			Where("user_id = ? AND group_id = ?", ug.UserID, ug.GroupID).
+			Update("rights", ug.Rights).Error; err != nil {
+			data.Error = "Enregistrement impossible : " + err.Error()
+			fillRightsState(ug.GetRights())
+			renderRightsEdit(c, data)
+			return
+		}
+		c.Redirect(http.StatusFound, "/amapadmin/rights"+transferQuery(transfers))
 		return
 	}
 
 	fillRightsState(ug.GetRights())
+	renderRightsEdit(c, data)
+}
 
+func renderRightsEdit(c *gin.Context, data AmapAdminRightsEditData) {
 	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin_rights_edit.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -915,6 +1031,21 @@ func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
 	if err := t.ExecuteTemplate(c.Writer, "base", data); err != nil {
 		c.String(http.StatusInternalServerError, "render error: %v", err)
 	}
+}
+
+// transferQuery construit le fragment d'URL annonçant les rôles repris à leur
+// titulaire précédent. Sans lui, la dépossession serait muette.
+func transferQuery(transfers map[model.Right]string) string {
+	if len(transfers) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(transfers))
+	for _, r := range model.ExclusiveRights() {
+		if who, ok := transfers[r]; ok {
+			parts = append(parts, r.Label()+" retiré à "+who)
+		}
+	}
+	return "?transfert=" + url.QueryEscape(strings.Join(parts, " ; "))
 }
 
 // ---- AmapAdmin shared page data ----

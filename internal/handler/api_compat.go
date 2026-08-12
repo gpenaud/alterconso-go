@@ -94,7 +94,7 @@ func (h *CompatHandler) UserMe(c *gin.Context) {
 	if claims.GroupID != 0 {
 		ug := loadGroupAccess(h.db, claims.UserID, claims.GroupID)
 		if ug != nil {
-			out["hasDatabaseAdmin"] = ug.IsGroupManager() || ug.HasRight(model.RightDatabaseAdmin)
+			out["hasDatabaseAdmin"] = ug.CanAdminDatabase()
 		}
 	}
 	c.JSON(http.StatusOK, out)
