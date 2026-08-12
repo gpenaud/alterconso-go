@@ -47,7 +47,7 @@
       </td>
       <td style="vertical-align:middle;white-space:nowrap;">{{.PriceLabel}}</td>
       <td style="vertical-align:middle;">
-        {{printf "%.0f" .Stock}}
+        {{if .HasStock}}{{printf "%.0f" .Stock}}{{else}}<span style="color:#aaa;">—</span>{{end}}
       </td>
       <td style="vertical-align:middle;text-align:right;white-space:nowrap;">
         <a href="/contractAdmin/products/{{$.Catalog.ID}}/edit/{{.ID}}" class="btn btn-default btn-sm">

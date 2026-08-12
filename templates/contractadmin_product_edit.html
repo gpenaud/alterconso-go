@@ -19,6 +19,21 @@
     {{end}}
   </div>
 
+  {{/* Catégorie de la taxonomie du shop. Un produit sans catégorie n'est pas
+       perdu : il se range sous « Autres ». */}}
+  <div class="form-group">
+    <label class="col-sm-3 control-label">Catégorie</label>
+    <div class="col-sm-9">
+      <select name="txp_category" class="form-control" style="max-width:320px;">
+        <option value="">— Autres —</option>
+        {{$sel := .SelectedCategoryID}}
+        {{range .Categories}}
+        <option value="{{.ID}}" {{if eq .ID $sel}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+    </div>
+  </div>
+
   <div class="form-group">
     <label class="col-sm-3 control-label">Référence</label>
     <div class="col-sm-9">
@@ -45,8 +60,12 @@
   <div class="form-group">
     <label class="col-sm-3 control-label">Stock</label>
     <div class="col-sm-9">
-      <input type="number" name="stock" step="0.001" class="form-control"
-        value="{{if .Product.Stock}}{{printf "%.3g" (derefFloat .Product.Stock)}}{{end}}" />
+      {{/* Le stock se compte en unités entières, quelle que soit l'unité de
+           vente : 3 barquettes, 10 bocaux. Laisser vide pour ne pas le suivre —
+           un zéro vaudrait « rupture » et masquerait le produit. */}}
+      <input type="number" name="stock" step="1" min="0" class="form-control"
+        placeholder="laisser vide si non suivi"
+        value="{{if .Product.Stock}}{{printf "%.0f" (derefFloat .Product.Stock)}}{{end}}" />
     </div>
   </div>
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gpenaud/alterconso/internal/model"
+	"gorm.io/gorm"
 )
 
 // floatToFractionStr convertit un float en chaîne fractionnaire lisible.
@@ -64,8 +65,11 @@ type ProductView struct {
 	VariablePrice bool
 	Active        bool
 	Stock         float64
-	StockTracked  bool
-	ImageURL      string
+	// Distingue « stock à zéro » de « stock non suivi » : sans cela la colonne
+	// affiche 0 dans les deux cas, ce qui se lit comme une rupture.
+	HasStock     bool
+	StockTracked bool
+	ImageURL     string
 }
 
 type CatalogAdminData struct {
@@ -289,6 +293,7 @@ func (h *PagesHandler) CatalogAdminProductsPage(c *gin.Context) {
 			VariablePrice: p.VariablePrice,
 			Active:        p.Active,
 			Stock:         stock,
+			HasStock:      p.Stock != nil,
 			StockTracked:  p.StockTracked,
 			ImageURL:      imgURL,
 		})
@@ -310,6 +315,15 @@ type ProductEditData struct {
 	CatalogAdminData
 	Product  model.Product
 	ImageURL string
+
+	// Taxonomie proposée au formulaire. Seules les catégories sont offertes :
+	// les sous-catégories ne sont plus affichées dans le shop, chacune n'ayant
+	// qu'un « Tous » de service — mais le modèle les rend obligatoires, un
+	// produit portant toujours une sous-catégorie, jamais une catégorie.
+	Categories []model.TxpCategory
+	// Catégorie actuelle du produit, dérivée de sa sous-catégorie. Zéro quand
+	// le produit n'est pas classé : il tombe alors dans « Autres » côté shop.
+	SelectedCategoryID uint
 }
 
 // applyProductForm reporte les champs du formulaire produit sur p.
@@ -321,7 +335,7 @@ type ProductEditData struct {
 // Le champ `stock` du formulaire n'est volontairement pas repris : l'édition ne
 // le traitait pas non plus, et le stock se pilote ailleurs. L'ajouter ici
 // changerait le comportement de l'édition existante.
-func applyProductForm(c *gin.Context, p *model.Product) {
+func applyProductForm(c *gin.Context, p *model.Product, subByCategory map[uint]uint) {
 	p.Name = c.PostForm("name")
 
 	if ref := c.PostForm("ref"); ref != "" {
@@ -360,6 +374,60 @@ func applyProductForm(c *gin.Context, p *model.Product) {
 	} else {
 		p.ResaleFrom = nil
 	}
+
+	// Le stock se saisit en unités entières. Champ vide = stock non suivi, d'où
+	// le NULL plutôt qu'un zéro, qui vaudrait « rupture » côté shop.
+	//
+	// La saisie est lue en flottant puis tronquée, plutôt que rejetée : un
+	// « 3,5 » collé depuis un tableur vaut 3 et non un abandon silencieux —
+	// c'est précisément ce silence qui faisait perdre le stock jusqu'ici.
+	if s := strings.TrimSpace(c.PostForm("stock")); s != "" {
+		if v, err := strconv.ParseFloat(strings.ReplaceAll(s, ",", "."), 64); err == nil && v >= 0 {
+			stock := math.Trunc(v)
+			p.Stock = &stock
+		}
+	} else {
+		p.Stock = nil
+	}
+
+	// Le formulaire propose des catégories, le produit porte une
+	// sous-catégorie : on retient le « Tous » de la catégorie choisie, comme le
+	// fait le classement automatique.
+	if id, err := strconv.ParseUint(c.PostForm("txp_category"), 10, 64); err == nil && id > 0 {
+		if subID, ok := subByCategory[uint(id)]; ok {
+			p.TxpSubCategoryID = &subID
+		}
+	} else {
+		p.TxpSubCategoryID = nil
+	}
+}
+
+// txpCategories charge la taxonomie et l'index qui mène de chaque catégorie à
+// sa sous-catégorie « Tous » — celle que porteront les produits.
+func txpCategories(db *gorm.DB) ([]model.TxpCategory, map[uint]uint) {
+	var cats []model.TxpCategory
+	db.Preload("SubCategories").Order("display_order, name").Find(&cats)
+
+	subByCategory := make(map[uint]uint, len(cats))
+	for _, c := range cats {
+		if len(c.SubCategories) > 0 {
+			subByCategory[c.ID] = c.SubCategories[0].ID
+		}
+	}
+	return cats, subByCategory
+}
+
+// categoryOfProduct remonte de la sous-catégorie du produit à sa catégorie.
+// Zéro si le produit n'est pas classé.
+func categoryOfProduct(db *gorm.DB, p *model.Product) uint {
+	if p.TxpSubCategoryID == nil {
+		return 0
+	}
+	var sub model.TxpSubCategory
+	if err := db.First(&sub, *p.TxpSubCategoryID).Error; err != nil {
+		return 0
+	}
+	return sub.CategoryID
 }
 
 // productColumns décrit p sous forme de colonnes, pour un UPDATE qui doit
@@ -378,6 +446,11 @@ func productColumns(p *model.Product) map[string]interface{} {
 		"multi_weight":   p.MultiWeight,
 		"active":         p.Active,
 		"resale_from":    p.ResaleFrom,
+		// Absentes de cette liste, ces deux colonnes n'étaient jamais écrites :
+		// le formulaire portait bien un champ « stock », mais sa valeur se
+		// perdait à chaque enregistrement.
+		"stock":               p.Stock,
+		"txp_sub_category_id": p.TxpSubCategoryID,
 	}
 }
 
@@ -402,8 +475,10 @@ func (h *PagesHandler) CatalogAdminProductNewPage(c *gin.Context) {
 		UnitType:  model.UnitTypePiece,
 	}
 
+	cats, subByCategory := txpCategories(h.db)
+
 	if c.Request.Method == "POST" {
-		applyProductForm(c, &product)
+		applyProductForm(c, &product, subByCategory)
 
 		// Le catalogue vient de l'URL, jamais du formulaire : sans cette
 		// réaffectation, un POST forgé pourrait déposer un produit dans le
@@ -427,7 +502,7 @@ func (h *PagesHandler) CatalogAdminProductNewPage(c *gin.Context) {
 
 	// GET : formulaire vierge. Pas d'ImageURL — la photo s'ajoute depuis la
 	// liste une fois le produit créé, comme pour les produits existants.
-	newData := ProductEditData{CatalogAdminData: data, Product: product}
+	newData := ProductEditData{CatalogAdminData: data, Product: product, Categories: cats}
 	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_product_edit.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -456,8 +531,10 @@ func (h *PagesHandler) CatalogAdminProductEditPage(c *gin.Context) {
 		return
 	}
 
+	cats, subByCategory := txpCategories(h.db)
+
 	if c.Request.Method == "POST" {
-		applyProductForm(c, &product)
+		applyProductForm(c, &product, subByCategory)
 		// Updates avec une map, et non la struct : GORM ignore les valeurs
 		// nulles d'une struct, si bien que décocher « bio » ou « actif » ne
 		// serait jamais enregistré.
@@ -470,7 +547,13 @@ func (h *PagesHandler) CatalogAdminProductEditPage(c *gin.Context) {
 	if product.Image != nil {
 		imgURL = FileURL(product.Image.ID, h.cfg.Key, product.Image.Name)
 	}
-	editData := ProductEditData{CatalogAdminData: data, Product: product, ImageURL: imgURL}
+	editData := ProductEditData{
+		CatalogAdminData:   data,
+		Product:            product,
+		ImageURL:           imgURL,
+		Categories:         cats,
+		SelectedCategoryID: categoryOfProduct(h.db, &product),
+	}
 	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_product_edit.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
