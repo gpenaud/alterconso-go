@@ -191,6 +191,9 @@ type PageData struct {
 	AdminCatalogs []CatalogAdminRow
 	// account page membership
 	MembershipRenewalPeriod string
+	// SuggestPhone : l'utilisateur n'a pas renseigné de téléphone, on le lui
+	// suggère (cf. buildPageData).
+	SuggestPhone bool
 	// member page pagination
 	TotalMembers     int
 	TotalPages       int
@@ -345,6 +348,19 @@ func NewPagesHandler(db *gorm.DB, cfg *config.Config) *PagesHandler {
 }
 
 // buildPageData charge User et Group depuis les claims.
+// suggestPhone : faut-il rappeler à cet utilisateur de renseigner son numéro ?
+//
+// Le téléphone est ce par quoi on le joint quand quelque chose cloche pendant
+// une distribution — un panier manquant, un retard, une absence. Le rappel se
+// tait sur la page qui sert justement à le saisir : l'y afficher alors que le
+// champ est sous les yeux n'aiderait personne.
+func suggestPhone(u *model.User, path string) bool {
+	if u == nil || strings.HasPrefix(path, "/account/edit") {
+		return false
+	}
+	return u.Phone == nil || strings.TrimSpace(*u.Phone) == ""
+}
+
 func (h *PagesHandler) buildPageData(c *gin.Context) PageData {
 	pd := PageData{}
 	claims := middleware.GetClaims(c)
@@ -355,6 +371,7 @@ func (h *PagesHandler) buildPageData(c *gin.Context) PageData {
 	var user model.User
 	if err := h.db.First(&user, claims.UserID).Error; err == nil {
 		pd.User = &user
+		pd.SuggestPhone = suggestPhone(&user, c.Request.URL.Path)
 	}
 
 	// Usurpation d'identité en cours : charge le nom du vrai utilisateur pour le bandeau.

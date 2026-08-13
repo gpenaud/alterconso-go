@@ -23,12 +23,14 @@ function Protected({ children }: { children: React.ReactElement }) {
 }
 
 import { ImpersonationBanner } from "./components/ImpersonationBanner"
+import { PhoneSuggestionBanner } from "./components/PhoneSuggestionBanner"
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <ImpersonationBanner />
+        <PhoneSuggestionBanner />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/groups" element={<Protected><GroupsPage /></Protected>} />

@@ -762,6 +762,12 @@ func (h *CompatHandler) SessionInfo(c *gin.Context) {
 	var u model.User
 	if h.db.First(&u, claims.UserID).Error == nil {
 		out["userName"] = strings.TrimSpace(u.FirstName + " " + u.LastName)
+		// Même rappel que celui de design.html : le shop est servi par la SPA,
+		// et c'est là que l'adhérent passe le plus clair de son temps. Le path
+		// passé est vide, et non celui de cette requête : l'exclusion porte sur
+		// la page d'édition du compte, que Go sert lui-même — aucune route de
+		// la SPA n'a à s'en exclure.
+		out["suggestPhone"] = suggestPhone(&u, "")
 	}
 
 	if claims.ImpersonatorID != 0 {

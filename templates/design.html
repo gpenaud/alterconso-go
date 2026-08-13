@@ -143,6 +143,36 @@
   </div>
   {{end}}
 
+  {{if .SuggestPhone}}
+  <div class="row" id="phone-suggestion" style="display:none;">
+    <div class="col-md-12">
+      <div class="alert alert-info alert-dismissible" style="margin-bottom:12px;">
+        <button type="button" class="close" id="phone-suggestion-close" aria-label="Masquer">
+          <span aria-hidden="true">&times;</span>
+        </button>
+        <i class="icon icon-phone"></i>
+        Vous n'avez pas encore renseigné de numéro de téléphone. Il permet de vous
+        joindre en cas de problème pendant une distribution.
+        <a href="/account/edit" class="alert-link">Ajouter mon numéro</a>.
+      </div>
+    </div>
+  </div>
+  <script type="text/javascript">
+    // Masqué pour la durée de la session une fois écarté : le rappel est une
+    // suggestion, pas un obstacle à reposer à chaque page.
+    (function () {
+      var row = document.getElementById('phone-suggestion');
+      if (!row) return;
+      if (sessionStorage.getItem('hidePhoneSuggestion') === '1') return;
+      row.style.display = '';
+      document.getElementById('phone-suggestion-close').addEventListener('click', function () {
+        sessionStorage.setItem('hidePhoneSuggestion', '1');
+        row.style.display = 'none';
+      });
+    })();
+  </script>
+  {{end}}
+
   <div class="row" style="overflow-x:hidden;">
     {{template "content" .}}
   </div>
