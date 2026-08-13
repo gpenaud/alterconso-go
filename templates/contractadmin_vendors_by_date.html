@@ -14,17 +14,17 @@
     <table class="table table-bordered table-striped" style="margin-bottom:0;">
       <thead>
         <tr>
-          <th style="width:10%;">Quantités</th>
+          <th style="width:15%;">Quantités</th>
           <th>Produit</th>
-          <th style="width:18%;">Référence</th>
-          <th style="width:20%;">Prix unitaire TTC</th>
+          <th style="width:16%;">Référence</th>
+          <th style="width:18%;">Prix unitaire TTC</th>
           <th style="width:12%;">Total</th>
         </tr>
       </thead>
       <tbody>
         {{range .Lines}}
         <tr>
-          <td>{{.Qty}}</td>
+          <td style="white-space:nowrap;">{{.Qty}}</td>
           <td>{{.Product}}</td>
           <td style="color:#888;font-size:0.9em;">{{.Ref}}</td>
           <td>{{price .UnitPrice}} €</td>

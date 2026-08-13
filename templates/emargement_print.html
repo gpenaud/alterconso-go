@@ -36,10 +36,10 @@ td.member-name {
   font-weight: bold;
   background: #fff;
 }
-td.member-coords {
-  font-size: 0.85em;
+td.member-phone {
+  font-size: 0.9em;
   color: #555;
-  word-break: break-all;
+  white-space: nowrap;
   background: #fff;
 }
 tr.member-total td {
@@ -106,23 +106,21 @@ tr.member-total td {
 {{if .Members}}
 <table>
   <colgroup>
-    <col style="width:14%">
-    <col style="width:12%">
-    <col style="width:7%">
-    <col style="width:{{if $noprice}}38%{{else}}28%{{end}}">
-    <col style="width:{{if $noprice}}29%{{else}}20%{{end}}">
+    <col style="width:{{if $noprice}}20%{{else}}18%{{end}}">
+    <col style="width:{{if $noprice}}15%{{else}}13%{{end}}">
+    <col style="width:{{if $noprice}}16%{{else}}14%{{end}}">
+    <col style="width:{{if $noprice}}49%{{else}}33%{{end}}">
     {{if not $noprice}}
-    <col style="width:8%">
-    <col style="width:11%">
+    <col style="width:10%">
+    <col style="width:12%">
     {{end}}
   </colgroup>
   <thead>
     <tr>
       <th>Nom</th>
-      <th>Coordonnées</th>
+      <th>Téléphone</th>
       <th>Qté</th>
       <th>Produit</th>
-      <th>Producteur</th>
       {{if not $noprice}}
       <th>P.U.</th>
       <th>Total</th>
@@ -135,11 +133,10 @@ tr.member-total td {
     <tr>
       {{if eq $li 0}}
       <td class="member-name" rowspan="{{len $m.Lines}}">N°{{$m.BasketNum}}<br>{{$m.UserName}}</td>
-      <td class="member-coords" rowspan="{{len $m.Lines}}">{{$m.Coords}}</td>
+      <td class="member-phone" rowspan="{{len $m.Lines}}">{{$m.Phone}}</td>
       {{end}}
-      <td style="text-align:right;">{{$line.Qty}}</td>
+      <td style="text-align:right;white-space:nowrap;">{{$line.Qty}}</td>
       <td>{{$line.ProductName}}</td>
-      <td style="color:#555;font-size:0.9em;">{{$line.CatalogName}}</td>
       {{if not $noprice}}
       <td style="text-align:right;">{{price $line.UnitPrice}} €</td>
       <td style="text-align:right;">{{price $line.Total}} €</td>
@@ -148,7 +145,7 @@ tr.member-total td {
     {{end}}
     {{if not $noprice}}
     <tr class="member-total">
-      <td colspan="6" style="text-align:right;font-size:0.9em;">Total {{$m.UserName}}</td>
+      <td colspan="5" style="text-align:right;font-size:0.9em;">Total {{$m.UserName}}</td>
       <td style="text-align:right;">{{price $m.MemberTotal}} €</td>
     </tr>
     {{end}}

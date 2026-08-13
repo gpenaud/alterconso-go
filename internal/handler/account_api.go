@@ -122,7 +122,7 @@ func (h *PagesHandler) AccountJSON(c *gin.Context) {
 		}
 		out.RecentOrders = append(out.RecentOrders, accountOrderRow{
 			ProductName: o.Product.Name,
-			SmartQty:    formatQty(o.Quantity, o.Product.UnitType),
+			SmartQty:    orderQtyLabel(o.Quantity, o.Product),
 			Total:       o.TotalPrice(),
 			Paid:        o.Paid,
 			Date:        o.CreatedAt.Format("02/01/2006"),

@@ -463,7 +463,7 @@ func (h *PagesHandler) DistributionListPage(c *gin.Context) {
 		}
 		fees := o.TotalPrice() - o.Quantity*o.ProductPrice
 		line := PrintOrderLine{
-			SmartQty:     formatQty(o.Quantity, o.Product.UnitType),
+			SmartQty:     orderQtyLabel(o.Quantity, o.Product),
 			ProductName:  o.Product.Name,
 			ProductPrice: o.ProductPrice,
 			SubTotal:     o.Quantity * o.ProductPrice,

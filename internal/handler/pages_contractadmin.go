@@ -858,7 +858,7 @@ func (h *PagesHandler) CatalogAdminOrdersPage(c *gin.Context) {
 		fees := o.TotalPrice() - o.Quantity*o.ProductPrice
 		line := OrderLineView{
 			ProductName:  o.Product.Name,
-			SmartQty:     formatQty(o.Quantity, o.Product.UnitType),
+			SmartQty:     orderQtyLabel(o.Quantity, o.Product),
 			ProductPrice: o.ProductPrice,
 			SubTotal:     o.Quantity * o.ProductPrice,
 			Fees:         fees,
@@ -985,7 +985,7 @@ type EmargementConfigData struct {
 type EmargementMember struct {
 	BasketNum   int
 	UserName    string
-	Coords      string
+	Phone       string
 	Lines       []EmargementLine
 	MemberTotal float64
 }
@@ -993,7 +993,6 @@ type EmargementMember struct {
 type EmargementLine struct {
 	Qty         string
 	ProductName string
-	CatalogName string
 	UnitPrice   float64
 	Fees        float64
 	Total       float64
@@ -1102,10 +1101,10 @@ func (h *PagesHandler) DistributionListByDatePrintPage(c *gin.Context) {
 
 	// Collect orders
 	type userEntry struct {
-		name   string
-		coords string
-		lines  []EmargementLine
-		total  float64
+		name  string
+		phone string
+		lines []EmargementLine
+		total float64
 	}
 	userMap := make(map[uint]*userEntry)
 	userOrder := []uint{}
@@ -1123,13 +1122,15 @@ func (h *PagesHandler) DistributionListByDatePrintPage(c *gin.Context) {
 
 		for _, o := range orders {
 			if _, exists := userMap[o.UserID]; !exists {
-				coords := o.User.Email
-				if o.User.Phone != nil && *o.User.Phone != "" {
-					coords += " / " + *o.User.Phone
+				// La liste circule en distribution et repart parfois avec un
+				// adhérent : on n'y imprime que le téléphone, jamais l'email.
+				phone := ""
+				if o.User.Phone != nil {
+					phone = *o.User.Phone
 				}
 				userMap[o.UserID] = &userEntry{
-					name:   o.User.FirstName + " " + o.User.LastName,
-					coords: coords,
+					name:  o.User.FirstName + " " + o.User.LastName,
+					phone: phone,
 				}
 				userOrder = append(userOrder, o.UserID)
 			}
@@ -1139,9 +1140,8 @@ func (h *PagesHandler) DistributionListByDatePrintPage(c *gin.Context) {
 			}
 			fees := o.TotalPrice() - subTotalNoFees
 			line := EmargementLine{
-				Qty:         formatQty(o.Quantity, o.Product.UnitType),
+				Qty:         orderQtyLabel(o.Quantity, o.Product),
 				ProductName: o.Product.Name,
-				CatalogName: distrib.Catalog.Name,
 				UnitPrice:   o.ProductPrice,
 				Fees:        fees,
 				Total:       o.TotalPrice(),
@@ -1170,7 +1170,7 @@ func (h *PagesHandler) DistributionListByDatePrintPage(c *gin.Context) {
 		data.Members = append(data.Members, EmargementMember{
 			BasketNum:   i + 1,
 			UserName:    u.name,
-			Coords:      u.coords,
+			Phone:       u.phone,
 			Lines:       u.lines,
 			MemberTotal: u.total,
 		})
@@ -1272,8 +1272,7 @@ func (h *PagesHandler) ContractAdminVendorsByDatePage(c *gin.Context) {
 		type productKey = uint
 		type productAgg struct {
 			ref       string
-			name      string
-			unitType  model.UnitType
+			product   model.Product
 			unitPrice float64
 			qty       float64
 			total     float64
@@ -1289,9 +1288,8 @@ func (h *PagesHandler) ContractAdminVendorsByDatePage(c *gin.Context) {
 					ref = *o.Product.Ref
 				}
 				aggMap[pid] = &productAgg{
-					ref:      ref,
-					name:     o.Product.Name,
-					unitType: o.Product.UnitType,
+					ref:       ref,
+					product:   o.Product,
 					unitPrice: o.ProductPrice,
 				}
 				aggOrder = append(aggOrder, pid)
@@ -1307,13 +1305,14 @@ func (h *PagesHandler) ContractAdminVendorsByDatePage(c *gin.Context) {
 		}
 		for _, pid := range aggOrder {
 			a := aggMap[pid]
-			qty := strconv.FormatFloat(a.qty, 'f', -1, 64)
+			// Total des parts commandées par le groupe, avec le conditionnement
+			// de la fiche produit : c'est ce que le producteur doit préparer.
 			entry.Lines = append(entry.Lines, VendorByDateLine{
-				Qty:      qty,
-				Ref:      a.ref,
-				Product:  a.name,
+				Qty:       orderQtyLabel(a.qty, a.product),
+				Ref:       a.ref,
+				Product:   a.product.Name,
 				UnitPrice: a.unitPrice,
-				Total:    a.total,
+				Total:     a.total,
 			})
 			entry.Total += a.total
 		}
@@ -1513,7 +1512,7 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 				CatalogID:      distrib.CatalogID,
 				DistribID:      distrib.ID,
 				ProductID:      o.ProductID,
-				Qty:            formatQty(o.Quantity, o.Product.UnitType),
+				Qty:            orderQtyLabel(o.Quantity, o.Product),
 				Quantity:       o.Quantity,
 				Ref:            ref,
 				ProductName:    o.Product.Name,
@@ -1676,9 +1675,18 @@ func (h *PagesHandler) ContractAdminOrdersByDateCSV(c *gin.Context) {
 	c.Header("Content-Type", "text/csv; charset=utf-8")
 	c.Header("Content-Disposition", "attachment; filename="+filename)
 
-	w := c.Writer
-	w.WriteString("\xEF\xBB\xBF") // BOM UTF-8 pour Excel
-	w.WriteString("Membre;Catalogue;Qté;Réf.;Produit;P.U.;Sous-total;Frais;Total\n")
+	c.Writer.WriteString("\xEF\xBB\xBF") // BOM UTF-8 pour Excel
+
+	// encoding/csv met entre guillemets les valeurs contenant le séparateur :
+	// un nom de membre ou de produit portant un point-virgule ne décale plus
+	// les colonnes suivantes.
+	cw := csv.NewWriter(c.Writer)
+	cw.Comma = ';'
+	defer cw.Flush()
+
+	// "Qté" décrit ce qu'il y a à remettre ("3 × 500 g") et se lit ; "Nb parts"
+	// reste le nombre nu, pour que la colonne s'additionne dans un tableur.
+	cw.Write([]string{"Membre", "Catalogue", "Qté", "Nb parts", "Réf.", "Produit", "P.U.", "Sous-total", "Frais", "Total"})
 
 	for _, distrib := range md.Distributions {
 		if scopedCatalogID != 0 && distrib.CatalogID != scopedCatalogID {
@@ -1702,18 +1710,18 @@ func (h *PagesHandler) ContractAdminOrdersByDateCSV(c *gin.Context) {
 			}
 			fees := o.TotalPrice() - subTotalNoFees
 			memberName := o.User.FirstName + " " + o.User.LastName
-			line := fmt.Sprintf("%s;%s;%s;%s;%s;%.2f;%.2f;%.2f;%.2f\n",
+			cw.Write([]string{
 				memberName,
 				distrib.Catalog.Name,
-				formatQty(o.Quantity, o.Product.UnitType),
+				orderQtyLabel(o.Quantity, o.Product),
+				strconv.FormatFloat(o.Quantity, 'f', -1, 64),
 				ref,
 				o.Product.Name,
-				o.ProductPrice,
-				subTotalNoFees,
-				fees,
-				o.TotalPrice(),
-			)
-			w.WriteString(line)
+				strconv.FormatFloat(o.ProductPrice, 'f', 2, 64),
+				strconv.FormatFloat(subTotalNoFees, 'f', 2, 64),
+				strconv.FormatFloat(fees, 'f', 2, 64),
+				strconv.FormatFloat(o.TotalPrice(), 'f', 2, 64),
+			})
 		}
 	}
 }
@@ -2319,7 +2327,8 @@ type addProductResp struct {
 	ImageURL      string  `json:"imageUrl"`
 	UnitPrice     float64 `json:"unitPrice"`
 	Quantity      float64 `json:"quantity"`
-	QuantityStr   string  `json:"quantityStr"`
+	QuantityStr   string  `json:"quantityStr"` // valeur brute, réinjectée dans le champ de saisie
+	QtyLabel      string  `json:"qtyLabel"`    // libellé affiché, ex. "3 × 500 g"
 	SubTotal      float64 `json:"subTotal"`
 	Total         float64 `json:"total"`
 	MemberTotal   float64 `json:"memberTotal"`
@@ -2437,6 +2446,7 @@ func (h *PagesHandler) AddMemberProduct(c *gin.Context) {
 		UnitPrice:     prod.Price,
 		Quantity:      existing.Quantity,
 		QuantityStr:   strconv.FormatFloat(existing.Quantity, 'f', -1, 64),
+		QtyLabel:      orderQtyLabel(existing.Quantity, prod),
 		SubTotal:      subTotal,
 		Total:         total,
 		MemberTotal:   memberTotal,

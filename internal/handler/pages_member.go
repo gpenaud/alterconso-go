@@ -158,7 +158,7 @@ func (h *PagesHandler) MemberViewPage(c *gin.Context) {
 		fees := o.TotalPrice() - o.Quantity*o.ProductPrice
 		line := OrderLineView{
 			ProductName:  o.Product.Name,
-			SmartQty:     formatQty(o.Quantity, o.Product.UnitType),
+			SmartQty:     orderQtyLabel(o.Quantity, o.Product),
 			ProductPrice: o.ProductPrice,
 			SubTotal:     o.Quantity * o.ProductPrice,
 			Fees:         fees,

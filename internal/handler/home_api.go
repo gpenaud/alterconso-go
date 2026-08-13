@@ -194,7 +194,7 @@ func (h *PagesHandler) HomeJSON(c *gin.Context) {
 			total := o.TotalPrice()
 			view.UserOrders = append(view.UserOrders, UserOrderView{
 				ProductName: o.Product.Name,
-				SmartQty:    formatQty(o.Quantity, o.Product.UnitType),
+				SmartQty:    orderQtyLabel(o.Quantity, o.Product),
 				UnitPrice:   o.ProductPrice,
 				SubTotal:    subTotal,
 				Fees:        total - subTotal,

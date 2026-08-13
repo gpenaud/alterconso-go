@@ -784,7 +784,7 @@ func (h *PagesHandler) HomePage(c *gin.Context) {
 			total := o.TotalPrice()
 			view.UserOrders = append(view.UserOrders, UserOrderView{
 				ProductName: o.Product.Name,
-				SmartQty:    formatQty(o.Quantity, o.Product.UnitType),
+				SmartQty:    orderQtyLabel(o.Quantity, o.Product),
 				UnitPrice:   o.ProductPrice,
 				SubTotal:    subTotal,
 				Fees:        total - subTotal,
@@ -955,7 +955,7 @@ func (h *PagesHandler) AccountPage(c *gin.Context) {
 		}
 		pd.RecentOrders = append(pd.RecentOrders, RecentOrderView{
 			ProductName: o.Product.Name,
-			SmartQty:    formatQty(o.Quantity, o.Product.UnitType),
+			SmartQty:    orderQtyLabel(o.Quantity, o.Product),
 			Total:       o.TotalPrice(),
 			Paid:        o.Paid,
 		})
@@ -1674,27 +1674,39 @@ func (h *PagesHandler) issueTokenAs(userID, groupID, impersonatorID uint) (strin
 	return token.SignedString([]byte(h.cfg.JWTSecret))
 }
 
-func formatQty(qty float64, unit model.UnitType) string {
-	switch unit {
-	case model.UnitTypeKilogram:
-		if qty < 1 {
-			return fmt.Sprintf("%.0fg", qty*1000)
-		}
-		if qty == float64(int(qty)) {
-			return fmt.Sprintf("%.0fkg", qty)
-		}
-		return fmt.Sprintf("%.2fkg", qty)
-	case model.UnitTypeGram:
-		return fmt.Sprintf("%.0fg", qty)
-	case model.UnitTypeLitre:
-		if qty == float64(int(qty)) {
-			return fmt.Sprintf("%.0fL", qty)
-		}
-		return fmt.Sprintf("%.2fL", qty)
-	default:
-		if qty == float64(int(qty)) {
-			return fmt.Sprintf("%.0f", qty)
-		}
-		return fmt.Sprintf("%.2f", qty)
+// orderQtyLabel décrit ce qui a été commandé : le nombre de parts, puis le
+// conditionnement tel qu'il est saisi sur la fiche produit — "3 × 500 g".
+// Coller directement l'unité du produit sur le nombre de parts, sans tenir
+// compte de Product.Qt, donnait "3 g" pour trois pains de 500 g.
+// Un produit à la pièce sans conditionnement particulier n'a rien à multiplier :
+// on écrit simplement "3 pièces".
+func orderQtyLabel(quantity float64, p model.Product) string {
+	qt := 1.0
+	if p.Qt != nil && *p.Qt > 0 {
+		qt = *p.Qt
 	}
+	// Le nombre de parts reste décimal : il s'additionne d'un membre à l'autre
+	// sur les vues agrégées, où un total de 2,5 écrit en fraction donnerait
+	// "5/2". Seul le conditionnement suit la notation en fractions de la fiche
+	// produit, où "1/2 kg" est la façon habituelle de décrire une demi-part.
+	count := strconv.FormatFloat(quantity, 'f', -1, 64)
+	unit := unitLabelFor(p.UnitType)
+	// unitLabelFor renvoie "pièce" aussi bien pour Piece que pour les unités
+	// vides ou legacy : on teste le libellé plutôt que la constante. Seule la
+	// pièce s'accorde ; les unités de mesure s'écrivent "500 g" au pluriel comme
+	// au singulier.
+	if unit == "pièce" {
+		if qt == 1 {
+			return count + " " + pluralPiece(quantity)
+		}
+		return count + " × " + floatToFractionStr(qt) + " " + pluralPiece(qt)
+	}
+	return count + " × " + floatToFractionStr(qt) + " " + unit
+}
+
+func pluralPiece(n float64) string {
+	if n > 1 {
+		return "pièces"
+	}
+	return "pièce"
 }

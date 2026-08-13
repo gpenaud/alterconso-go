@@ -213,7 +213,7 @@ func (h *PagesHandler) MemberInvoicePage(c *gin.Context) {
 			vendorOrder = append(vendorOrder, vid)
 		}
 		line := InvoiceLine{
-			SmartQty:    formatQty(o.Quantity, o.Product.UnitType),
+			SmartQty:    orderQtyLabel(o.Quantity, o.Product),
 			ProductName: o.Product.Name,
 			Total:       o.TotalPrice(),
 		}
