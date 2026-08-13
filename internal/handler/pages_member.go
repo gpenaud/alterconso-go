@@ -1329,19 +1329,82 @@ func (h *PagesHandler) catalogUpcomingDistribs(groupID, catalogID uint, now time
 	return out
 }
 
-// groupManagerEmails retourne les emails des responsables du groupe.
-func (h *PagesHandler) groupManagerEmails(groupID uint) []string {
-	var rows []struct{ Email string }
-	h.db.Table("user_groups").
-		Select("DISTINCT users.email").
-		Joins("JOIN users ON users.id = user_groups.user_id").
-		Where("user_groups.group_id = ? AND user_groups.rights LIKE ?", groupID, "%GroupAdmin%").
-		Where("users.email <> ''").
-		Scan(&rows)
+// groupManagersLabel nomme l'entrée qui regroupe les responsables du groupe,
+// telle qu'elle s'affiche dans la liste des destinataires.
+func (h *PagesHandler) groupManagersLabel() string {
+	if label := h.cfg.Messages.GroupManagersLabel; label != "" {
+		return label
+	}
+	return "Responsables du groupe"
+}
 
-	emails := make([]string, 0, len(rows))
-	for _, r := range rows {
-		emails = append(emails, r.Email)
+// groupHeads retourne les membres qui portent le rôle de responsable du
+// groupe, triés par nom.
+//
+// Le filtre passe par GetRights(), et non par un `rights LIKE '%GroupAdmin%'` :
+// ce motif ne tenait que tant qu'aucun autre nom de droit ne contient cette
+// chaîne, ce qu'aucune contrainte ne garantit. Il laissait surtout croire que
+// la liste était plus large qu'elle ne l'est.
+func (h *PagesHandler) groupHeads(groupID uint) []model.UserGroup {
+	var ugs []model.UserGroup
+	h.db.Preload("User").
+		Joins("JOIN users ON users.id = user_groups.user_id").
+		Where("user_groups.group_id = ?", groupID).
+		Order("users.last_name, users.first_name").
+		Find(&ugs)
+
+	heads := make([]model.UserGroup, 0, 1)
+	for _, ug := range ugs {
+		if ug.IsGroupHead() {
+			heads = append(heads, ug)
+		}
+	}
+	return heads
+}
+
+// superAdmins retourne les comptes administrateurs de l'application.
+//
+// Leurs droits portent sur tous les groupes à la fois : ils restent le recours
+// quand le responsable d'un groupe ne répond pas, et reçoivent à ce titre le
+// courrier qui lui est adressé, qu'ils soient membres du groupe ou non.
+func (h *PagesHandler) superAdmins() []model.User {
+	var users []model.User
+	h.db.Where("rights & 1 <> 0 OR id = 1").Where("email <> ''").
+		Order("last_name, first_name").Find(&users)
+	return users
+}
+
+// groupManagerEmails retourne les destinataires du courrier adressé aux
+// responsables du groupe : le responsable lui-même, et le super-administrateur.
+//
+// Les « droits administrateur » n'y ouvrent pas. Leurs porteurs administrent le
+// groupe sans en être responsables — c'est précisément ce que distingue
+// RightAdministration de RightGroupAdmin — et le courrier qu'un adhérent
+// adresse à son responsable n'a pas à leur parvenir.
+func (h *PagesHandler) groupManagerEmails(groupID uint) []string {
+	return managerRecipientEmails(h.groupHeads(groupID), h.superAdmins())
+}
+
+// managerRecipientEmails assemble la liste, responsables d'abord. Le
+// super-administrateur détient souvent aussi le rôle de responsable, hérité de
+// l'installation : la déduplication lui évite de recevoir deux fois le même
+// message.
+func managerRecipientEmails(heads []model.UserGroup, admins []model.User) []string {
+	emails := make([]string, 0, len(heads)+len(admins))
+	seen := make(map[string]bool)
+	add := func(email string) {
+		if email == "" || seen[email] {
+			return
+		}
+		seen[email] = true
+		emails = append(emails, email)
+	}
+
+	for _, ug := range heads {
+		add(ug.User.Email)
+	}
+	for _, u := range admins {
+		add(u.Email)
 	}
 	return emails
 }
@@ -1385,7 +1448,10 @@ func (h *PagesHandler) buildScopedRecipients(pd PageData, now time.Time) ([]Reci
 		}
 		opts = append(opts,
 			RecipientOption{Value: "all", Name: "Tout le monde", Count: len(full["all"])},
-			RecipientOption{Value: "managers", Name: "Gestionnaires uniquement", Count: len(full["managers"])},
+			// Nommée d'après ce qu'elle contient : le responsable du groupe et
+			// le super-administrateur. « Gestionnaires » englobait aussi les
+			// porteurs des droits administrateur, que cette liste exclut.
+			RecipientOption{Value: "managers", Name: h.groupManagersLabel(), Count: len(full["managers"])},
 			RecipientOption{Value: "members", Name: "Membres uniquement", Count: len(full["members"])},
 		)
 		return opts, emails
@@ -1418,11 +1484,7 @@ func (h *PagesHandler) buildScopedRecipients(pd PageData, now time.Time) ([]Reci
 	}
 
 	// ── Tout utilisateur : responsables du groupe et contacts techniques ────
-	label := h.cfg.Messages.GroupManagersLabel
-	if label == "" {
-		label = "Responsables du groupe"
-	}
-	add("group-managers", label, h.groupManagerEmails(pd.Group.ID))
+	add("group-managers", h.groupManagersLabel(), h.groupManagerEmails(pd.Group.ID))
 
 	for i, tc := range h.cfg.Messages.TechnicalContacts {
 		name := tc.Name
@@ -1445,9 +1507,18 @@ func (h *PagesHandler) buildRecipientEmails(groupID uint, now time.Time) map[str
 		Order("users.last_name, users.first_name").
 		Find(&ugs)
 
+	// Une seule définition des responsables pour toute la page : celle qui sert
+	// à l'envoi. Le test par sous-chaîne employé ici auparavant en dessinait une
+	// seconde, qui pouvait diverger de la première sans que rien ne le signale.
+	managers := h.groupManagerEmails(groupID)
+	isManager := make(map[string]bool, len(managers))
+	for _, e := range managers {
+		isManager[e] = true
+	}
+
 	out := map[string][]string{
 		"all":      {},
-		"managers": {},
+		"managers": managers,
 		"members":  {},
 	}
 	memberIDs := make([]uint, 0, len(ugs))
@@ -1458,9 +1529,10 @@ func (h *PagesHandler) buildRecipientEmails(groupID uint, now time.Time) map[str
 			continue
 		}
 		out["all"] = append(out["all"], email)
-		if strings.Contains(ug.Rights, "GroupAdmin") {
-			out["managers"] = append(out["managers"], email)
-		} else {
+		// « Membres » est le complémentaire exact de « responsables » : un
+		// super-administrateur membre du groupe ne doit pas figurer dans les
+		// deux listes à la fois.
+		if !isManager[email] {
 			out["members"] = append(out["members"], email)
 		}
 		memberIDs = append(memberIDs, ug.UserID)
@@ -1585,15 +1657,15 @@ func (h *PagesHandler) MessagesPage(c *gin.Context) {
 		data.BrevoError = q.Error
 	}
 
-	// Comptage des destinataires potentiels
-	var nbAll, nbManagers int64
+	// Comptage des destinataires potentiels. Les responsables se comptent avec
+	// la même définition que celle qui sert à l'envoi, sans quoi l'en-tête de
+	// la page annoncerait un effectif que l'envoi ne retiendrait pas.
+	var nbAll int64
 	h.db.Model(&model.UserGroup{}).Where("group_id = ?", pd.Group.ID).Count(&nbAll)
-	h.db.Model(&model.UserGroup{}).
-		Where("group_id = ? AND rights LIKE ?", pd.Group.ID, "%GroupAdmin%").
-		Count(&nbManagers)
+	nbHeads := len(h.groupHeads(pd.Group.ID))
 	data.CountAll = int(nbAll)
-	data.CountManagers = int(nbManagers)
-	data.CountMembers = int(nbAll) - int(nbManagers)
+	data.CountManagers = nbHeads
+	data.CountMembers = int(nbAll) - nbHeads
 	if data.CountMembers < 0 {
 		data.CountMembers = 0
 	}

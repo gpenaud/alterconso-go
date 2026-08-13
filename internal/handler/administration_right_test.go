@@ -61,12 +61,57 @@ func TestAdministrationIsNotGroupHead(t *testing.T) {
 		t.Error("ils ne doivent pas ouvrir la base de données")
 	}
 
-	// Les destinataires des messages aux responsables se choisissent par
-	// `rights LIKE '%GroupAdmin%'` en SQL : le nom du droit ne doit pas
-	// contenir cette chaîne, sinon ses porteurs recevraient ce courrier.
-	if strings.Contains(string(model.RightAdministration), "GroupAdmin") {
-		t.Errorf("%q contient GroupAdmin : ses porteurs entreraient dans la liste des responsables",
-			model.RightAdministration)
+}
+
+// Les destinataires du courrier adressé aux responsables : le responsable du
+// groupe et le super-administrateur, personne d'autre.
+func TestManagerRecipientEmails(t *testing.T) {
+	head := model.UserGroup{User: model.User{Email: "responsable@exemple.fr"}}
+	superAdmin := model.User{Email: "admin@exemple.fr"}
+
+	got := managerRecipientEmails([]model.UserGroup{head}, []model.User{superAdmin})
+	want := []string{"responsable@exemple.fr", "admin@exemple.fr"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("attendu %v, obtenu %v", want, got)
+	}
+
+	// Le compte par défaut cumule souvent les deux rôles : une seule fois.
+	deux := managerRecipientEmails(
+		[]model.UserGroup{{User: model.User{Email: "admin@exemple.fr"}}},
+		[]model.User{superAdmin},
+	)
+	if len(deux) != 1 {
+		t.Errorf("le cumul des deux rôles doit donner un destinataire, obtenu %v", deux)
+	}
+
+	// Un membre sans email ne produit pas de destinataire vide, qui ferait
+	// échouer l'envoi sans rien dire.
+	sansEmail := managerRecipientEmails([]model.UserGroup{{User: model.User{}}}, nil)
+	if len(sansEmail) != 0 {
+		t.Errorf("attendu aucun destinataire, obtenu %v", sansEmail)
+	}
+}
+
+// Seul le porteur de GroupAdmin est responsable : c'est ce test que groupHeads
+// applique à chaque membre pour dresser la liste des destinataires.
+func TestGroupHeadSelection(t *testing.T) {
+	cases := []struct {
+		nom  string
+		ug   *model.UserGroup
+		want bool
+	}{
+		{"responsable de groupe", ug(`[{"right":"GroupAdmin"}]`), true},
+		{"droits administrateur", ug(`[{"right":"Administration"}]`), false},
+		{"responsable technique", ug(`[{"right":"DatabaseAdmin"}]`), false},
+		{"gestion des catalogues", ug(`[{"right":"CatalogAdmin"}]`), false},
+		{"simple membre", ug(`[]`), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.nom, func(t *testing.T) {
+			if got := tc.ug.IsGroupHead(); got != tc.want {
+				t.Errorf("IsGroupHead = %v, attendu %v", got, tc.want)
+			}
+		})
 	}
 }
 

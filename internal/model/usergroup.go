@@ -15,10 +15,9 @@ const (
 	// RightAdministration : tous les pouvoirs d'administration du groupe, hors
 	// base de données. Cumulable, contrairement aux deux rôles de responsable.
 	//
-	// Son nom ne contient pas « GroupAdmin », et ce n'est pas un détail : les
-	// destinataires des messages adressés aux responsables se choisissent par
-	// `rights LIKE '%GroupAdmin%'`. Un nom qui contiendrait cette chaîne ferait
-	// entrer ses porteurs dans cette liste, ce qu'on ne veut pas.
+	// Administrer le groupe n'est pas en être responsable : ses porteurs
+	// n'entrent pas dans les destinataires du courrier adressé au responsable,
+	// que IsGroupHead seul désigne.
 	RightAdministration Right = "Administration"
 )
 
