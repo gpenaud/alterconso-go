@@ -734,30 +734,35 @@ func (h *PagesHandler) HomePage(c *gin.Context) {
 			}
 		}
 
-		// Determine order state from first distribution
+		// L'état de commande se décide catalogue par catalogue, et non sur la
+		// seule première distribution du jour : un producteur qui repousse sa
+		// clôture rouvre ses commandes sans rouvrir celles de ses voisins. Il
+		// suffit qu'un catalogue soit ouvert pour proposer le bouton ; le shop
+		// n'ouvre ensuite que ceux qui le sont.
 		if len(md.Distributions) > 0 {
 			view.Distributions = true
-			d := md.Distributions[0]
-			orderEnd := md.OrderEndDate
-			orderStart := md.OrderStartDate
-			if orderEnd == nil {
-				orderEnd = d.OrderEndDate
-				orderStart = d.OrderStartDate
-			}
-			if orderEnd == nil {
-				view.CanOrder = d.Catalog.UsersCanOrder()
-			} else {
-				if orderStart != nil && now.Before(*orderStart) {
-					view.OrderNotYetOpen = true
-					view.OrderStartDate = fmt.Sprintf("%s %d %s à %02d:%02d",
-						frDays[orderStart.Weekday()], orderStart.Day(),
-						frMonthsFull[orderStart.Month()], orderStart.Hour(), orderStart.Minute())
-				} else if now.Before(*orderEnd) {
+			var latestEnd, nextStart *time.Time
+			for _, d := range md.Distributions {
+				d.MultiDistrib = md // CanOrderNow lit aussi les dates du jour
+				if d.CanOrderNow() {
 					view.CanOrder = true
-					view.OrderEndDate = fmt.Sprintf("%s %d %s à %02d:%02d",
-						frDays[orderEnd.Weekday()], orderEnd.Day(),
-						frMonthsFull[orderEnd.Month()], orderEnd.Hour(), orderEnd.Minute())
+					if end := d.EffectiveOrderEnd(); end != nil && (latestEnd == nil || end.After(*latestEnd)) {
+						latestEnd = end
+					}
+					continue
 				}
+				if start := d.EffectiveOrderStart(); start != nil && now.Before(*start) {
+					if nextStart == nil || start.Before(*nextStart) {
+						nextStart = start
+					}
+				}
+			}
+			switch {
+			case view.CanOrder && latestEnd != nil:
+				view.OrderEndDate = frDateTimeLabel(*latestEnd)
+			case !view.CanOrder && nextStart != nil:
+				view.OrderNotYetOpen = true
+				view.OrderStartDate = frDateTimeLabel(*nextStart)
 			}
 		}
 
@@ -1689,6 +1694,19 @@ func (h *PagesHandler) issueTokenAs(userID, groupID, impersonatorID uint) (strin
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(h.cfg.JWTSecret))
+}
+
+// frMonthsLong nomme les mois pour frDateTimeLabel. Les handlers qui composent
+// leurs propres libellés en gardent chacun une copie locale ; celle-ci est au
+// niveau du paquet parce que le helper ci-dessous sert à plusieurs d'entre eux.
+var frMonthsLong = [13]string{"", "Janvier", "Février", "Mars", "Avril", "Mai",
+	"Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"}
+
+// frDateTimeLabel : "Vendredi 12 Août à 18:00", tel qu'affiché aux membres
+// pour l'ouverture et la clôture des commandes.
+func frDateTimeLabel(t time.Time) string {
+	return fmt.Sprintf("%s %d %s à %02d:%02d",
+		frDays[t.Weekday()], t.Day(), frMonthsLong[t.Month()], t.Hour(), t.Minute())
 }
 
 // orderQtyLabel décrit ce qui a été commandé : le nombre de parts, puis le

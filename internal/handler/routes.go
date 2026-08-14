@@ -157,6 +157,11 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/contractAdmin/products/:id/delete/:productId", pageAuth, reqCatalog, pagesH.CatalogAdminProductDeletePage)
 	r.GET("/contractAdmin/distributions/:id", pageAuth, reqCatalog, pagesH.CatalogAdminDistributionsPage)
 	r.POST("/contractAdmin/distributions/:id", pageAuth, reqCatalog, pagesH.CatalogAdminDistributionsPage)
+	// Dates d'une distribution pour ce seul catalogue. reqCatalog et non
+	// reqManager : c'est le producteur qui sait s'il peut encore accepter une
+	// commande, et donc rouvrir la sienne.
+	r.GET("/contractAdmin/distributions/:id/dates/:distribId", pageAuth, reqCatalog, pagesH.CatalogAdminDistributionDatesPage)
+	r.POST("/contractAdmin/distributions/:id/dates/:distribId", pageAuth, reqCatalog, pagesH.CatalogAdminDistributionDatesPage)
 	r.GET("/contractAdmin/orders/:id", pageAuth, reqCatalog, pagesH.CatalogAdminOrdersPage)
 	r.GET("/contractAdmin/selectDistrib/:id", pageAuth, reqCatalog, pagesH.CatalogAdminSelectDistribPage)
 	r.GET("/contractAdmin/memberOrder/:multiDistribId/:userId", pageAuth, reqCatalog, pagesH.MemberOrderPage)

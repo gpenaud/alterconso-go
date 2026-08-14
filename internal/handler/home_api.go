@@ -128,30 +128,34 @@ func (h *PagesHandler) HomeJSON(c *gin.Context) {
 			}
 		}
 
-		// État de commande déduit de la 1re distribution
+		// État de commande, catalogue par catalogue : la clôture du jour vaut
+		// par défaut, celle qu'un producteur s'est donnée fait foi pour son
+		// catalogue. Il suffit qu'un catalogue reste ouvert pour proposer le
+		// bouton ; le shop n'ouvrira ensuite que ceux qui le sont.
 		if len(md.Distributions) > 0 {
 			view.Distributions = true
-			d := md.Distributions[0]
-			orderEnd := md.OrderEndDate
-			orderStart := md.OrderStartDate
-			if orderEnd == nil {
-				orderEnd = d.OrderEndDate
-				orderStart = d.OrderStartDate
-			}
-			if orderEnd == nil {
-				view.CanOrder = d.Catalog.UsersCanOrder()
-			} else {
-				if orderStart != nil && now.Before(*orderStart) {
-					view.OrderNotYetOpen = true
-					view.OrderStartDate = fmt.Sprintf("%s %d %s à %02d:%02d",
-						frDays[orderStart.Weekday()], orderStart.Day(),
-						frMonthsFull[orderStart.Month()], orderStart.Hour(), orderStart.Minute())
-				} else if now.Before(*orderEnd) {
+			var latestEnd, nextStart *time.Time
+			for _, d := range md.Distributions {
+				d.MultiDistrib = md
+				if d.CanOrderNow() {
 					view.CanOrder = true
-					view.OrderEndDate = fmt.Sprintf("%s %d %s à %02d:%02d",
-						frDays[orderEnd.Weekday()], orderEnd.Day(),
-						frMonthsFull[orderEnd.Month()], orderEnd.Hour(), orderEnd.Minute())
+					if end := d.EffectiveOrderEnd(); end != nil && (latestEnd == nil || end.After(*latestEnd)) {
+						latestEnd = end
+					}
+					continue
 				}
+				if start := d.EffectiveOrderStart(); start != nil && now.Before(*start) {
+					if nextStart == nil || start.Before(*nextStart) {
+						nextStart = start
+					}
+				}
+			}
+			switch {
+			case view.CanOrder && latestEnd != nil:
+				view.OrderEndDate = frDateTimeLabel(*latestEnd)
+			case !view.CanOrder && nextStart != nil:
+				view.OrderNotYetOpen = true
+				view.OrderStartDate = frDateTimeLabel(*nextStart)
 			}
 		}
 

@@ -34,6 +34,27 @@
 
     <div style="flex:1;color:#555;">{{.Place}}</div>
 
+    {{if .Participating}}
+    <div style="flex:0 0 210px;font-size:0.85em;">
+      <div>
+        {{if .OrdersOpen}}
+        <span style="color:#5cb85c;font-weight:bold;">● Commandes ouvertes</span>
+        {{else}}
+        <span style="color:#c0392b;font-weight:bold;">● Commandes fermées</span>
+        {{end}}
+      </div>
+      <div style="color:#888;">
+        {{if .OrderEndLabel}}Clôture le {{.OrderEndLabel}}{{else}}Sans clôture{{end}}
+        {{if .OrderEndOverridden}}
+        <span class="label label-default"
+              title="Clôture propre à ce catalogue, différente de celle du jour">modifiée</span>
+        {{end}}
+      </div>
+    </div>
+    {{else}}
+    <div style="flex:0 0 210px;"></div>
+    {{end}}
+
     <div style="flex-shrink:0;display:flex;gap:4px;">
       {{if .Participating}}
       <a href="/contractAdmin/ordersByDate/{{.Date}}/{{$.Group.ID}}?catalog={{$.Catalog.ID}}"
@@ -41,11 +62,10 @@
         <i class="icon icon-basket"></i> Commandes
         {{if .NbOrders}}<span class="badge" style="margin-left:4px;">{{.NbOrders}}</span>{{end}}
       </a>
-      {{if $.IsGroupManager}}
-      <a href="/distribution/shift/{{.DistribID}}" class="btn btn-default btn-sm">
+      <a href="/contractAdmin/distributions/{{$.Catalog.ID}}/dates/{{.DistribID}}"
+         class="btn btn-default btn-sm" title="Date de distribution et clôture des commandes">
         <i class="icon icon-calendar"></i> Dates
       </a>
-      {{end}}
       <form method="POST" style="display:inline;">
         <input type="hidden" name="action" value="leave" />
         <input type="hidden" name="distrib_id" value="{{.DistribID}}" />

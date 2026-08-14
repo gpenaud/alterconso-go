@@ -98,23 +98,28 @@ type CatalogDistribEntry struct {
 	NbOrders       int
 	Participating  bool
 	IsPast         bool
+
+	// Clôture des commandes telle qu'elle s'applique à CE catalogue.
+	OrderEndValue      string // pour <input type="datetime-local">, vide si aucune
+	OrderEndLabel      string // "12/08/2026 à 18:00", vide si aucune
+	OrderEndOverridden bool   // propre à la distribution, et non héritée du jour
 }
 
 type CatalogOrderEntry struct {
-	UserID      uint
-	UserName    string
-	BasketNum   int
-	Lines       []OrderLineView
-	Total       float64
+	UserID    uint
+	UserName  string
+	BasketNum int
+	Lines     []OrderLineView
+	Total     float64
 }
 
 type CatalogSubEntry struct {
-	SubID       uint
-	UserID      uint
-	UserName    string
-	StartDate   string
-	EndDate     string
-	Validated   bool
+	SubID     uint
+	UserID    uint
+	UserName  string
+	StartDate string
+	EndDate   string
+	Validated bool
 }
 
 // ---- /contractAdmin/view/:id ----
@@ -786,7 +791,18 @@ func (h *PagesHandler) CatalogAdminDistributionsPage(c *gin.Context) {
 		}
 		if participating {
 			entry.DistribID = d.ID
+			// CanOrderNow lit le catalogue et le jour de la distribution ; ni
+			// l'un ni l'autre n'est chargé par la requête ci-dessus, et l'état
+			// se lisait donc sur des structures vides — toujours « fermé ».
+			d.Catalog = data.Catalog
+			d.MultiDistrib = md
 			entry.OrdersOpen = d.CanOrderNow()
+
+			if end := d.EffectiveOrderEnd(); end != nil {
+				entry.OrderEndValue = end.Format("2006-01-02T15:04")
+				entry.OrderEndLabel = end.Format("02/01/2006 à 15:04")
+			}
+			entry.OrderEndOverridden = d.OrderEndDate != nil
 		}
 		data.CatalogDistribs = append(data.CatalogDistribs, entry)
 	}
@@ -808,6 +824,188 @@ func (h *PagesHandler) CatalogAdminDistributionsPage(c *gin.Context) {
 	}
 	if err := t.ExecuteTemplate(c.Writer, "base", data); err != nil {
 		c.String(http.StatusInternalServerError, "render error: %v", err)
+	}
+}
+
+// ---- GET/POST /contractAdmin/distributions/:id/dates/:distribId ----
+
+type CatalogDistribDatesData struct {
+	CatalogAdminData
+	DistribID uint
+
+	// Dates du jour commun, rappelées sous chaque champ : ce sont elles qui
+	// s'appliquent tant que la distribution n'en surcharge pas.
+	CommonDistribLabel    string
+	CommonOrderStartLabel string
+	CommonOrderEndLabel   string
+
+	DistribValue        string // datetime-local
+	DistribInherited    bool
+	OrderStartValue     string
+	OrderStartInherited bool
+	OrderEndValue       string
+	OrderEndInherited   bool
+
+	// Bornes de la fenêtre de commande : la clôture ne dépasse pas la veille de
+	// la livraison, l'ouverture ne précède pas celle du jour.
+	MaxOrderEndValue   string // pour l'attribut max de l'input
+	MaxOrderEndLabel   string
+	MinOrderStartValue string // pour l'attribut min de l'input
+	MinOrderStartLabel string
+
+	Error string
+}
+
+// CatalogAdminDistributionDatesPage règle, pour un catalogue et une seule
+// distribution, la date de livraison et la clôture des commandes.
+//
+// Les deux dates se posent sur la Distribution, jamais sur le MultiDistrib :
+// celui-ci est le jour commun, partagé avec les autres producteurs. C'est ce
+// qui permet à un producteur de rouvrir ses propres commandes sans rouvrir
+// celles de ses voisins. Un champ vidé retire la surcharge et rend la
+// distribution au jour commun.
+//
+// Ouverte à qui administre le catalogue, et pas seulement aux responsables du
+// groupe : c'est le producteur qui sait s'il peut encore accepter une commande.
+func (h *PagesHandler) CatalogAdminDistributionDatesPage(c *gin.Context) {
+	data, ok := h.loadCatalogAdmin(c, "distributions")
+	if !ok {
+		return
+	}
+
+	distribID, err := strconv.ParseUint(c.Param("distribId"), 10, 64)
+	if err != nil {
+		c.String(http.StatusBadRequest, "id invalide")
+		return
+	}
+
+	// Le catalog_id de la clause est ce qui empêche de régler les dates d'un
+	// producteur voisin en changeant l'identifiant dans l'URL.
+	var d model.Distribution
+	if err := h.db.Preload("MultiDistrib").
+		Where("id = ? AND catalog_id = ?", distribID, data.Catalog.ID).
+		First(&d).Error; err != nil {
+		c.String(http.StatusNotFound, "distribution introuvable")
+		return
+	}
+
+	parse := func(field string) *time.Time {
+		raw := strings.TrimSpace(c.PostForm(field))
+		if raw == "" {
+			return nil
+		}
+		t, errParse := time.ParseInLocation("2006-01-02T15:04", raw, time.Local)
+		if errParse != nil {
+			return nil
+		}
+		return &t
+	}
+
+	var formError string
+	if c.Request.Method == http.MethodPost {
+		newDate := parse("distribDate")
+		newStart, newEnd := parse("orderStartDate"), parse("orderEndDate")
+
+		// Les trois champs partent ensemble : les règles se vérifient donc sur
+		// ce que le formulaire va enregistrer, et non sur ce qui est en base.
+		// Décaler la livraison décale d'autant la clôture permise, et une
+		// ouverture laissée vide reste celle du jour.
+		probe := model.Distribution{
+			Date:           newDate,
+			OrderStartDate: newStart,
+			OrderEndDate:   newEnd,
+			MultiDistrib:   d.MultiDistrib,
+		}
+		limit := probe.MaxOrderEnd()
+		floor := model.MinOrderStart(time.Now())
+		effStart, effEnd := probe.EffectiveOrderStart(), probe.EffectiveOrderEnd()
+
+		// Une ouverture déjà passée n'est fautive que si elle vient d'être
+		// saisie : le formulaire repropose celle qui court, et refuser sa
+		// simple re-soumission interdirait de toucher aux autres champs d'une
+		// distribution déjà ouverte.
+		prevStart := d.EffectiveOrderStart()
+		startChanged := (newStart == nil) != (prevStart == nil) ||
+			(newStart != nil && prevStart != nil && !newStart.Equal(*prevStart))
+
+		switch {
+		case newEnd != nil && newEnd.After(limit):
+			formError = "La clôture ne peut pas dépasser la veille de la livraison, soit le " +
+				frDateTimeLabel(limit) + "."
+		case startChanged && newStart != nil && newStart.Before(floor):
+			formError = "L'ouverture ne peut pas être antérieure au jour en cours."
+		case effStart != nil && effEnd != nil && !effStart.Before(*effEnd):
+			// Sans ce contrôle, les commandes n'ouvriraient jamais : la fenêtre
+			// serait vide, et l'écran afficherait « fermées » sans dire pourquoi.
+			formError = "L'ouverture doit précéder la clôture, fixée au " +
+				frDateTimeLabel(*effEnd) + "."
+		}
+
+		if formError != "" {
+			// Réafficher la saisie, et non les valeurs enregistrées : la
+			// correction part de ce qui vient d'être tapé.
+			d.Date, d.OrderStartDate, d.OrderEndDate = newDate, newStart, newEnd
+		} else {
+			// Update, et non Save : la distribution n'a été chargée que pour
+			// être vérifiée, et Save réécrirait au passage des colonnes qu'on
+			// ne touche pas. Les valeurs nulles sont significatives — elles
+			// rendent la distribution au jour commun.
+			h.db.Model(&model.Distribution{}).
+				Where("id = ? AND catalog_id = ?", d.ID, data.Catalog.ID).
+				Updates(map[string]any{
+					"date":             newDate,
+					"order_start_date": newStart,
+					"order_end_date":   newEnd,
+				})
+			c.Redirect(http.StatusFound, fmt.Sprintf("/contractAdmin/distributions/%d", data.Catalog.ID))
+			return
+		}
+	}
+
+	page := CatalogDistribDatesData{
+		CatalogAdminData:    data,
+		DistribID:           d.ID,
+		CommonDistribLabel:  d.MultiDistrib.DistribStartDate.Format("02/01/2006 à 15:04"),
+		DistribInherited:    d.Date == nil,
+		OrderStartInherited: d.OrderStartDate == nil,
+		OrderEndInherited:   d.OrderEndDate == nil,
+		Error:               formError,
+	}
+	page.DistribValue = d.EffectiveDate().Format("2006-01-02T15:04")
+	if start := d.EffectiveOrderStart(); start != nil {
+		page.OrderStartValue = start.Format("2006-01-02T15:04")
+	}
+	if end := d.EffectiveOrderEnd(); end != nil {
+		page.OrderEndValue = end.Format("2006-01-02T15:04")
+	}
+	if start := d.MultiDistrib.OrderStartDate; start != nil {
+		page.CommonOrderStartLabel = start.Format("02/01/2006 à 15:04")
+	}
+	if end := d.MultiDistrib.OrderEndDate; end != nil {
+		page.CommonOrderEndLabel = end.Format("02/01/2006 à 15:04")
+	}
+	// Bornes données au navigateur ET rappelées en clair : le champ décourage
+	// la saisie, le handler refuse l'enregistrement.
+	maxEnd := d.MaxOrderEnd()
+	page.MaxOrderEndValue = maxEnd.Format("2006-01-02T15:04")
+	page.MaxOrderEndLabel = maxEnd.Format("02/01/2006 à 15:04")
+	// Plancher d'ouverture : le jour en cours. Le champ ne le porte que s'il ne
+	// contredit pas la valeur déjà enregistrée — un min antérieur à la valeur
+	// affichée ferait refuser au navigateur un formulaire qu'on n'a pas modifié.
+	floor := model.MinOrderStart(time.Now())
+	if start := d.EffectiveOrderStart(); start == nil || !start.Before(floor) {
+		page.MinOrderStartValue = floor.Format("2006-01-02T15:04")
+	}
+	page.MinOrderStartLabel = floor.Format("02/01/2006")
+	page.Title = "Dates — " + data.Catalog.Name
+
+	t, err2 := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_distribution_dates.html")
+	if err2 != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err2)
+		return
+	}
+	if err2 := t.ExecuteTemplate(c.Writer, "base", page); err2 != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err2)
 	}
 }
 

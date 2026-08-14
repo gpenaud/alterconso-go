@@ -61,19 +61,75 @@ func (d *Distribution) EffectiveDate() time.Time {
 	return d.MultiDistrib.DistribStartDate
 }
 
+// MaxOrderEnd : la clôture la plus tardive qu'un producteur puisse se donner,
+// fixée à la veille de la livraison.
+//
+// Repousser sa clôture sert à accepter une commande de dernière minute, pas à
+// en accepter le matin même : il faut au producteur le temps de préparer ce
+// qu'il a vendu.
+func (d *Distribution) MaxOrderEnd() time.Time {
+	return d.EffectiveDate().AddDate(0, 0, -1)
+}
+
+// MinOrderStart : l'ouverture la plus précoce qu'on puisse fixer — le début du
+// jour en cours.
+//
+// Une ouverture datée d'hier ne veut rien dire : on ouvre les commandes
+// maintenant ou plus tard, jamais rétroactivement. La borne tombe au début de
+// la journée, et non à l'heure courante, pour qu'on puisse encore écrire « ce
+// matin 8h » en réglant l'après-midi.
+func MinOrderStart(now time.Time) time.Time {
+	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+}
+
+// EffectiveOrderEnd retourne la clôture qui s'applique : celle de la
+// distribution quand elle en surcharge une, sinon celle du MultiDistrib.
+// Nil : aucune clôture ne borne les commandes.
+func (d *Distribution) EffectiveOrderEnd() *time.Time {
+	if d.OrderEndDate != nil {
+		return d.OrderEndDate
+	}
+	return d.MultiDistrib.OrderEndDate
+}
+
+// EffectiveOrderStart : même règle pour l'ouverture. Une distribution qui ne
+// surcharge que sa clôture garde l'ouverture du MultiDistrib.
+func (d *Distribution) EffectiveOrderStart() *time.Time {
+	if d.OrderStartDate != nil {
+		return d.OrderStartDate
+	}
+	return d.MultiDistrib.OrderStartDate
+}
+
+// OrderWindowStarted : la période de commande a-t-elle commencé ? Vrai aussi
+// quand elle est déjà close — ce qui compte est qu'elle ne soit pas à venir.
+//
+// C'est la borne des interventions d'un gestionnaire : il corrige une commande
+// pendant la période ou après coup, jamais avant que le catalogue ait ouvert.
+// Rien ne serait « corrigé » sur une distribution que personne n'a encore pu
+// commander ; ce serait commander à la place des membres, avant eux.
+func (d *Distribution) OrderWindowStarted(now time.Time) bool {
+	start := d.EffectiveOrderStart()
+	return start == nil || !now.Before(*start)
+}
+
 // CanOrderNow retourne true si les commandes sont ouvertes pour cette distribution.
 func (d *Distribution) CanOrderNow() bool {
-	orderEnd := d.OrderEndDate
-	orderStart := d.OrderStartDate
-	if orderEnd == nil {
-		orderEnd = d.MultiDistrib.OrderEndDate
-		orderStart = d.MultiDistrib.OrderStartDate
+	if !d.Catalog.UsersCanOrder() {
+		return false
 	}
+	orderEnd := d.EffectiveOrderEnd()
 	if orderEnd == nil {
-		return d.Catalog.UsersCanOrder()
+		return true
 	}
 	now := time.Now()
-	return d.Catalog.UsersCanOrder() &&
-		now.After(*orderStart) &&
-		now.Before(*orderEnd)
+	if !now.Before(*orderEnd) {
+		return false
+	}
+	// L'ouverture se lit séparément de la clôture. Les deux dates étaient prises
+	// d'un seul bloc : une distribution surchargeant sa seule date de fin — ce
+	// que fait la réouverture depuis la fiche catalogue — gardait alors une date
+	// de début nulle, déréférencée juste après.
+	orderStart := d.EffectiveOrderStart()
+	return orderStart == nil || now.After(*orderStart)
 }
