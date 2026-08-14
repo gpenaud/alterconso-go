@@ -25,11 +25,33 @@ export function ShopPage() {
     return Number.isFinite(n) && n > 0 ? n : undefined;
   }, [searchParams]);
 
+  // ?return=/chemin : où revenir après validation, quand on arrive depuis un
+  // écran d'administration. Seuls les chemins internes sont retenus — une URL
+  // absolue, ou un "//hôte" que le navigateur lit comme tel, ferait de ce
+  // paramètre une redirection ouverte vers n'importe quel site.
+  const returnTo = useMemo(() => {
+    const v = searchParams.get("return");
+    if (!v || !v.startsWith("/") || v.startsWith("//")) return undefined;
+    return v;
+  }, [searchParams]);
+
+  // ?for=Nom : affiché en bandeau, pour qu'on sache au nom de qui on commande.
+  const targetUserName = searchParams.get("for") ?? undefined;
+
   const { isLoading, error, init, categories, catalog, products } = useShopData(multiDistribId);
 
   useDocumentTitle("Boutique");
   const { data: me } = useShopMe();
-  const { data: existingOrders } = useExistingOrders(me?.id, multiDistribId);
+  // Les commandes à pré-charger sont celles de la personne pour qui on
+  // commande, et non celles de l'admin connecté : le panier partait sinon vide,
+  // et la validation — qui remplace la commande du membre — l'effaçait au lieu
+  // de la modifier.
+  const ordersOwnerId = targetUserId ?? me?.id;
+  const {
+    data: existingOrders,
+    isLoading: existingOrdersLoading,
+    error: existingOrdersError,
+  } = useExistingOrders(ordersOwnerId, multiDistribId);
   const existingCatalogIds = useMemo(
     () => Array.from(new Set((existingOrders ?? []).map((o) => o.catalogId))),
     [existingOrders],
@@ -186,6 +208,35 @@ export function ShopPage() {
     >
       <ShopTopBar groupName={init.group.name} user={me} />
 
+      {/* Commande pour le compte d'un membre : le dire franchement, et garder
+          le chemin du retour visible. Sans ce bandeau, rien à l'écran ne
+          distingue cette commande de la sienne propre. */}
+      {targetUserId && (
+        <div
+          style={{
+            background: "#fdf3d7",
+            borderBottom: "1px solid #f0e0a8",
+            color: "#7a5c00",
+            padding: "8px 14px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <span>
+            Vous commandez pour le compte
+            {targetUserName ? ` de ${targetUserName}` : " d'un autre membre"}.
+          </span>
+          {returnTo && (
+            <a href={returnTo} style={{ color: "#7a5c00", fontWeight: "bold" }}>
+              Revenir sans modifier
+            </a>
+          )}
+        </div>
+      )}
+
       <div
         style={{
           position: "sticky",
@@ -246,6 +297,14 @@ export function ShopPage() {
         <CartPanel
           targetUserId={targetUserId}
           existingCatalogIds={existingCatalogIds}
+          returnTo={returnTo}
+          blockReason={
+            targetUserId && existingOrdersError
+              ? "La commande actuelle de ce membre n'a pas pu être chargée. Valider maintenant l'effacerait — rechargez la page."
+              : targetUserId && existingOrdersLoading
+              ? "Chargement de la commande en cours…"
+              : undefined
+          }
           onClose={() => setCartOpen(false)}
         />
       )}

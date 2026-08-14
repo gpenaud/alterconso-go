@@ -150,6 +150,37 @@ func (h *CompatHandler) OrderCatalogs(c *gin.Context) {
 // ---- /api/order/get/:userId ----
 // ?catalog=<catalogId>&multiDistrib=<multiDistribId>
 
+// callerManages dit si l'appelant administre ce groupe. Sert à lever les
+// bornes de clôture pour qui vient corriger une commande.
+func (h *CompatHandler) callerManages(c *gin.Context, groupID uint) bool {
+	claims := middleware.GetClaims(c)
+	if claims == nil || groupID == 0 {
+		return false
+	}
+	ug := loadGroupAccess(h.db, claims.UserID, groupID)
+	return ug != nil && ug.IsGroupManager()
+}
+
+// groupOfOrderScope retourne le groupe auquel se rattache une consultation de
+// commandes, désigné soit par la distribution, soit par le catalogue. Zéro
+// quand aucun des deux ne permet de conclure — l'appelant refuse alors l'accès
+// plutôt que de deviner.
+func (h *CompatHandler) groupOfOrderScope(mdID, catalogID uint64) uint {
+	if mdID != 0 {
+		var md model.MultiDistrib
+		if h.db.Select("id, group_id").First(&md, mdID).Error == nil {
+			return md.GroupID
+		}
+	}
+	if catalogID != 0 {
+		var cat model.Catalog
+		if h.db.Select("id, group_id").First(&cat, catalogID).Error == nil {
+			return cat.GroupID
+		}
+	}
+	return 0
+}
+
 func (h *CompatHandler) OrderGet(c *gin.Context) {
 	claims := middleware.GetClaims(c)
 	userIDParam, err := strconv.ParseUint(c.Param("userId"), 10, 64)
@@ -157,14 +188,24 @@ func (h *CompatHandler) OrderGet(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid userId"})
 		return
 	}
-	// Only allow own orders or group manager
-	if uint(userIDParam) != claims.UserID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
-		return
-	}
-
 	catalogID, _ := strconv.ParseUint(c.Query("catalog"), 10, 64)
 	mdID, _ := strconv.ParseUint(c.Query("multiDistrib"), 10, 64)
+
+	// Ses propres commandes, ou celles d'un membre quand on gère son groupe —
+	// ce que le commentaire d'origine annonçait sans que le code le fasse.
+	//
+	// C'est ce que consulte le shop pour pré-remplir le panier avant de
+	// commander pour autrui. Le refuser ne protégeait rien : le panier partait
+	// vide, et la validation écrasait la commande du membre au lieu de la
+	// modifier.
+	if uint(userIDParam) != claims.UserID {
+		groupID := h.groupOfOrderScope(mdID, catalogID)
+		ug := loadGroupAccess(h.db, claims.UserID, groupID)
+		if groupID == 0 || ug == nil || !ug.IsGroupManager() {
+			c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+			return
+		}
+	}
 
 	query := h.db.Where("user_orders.user_id = ?", userIDParam).
 		Preload("Product").
@@ -559,14 +600,23 @@ func (h *CompatHandler) ShopInit(c *gin.Context) {
 	catalogs := make([]gin.H, 0)
 	vendors := make([]gin.H, 0)
 	seenVendor := make(map[uint]bool)
+	// Même dispense que pour le rayon, et même limite : après la clôture oui,
+	// avant l'ouverture non.
+	manager := h.callerManages(c, md.GroupID)
+	now := time.Now()
+
 	for _, d := range md.Distributions {
 		cat := d.Catalog
+		// Preload("Distributions...") ne remplit pas le lien retour vers le
+		// jour : sans lui, CanOrderNow ne voyait pas la clôture commune et
+		// déclarait ouverts tous les catalogues qui n'en surchargeaient pas.
+		d.MultiDistrib = md
 		catalogs = append(catalogs, gin.H{
 			"id":       cat.ID,
 			"name":     cat.Name,
 			"vendorId": cat.VendorID,
 			"vendor":   gin.H{"id": cat.Vendor.ID, "name": cat.Vendor.Name},
-			"canOrder": d.CanOrderNow(),
+			"canOrder": d.CanOrderNow() || (manager && d.OrderWindowStarted(now)),
 		})
 		if !seenVendor[cat.VendorID] {
 			vendors = append(vendors, vendorInfo(cat.Vendor))
@@ -645,13 +695,35 @@ func (h *CompatHandler) ShopAllProducts(c *gin.Context) {
 		return
 	}
 
+	// Le jour porte la clôture par défaut, mais c'est celle du catalogue qui
+	// fait foi : un producteur qui a repoussé la sienne reste commandable
+	// quand les autres sont clos, et l'inverse est vrai aussi.
+	var md model.MultiDistrib
+	if err := h.db.First(&md, mdID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
 	var distribs []model.Distribution
 	h.db.Where("multi_distrib_id = ?", mdID).
 		Preload("Catalog").
 		Find(&distribs)
 
+	// Un gestionnaire garde en rayon les catalogues déjà clos : il vient
+	// corriger une commande, et c'est presque toujours après la clôture. Un
+	// catalogue qui n'a pas encore ouvert lui reste fermé comme aux autres —
+	// il n'y a rien à y corriger.
+	manager := h.callerManages(c, md.GroupID)
+	now := time.Now()
+
 	catalogIDs := make([]uint, 0, len(distribs))
 	for _, d := range distribs {
+		d.MultiDistrib = md
+		if !d.CanOrderNow() && !(manager && d.OrderWindowStarted(now)) {
+			// Catalogue clos : ses produits n'ont rien à faire en rayon, ils
+			// ne seraient pas commandables une fois au panier.
+			continue
+		}
 		catalogIDs = append(catalogIDs, d.CatalogID)
 	}
 
@@ -808,7 +880,7 @@ func (h *CompatHandler) ShopSubmit(c *gin.Context) {
 
 	// Find the distribution for this multiDistrib + catalog
 	var distrib model.Distribution
-	if err := h.db.Preload("Catalog").
+	if err := h.db.Preload("Catalog").Preload("MultiDistrib").
 		Where("multi_distrib_id = ? AND catalog_id = ?", mdID, body.CatalogID).
 		First(&distrib).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "distribution not found"})
@@ -818,13 +890,33 @@ func (h *CompatHandler) ShopSubmit(c *gin.Context) {
 	// Résolution du destinataire : par défaut l'utilisateur courant ; si userId
 	// est fourni et différent, vérifier que l'appelant est gestionnaire du groupe.
 	targetID := claims.UserID
+	isManager := false
 	if body.UserID != 0 && body.UserID != claims.UserID {
 		ug := loadGroupAccess(h.db, claims.UserID, distrib.Catalog.GroupID)
 		if ug == nil || !ug.IsGroupManager() {
 			c.JSON(http.StatusForbidden, gin.H{"error": "only group admins can edit orders for other users"})
 			return
 		}
+		isManager = true
 		targetID = body.UserID
+	}
+
+	// La clôture ne tenait qu'à l'affichage : le formulaire disparaissait, mais
+	// la requête passait encore. Un membre qui garde son panier ouvert par-delà
+	// l'heure de fermeture, ou qui rejoue l'appel, commandait sans obstacle.
+	//
+	// Un gestionnaire qui saisit pour un membre est dispensé de la clôture —
+	// rattraper une commande après coup fait partie de son travail — mais pas
+	// de l'ouverture : avant elle, il n'y a rien à rattraper.
+	if !distrib.CanOrderNow() {
+		switch {
+		case !isManager:
+			c.JSON(http.StatusForbidden, gin.H{"error": "les commandes de ce catalogue sont fermées"})
+			return
+		case !distrib.OrderWindowStarted(time.Now()):
+			c.JSON(http.StatusForbidden, gin.H{"error": "les commandes de ce catalogue ne sont pas encore ouvertes"})
+			return
+		}
 	}
 
 	// Delete existing orders for this user + distribution

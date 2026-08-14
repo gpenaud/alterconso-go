@@ -15,6 +15,13 @@ interface Props {
    *  envoyer des payloads vides à ceux dont tous les items ont été retirés
    *  (sans ça, le serveur garde l'ancienne commande pour ces catalogues). */
   existingCatalogIds?: number[];
+  /** Où revenir une fois la commande validée : l'écran d'administration d'où
+   *  l'on vient (cf. ?return= dans l'URL du shop). À défaut, /home. */
+  returnTo?: string;
+  /** Message qui interdit la validation. Valider remplace la commande du
+   *  destinataire : tant qu'on n'a pas pu la charger, le panier ne la reflète
+   *  pas, et l'envoyer l'effacerait au lieu de la modifier. */
+  blockReason?: string;
 }
 
 /**
@@ -23,7 +30,13 @@ interface Props {
  * footer avec total + "Commander". Port libre de react.store.Cart +
  * CartDetails (Haxe), refondu en panneau latéral plutôt qu'en popover.
  */
-export function CartPanel({ onClose, targetUserId, existingCatalogIds = [] }: Props) {
+export function CartPanel({
+  onClose,
+  targetUserId,
+  existingCatalogIds = [],
+  returnTo,
+  blockReason,
+}: Props) {
   const items = useCartStore((s) => s.items);
   const subtotal = useCartStore((s) => s.subtotal());
   const feesTotal = useCartStore((s) => s.feesTotal());
@@ -57,7 +70,7 @@ export function CartPanel({ onClose, targetUserId, existingCatalogIds = [] }: Pr
   const canSubmit = items.length > 0 || existingCatalogIds.length > 0;
 
   const submit = async () => {
-    if (!canSubmit || multiDistribId == null) return;
+    if (!canSubmit || multiDistribId == null || blockReason) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -94,10 +107,10 @@ export function CartPanel({ onClose, targetUserId, existingCatalogIds = [] }: Pr
       queryClient.invalidateQueries({ queryKey: ["shop", "existingOrders"] });
       queryClient.invalidateQueries({ queryKey: ["home"] });
       setSubmitted(true);
-      // Retour à /home après un bref affichage de la confirmation. Navigation
-      // dure (window.location) car /home est une page Go hors SPA.
+      // Retour après un bref affichage de la confirmation. Navigation dure
+      // (window.location) car la destination est une page Go, hors SPA.
       window.setTimeout(() => {
-        window.location.href = "/home";
+        window.location.href = returnTo ?? "/home";
       }, 800);
     } catch (e) {
       setSubmitError((e as Error).message ?? "Erreur lors de la commande");
@@ -395,10 +408,21 @@ export function CartPanel({ onClose, targetUserId, existingCatalogIds = [] }: Pr
                 {submitError}
               </div>
             )}
+            {blockReason && (
+              <div
+                style={{
+                  color: COLORS.third,
+                  fontSize: "0.85rem",
+                  marginBottom: 8,
+                }}
+              >
+                {blockReason}
+              </div>
+            )}
             <button
               type="button"
               onClick={submit}
-              disabled={submitting}
+              disabled={submitting || !!blockReason}
               className="transition-colors"
               style={{
                 width: "100%",
@@ -411,8 +435,8 @@ export function CartPanel({ onClose, targetUserId, existingCatalogIds = [] }: Pr
                 fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: "0.05em",
-                cursor: submitting ? "not-allowed" : "pointer",
-                opacity: submitting ? 0.7 : 1,
+                cursor: submitting || blockReason ? "not-allowed" : "pointer",
+                opacity: submitting || blockReason ? 0.7 : 1,
               }}
             >
               {submitting

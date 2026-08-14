@@ -44,9 +44,20 @@
       <span style="background:#333;padding:2px 8px;border-radius:3px;margin-right:8px;font-size:0.9em;font-weight:bold;">N°{{.BasketNum}}</span>
       <b>{{.UserName}}</b>
     </span>
-    <a href="#" class="btn btn-default btn-xs" data-toggle="modal" data-target="#modal-member-{{.UserID}}">
-      <i class="icon icon-edit"></i> Modifier
-    </a>
+    <span style="display:flex;gap:6px;">
+      {{/* Modifier la commande passe par le shop : c'est là que vivent le
+           catalogue, les stocks et les prix. La modale reste pour ce que le
+           shop ne sait pas faire — la saisie des prix après pesée. */}}
+      {{if $.IsGroupManager}}
+      <a href="/shop/{{$.MultiDistribID}}?userId={{.UserID}}&for={{.UserName}}&return={{$.BackURL}}"
+         class="btn btn-primary btn-xs">
+        <i class="icon icon-basket"></i> Modifier la commande
+      </a>
+      {{end}}
+      <a href="#" class="btn btn-default btn-xs" data-toggle="modal" data-target="#modal-member-{{.UserID}}">
+        <i class="icon icon-edit"></i> Détail / pesée
+      </a>
+    </span>
   </div>
   <div style="overflow-x:auto;width:100%;">
   <table class="table table-bordered table-condensed" style="margin-bottom:0;width:100%;">
@@ -205,11 +216,18 @@
           <button type="submit" class="btn btn-success" style="font-weight:bold;letter-spacing:0.05em;">
             <i class="icon icon-chevron-right"></i> VALIDER
           </button>
+          {{if $.IsGroupManager}}
+          <a class="btn btn-default" style="font-weight:bold;"
+             href="/shop/{{$.MultiDistribID}}?userId={{.UserID}}&for={{.UserName}}&return={{$.BackURL}}">
+            <i class="icon icon-plus"></i> AJOUTER UN PRODUIT
+          </a>
+          {{else}}
           <button type="button" class="btn btn-default" style="font-weight:bold;"
              data-dismiss="modal"
              onclick="openAddProduct({{.UserID}})">
             <i class="icon icon-plus"></i> AJOUTER UN PRODUIT
           </button>
+          {{end}}
           <button type="button" class="btn btn-link" data-dismiss="modal"
             style="margin-left:auto;color:#555;font-weight:bold;">
             <i class="icon icon-delete"></i> FERMER
@@ -455,12 +473,18 @@ document.getElementById('btnBackToOrder').addEventListener('click', function() {
   }, 400);
 });
 
+// Nouvelle commande : on ouvre le shop au nom du membre choisi, et on revient
+// ici une fois validé. Le shop y apporte le catalogue, les stocks et les prix
+// que la saisie ligne à ligne ignorait.
 function openMemberOrder(multiDistribId) {
-  var uid = document.getElementById('selectMember').value;
+  var select = document.getElementById('selectMember');
+  var uid = select.value;
   if (!uid) { alert('Choisissez un membre.'); return; }
-  var url = '/contractAdmin/memberOrder/' + multiDistribId + '/' + uid;
-  {{if .Catalog.ID}}url += '?catalog={{.Catalog.ID}}';{{end}}
-  window.location.href = url;
+  var name = select.options[select.selectedIndex].text;
+  window.location.href = '/shop/' + multiDistribId +
+    '?userId=' + encodeURIComponent(uid) +
+    '&for=' + encodeURIComponent(name) +
+    '&return=' + encodeURIComponent({{.BackURL}});
 }
 
 // Auto-open membre après ajout produit
