@@ -118,6 +118,9 @@
     </div>
 
     <!-- Farmers panel (hidden by default) -->
+    {{/* Retenu ici pour les liens du tableau : sous {{range .DistribLinks}},
+         $ désigne la racine du template et non cette distribution. */}}
+    {{$mdID := .ID}}
     <div id="farmers-{{.ID}}" style="display:none;background:#fff;border:1px solid #e5e5e5;border-top:none;border-radius:0 0 6px 6px;padding:16px;">
       <div style="margin-bottom:14px;">
         <a href="/distribution/inviteFarmers/{{.ID}}" class="btn btn-success" style="padding:8px 16px;">
@@ -146,15 +149,19 @@
               </div>
               {{end}}
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                <div class="btn-group">
-                  <button class="btn btn-default dropdown-toggle" style="padding:5px 11px;" data-toggle="dropdown">
-                    <i class="icon icon-chevron-down"></i> Dates
-                  </button>
-                  <ul class="dropdown-menu">
-                    <li><a href="/edit/{{.DistribID}}?from=distribSection"><i class="icon icon-calendar"></i> Personnaliser les dates</a></li>
-                    <li><a href="/distribution/shift/{{.DistribID}}?from=distribSection"><i class="icon icon-calendar"></i> Reporter la distribution</a></li>
-                  </ul>
-                </div>
+                {{/* Lien direct, et non un menu déroulant : celui-ci ne
+                     s'ouvrait pas, et il ne restait de toute façon qu'une
+                     entrée — l'écran des dates permet aussi de reporter la
+                     livraison de ce producteur, ce que « Reporter la
+                     distribution » faisait à part.
+
+                     Même écran que depuis la fiche catalogue : livraison,
+                     ouverture et clôture pour ce seul producteur, avec les
+                     mêmes bornes. Le retour rouvre la liste d'où l'on vient. */}}
+                <a href="/contractAdmin/distributions/{{.CatalogID}}/dates/{{.DistribID}}?return={{printf "/distribution?open=%d" $mdID}}"
+                   class="btn btn-default" style="padding:5px 11px;">
+                  <i class="icon icon-calendar"></i> Dates
+                </a>
                 <a href="/distribution/notAttend/{{.DistribID}}" class="btn btn-default" style="padding:5px 11px;"
                    onclick="return confirm('Retirer ce producteur de la distribution ?')">
                   <i class="icon icon-delete"></i> Ne participe plus
@@ -181,5 +188,17 @@ function toggleFarmers(id) {
   var el = document.getElementById('farmers-' + id);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
+
+// ?open=<id> : rouvre la liste des producteurs de cette distribution. On
+// revient ici après avoir réglé des dates, et retomber sur une liste repliée
+// obligeait à rechercher la ligne qu'on venait de quitter.
+document.addEventListener('DOMContentLoaded', function () {
+  var id = new URLSearchParams(window.location.search).get('open');
+  if (!id) return;
+  var el = document.getElementById('farmers-' + id);
+  if (!el) return;
+  el.style.display = 'block';
+  el.scrollIntoView({ block: 'center' });
+});
 </script>
 {{end}}

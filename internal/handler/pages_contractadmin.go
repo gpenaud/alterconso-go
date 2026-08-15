@@ -832,6 +832,8 @@ func (h *PagesHandler) CatalogAdminDistributionsPage(c *gin.Context) {
 type CatalogDistribDatesData struct {
 	CatalogAdminData
 	DistribID uint
+	// Où revenir : fiche catalogue, ou page des distributions selon l'entrée.
+	BackURL string
 
 	// Dates du jour commun, rappelées sous chaque champ : ce sont elles qui
 	// s'appliquent tant que la distribution n'en surcharge pas.
@@ -887,6 +889,15 @@ func (h *PagesHandler) CatalogAdminDistributionDatesPage(c *gin.Context) {
 		First(&d).Error; err != nil {
 		c.String(http.StatusNotFound, "distribution introuvable")
 		return
+	}
+
+	// D'où l'on vient, et où l'on retourne une fois les dates réglées : la
+	// fiche catalogue, ou la page des distributions quand on arrive par la
+	// liste des producteurs participants. Seul un chemin interne est suivi —
+	// une URL absolue ferait de ce paramètre une redirection ouverte.
+	backTo := fmt.Sprintf("/contractAdmin/distributions/%d", data.Catalog.ID)
+	if r := c.Query("return"); strings.HasPrefix(r, "/") && !strings.HasPrefix(r, "//") {
+		backTo = r
 	}
 
 	parse := func(field string) *time.Time {
@@ -957,13 +968,14 @@ func (h *PagesHandler) CatalogAdminDistributionDatesPage(c *gin.Context) {
 					"order_start_date": newStart,
 					"order_end_date":   newEnd,
 				})
-			c.Redirect(http.StatusFound, fmt.Sprintf("/contractAdmin/distributions/%d", data.Catalog.ID))
+			c.Redirect(http.StatusFound, backTo)
 			return
 		}
 	}
 
 	page := CatalogDistribDatesData{
 		CatalogAdminData:    data,
+		BackURL:             backTo,
 		DistribID:           d.ID,
 		CommonDistribLabel:  d.MultiDistrib.DistribStartDate.Format("02/01/2006 à 15:04"),
 		DistribInherited:    d.Date == nil,
