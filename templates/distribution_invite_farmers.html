@@ -2,31 +2,57 @@
 <div class="col-md-12">
   <div class="article">
     <h3>Producteurs participants — {{.Date}}</h3>
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>Catalogue</th>
-          <th>Producteur</th>
-          <th>Participation</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .Catalogs}}
-        <tr>
-          <td><a href="/contractAdmin/view/{{.ID}}">{{.Name}}</a></td>
-          <td>{{.VendorName}}</td>
-          <td>
-            {{if .Active}}
-            <span class="label label-success">Participe</span>
-            {{else}}
-            <span class="label label-default">Non inscrit</span>
-            {{end}}
-          </td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
-    <a href="/distribution" class="btn btn-default btn-sm"><i class="icon icon-chevron-left"></i> Retour</a>
+
+    {{if .Notice}}
+    <div class="alert alert-info">{{.Notice}}</div>
+    {{end}}
+
+    <p class="text-muted">
+      Cochez les catalogues qui participent à cette distribution. Un producteur
+      dont des commandes sont déjà passées ne peut pas être retiré : elles
+      disparaîtraient avec lui.
+    </p>
+
+    <form method="POST">
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th style="width:110px;">Participe</th>
+            <th>Catalogue</th>
+            <th>Producteur</th>
+            <th style="width:170px;">Commandes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Catalogs}}
+          <tr>
+            <td style="text-align:center;vertical-align:middle;">
+              <input type="checkbox" name="catalog_{{.ID}}" value="1" {{if .Active}}checked{{end}}
+                     {{if .NbOrders}}title="Des commandes sont déjà passées : le retrait sera refusé"{{end}} />
+            </td>
+            <td><a href="/contractAdmin/view/{{.ID}}">{{.Name}}</a></td>
+            <td>{{.VendorName}}</td>
+            <td>
+              {{if .NbOrders}}
+              <span class="label label-warning">{{.NbOrders}} commande(s)</span>
+              {{else if .Active}}
+              <span class="label label-success">Participe</span>
+              {{else}}
+              <span style="color:#aaa;">—</span>
+              {{end}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+
+      <button type="submit" class="btn btn-success">
+        <i class="icon icon-check"></i> Enregistrer les participations
+      </button>
+      <a href="/distribution?open={{.MultiDistrib.ID}}" class="btn btn-default">
+        <i class="icon icon-chevron-left"></i> Retour
+      </a>
+    </form>
   </div>
 </div>
 {{end}}

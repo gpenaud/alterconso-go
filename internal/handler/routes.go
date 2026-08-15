@@ -181,7 +181,12 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.POST("/distribution/insertMdCycle", pageAuth, reqManager, pagesH.DistributionInsertMdCyclePage)
 	r.GET("/distribution/validate/:id", pageAuth, reqManager, pagesH.DistributionValidatePage)
 	r.GET("/distribution/inviteFarmers/:id", pageAuth, reqManager, pagesH.DistributionInviteFarmersPage)
-	r.GET("/distribution/notAttend/:id", pageAuth, reqManager, pagesH.DistributionNotAttendPage)
+	// La page listait les producteurs sans permettre d'en ajouter ni d'en
+	// retirer, alors que le bouton qui y mène le promet : elle reçoit son POST.
+	r.POST("/distribution/inviteFarmers/:id", pageAuth, reqManager, pagesH.DistributionInviteFarmersPage)
+	// POST, et non GET : ce retrait supprime la distribution d'un producteur.
+	// En GET, un préchargement de lien suffisait à le déclencher.
+	r.POST("/distribution/notAttend/:id", pageAuth, reqManager, pagesH.DistributionNotAttendPage)
 	r.GET("/distribution/shift/:id", pageAuth, reqManager, pagesH.DistributionShiftPage)
 	r.POST("/distribution/shift/:id", pageAuth, reqManager, pagesH.DistributionShiftPage)
 	r.GET("/edit/:id", pageAuth, reqManager, pagesH.DistributionEditDatesPage)

@@ -547,32 +547,112 @@ func (h *PagesHandler) DistributionInviteFarmersPage(c *gin.Context) {
 		c.String(http.StatusNotFound, "distribution introuvable")
 		return
 	}
+	if md.GroupID != pd.Group.ID {
+		c.String(http.StatusForbidden, "accès refusé")
+		return
+	}
 
 	type CatalogRow struct {
 		ID         uint
 		Name       string
 		VendorName string
 		Active     bool
+		NbOrders   int
 	}
 
 	// All catalogs of the group
 	var allCatalogs []model.Catalog
 	h.db.Where("group_id = ?", pd.Group.ID).Preload("Vendor").Find(&allCatalogs)
 
-	// Active catalog IDs for this multidistrib
-	activeIDs := map[uint]bool{}
+	// Distribution existante par catalogue, pour ce jour.
+	distribByCatalog := map[uint]model.Distribution{}
 	for _, d := range md.Distributions {
-		activeIDs[d.CatalogID] = true
+		distribByCatalog[d.CatalogID] = d
+	}
+
+	// Nombre de commandes par distribution : ce qui empêche un retrait.
+	ordersByDistrib := map[uint]int{}
+	for _, d := range md.Distributions {
+		var n int64
+		h.db.Model(&model.UserOrder{}).Where("distribution_id = ?", d.ID).Count(&n)
+		ordersByDistrib[d.ID] = int(n)
+	}
+
+	var notice string
+
+	// ?blocked=<catalogID> : un retrait refusé ailleurs renvoie ici, où le
+	// nombre de commandes en cause est visible en face du producteur.
+	if blocked, errParse := strconv.ParseUint(c.Query("blocked"), 10, 64); errParse == nil {
+		for _, cat := range allCatalogs {
+			if uint64(cat.ID) == blocked {
+				notice = cat.Name + " : retrait impossible, des commandes sont déjà passées."
+				break
+			}
+		}
+	}
+
+	if c.Request.Method == http.MethodPost {
+		added, removed := 0, 0
+		var refused []string
+
+		for _, cat := range allCatalogs {
+			wanted := c.PostForm(fmt.Sprintf("catalog_%d", cat.ID)) != ""
+			d, present := distribByCatalog[cat.ID]
+
+			switch {
+			case wanted && !present:
+				h.db.Create(&model.Distribution{CatalogID: cat.ID, MultiDistribID: md.ID})
+				added++
+			case !wanted && present:
+				// Retirer un producteur supprime sa distribution, et avec elle
+				// les commandes qui y sont rattachées. Tant qu'il y en a, le
+				// retrait attend : c'est au responsable de trancher, en
+				// connaissance de cause.
+				if ordersByDistrib[d.ID] > 0 {
+					refused = append(refused, cat.Name)
+					continue
+				}
+				h.db.Delete(&model.Distribution{}, d.ID)
+				removed++
+			}
+		}
+
+		notice = frCount(added, "producteur ajouté", "producteurs ajoutés") + ", " +
+			frCount(removed, "retiré", "retirés") + "."
+		if len(refused) > 0 {
+			notice += " " + strings.Join(refused, ", ") +
+				" : retrait impossible, des commandes sont déjà passées."
+		}
+
+		// Rechargement : l'état affiché doit refléter ce qui vient d'être fait.
+		h.db.Preload("Place").Preload("Distributions.Catalog.Vendor").First(&md, mdID)
+		distribByCatalog = map[uint]model.Distribution{}
+		ordersByDistrib = map[uint]int{}
+		for _, d := range md.Distributions {
+			distribByCatalog[d.CatalogID] = d
+			var n int64
+			h.db.Model(&model.UserOrder{}).Where("distribution_id = ?", d.ID).Count(&n)
+			ordersByDistrib[d.ID] = int(n)
+		}
+	}
+
+	activeIDs := map[uint]bool{}
+	for cid := range distribByCatalog {
+		activeIDs[cid] = true
 	}
 
 	rows := make([]CatalogRow, 0, len(allCatalogs))
 	for _, cat := range allCatalogs {
-		rows = append(rows, CatalogRow{
+		row := CatalogRow{
 			ID:         cat.ID,
 			Name:       cat.Name,
 			VendorName: cat.Vendor.Name,
 			Active:     activeIDs[cat.ID],
-		})
+		}
+		if d, ok := distribByCatalog[cat.ID]; ok {
+			row.NbOrders = ordersByDistrib[d.ID]
+		}
+		rows = append(rows, row)
 	}
 
 	type pageData struct {
@@ -580,12 +660,14 @@ func (h *PagesHandler) DistributionInviteFarmersPage(c *gin.Context) {
 		MultiDistrib model.MultiDistrib
 		Date         string
 		Catalogs     []CatalogRow
+		Notice       string
 	}
 	data := pageData{
 		PageData:     pd,
 		MultiDistrib: md,
 		Date:         md.DistribStartDate.Format("02/01/2006"),
 		Catalogs:     rows,
+		Notice:       notice,
 	}
 	data.Title = "Producteurs participants"
 	data.Category = "distribution"
@@ -622,11 +704,23 @@ func (h *PagesHandler) DistributionNotAttendPage(c *gin.Context) {
 		c.String(http.StatusForbidden, "accès refusé")
 		return
 	}
-	// Delete the distribution (remove catalog from multidistrib)
+
+	// Retirer un producteur supprime sa distribution, et avec elle les
+	// commandes qui y sont rattachées. Tant qu'il y en a, le retrait attend :
+	// c'est la même règle que sur l'écran des participations, où le nombre de
+	// commandes est affiché et où l'on peut décider en connaissance de cause.
+	var nbOrders int64
+	h.db.Model(&model.UserOrder{}).Where("distribution_id = ?", distrib.ID).Count(&nbOrders)
+	if nbOrders > 0 {
+		c.Redirect(http.StatusFound, fmt.Sprintf("/distribution/inviteFarmers/%d?blocked=%d",
+			distrib.MultiDistribID, distrib.CatalogID))
+		return
+	}
+
 	h.db.Delete(&distrib)
 	from := c.DefaultQuery("from", "/distribution")
-	if from == "distribSection" {
-		from = "/distribution"
+	if from == "distribSection" || !strings.HasPrefix(from, "/") || strings.HasPrefix(from, "//") {
+		from = fmt.Sprintf("/distribution?open=%d", distrib.MultiDistribID)
 	}
 	c.Redirect(http.StatusFound, from)
 }

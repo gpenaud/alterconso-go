@@ -162,10 +162,14 @@
                    class="btn btn-default" style="padding:5px 11px;">
                   <i class="icon icon-calendar"></i> Dates
                 </a>
-                <a href="/distribution/notAttend/{{.DistribID}}" class="btn btn-default" style="padding:5px 11px;"
-                   onclick="return confirm('Retirer ce producteur de la distribution ?')">
-                  <i class="icon icon-delete"></i> Ne participe plus
-                </a>
+                {{/* Formulaire, et non lien : ce retrait supprime des données,
+                     et un GET se déclenche au simple préchargement. */}}
+                <form method="POST" action="/distribution/notAttend/{{.DistribID}}" style="display:inline;">
+                  <button type="submit" class="btn btn-default" style="padding:5px 11px;"
+                          onclick="return confirm('Retirer ce producteur de la distribution ?')">
+                    <i class="icon icon-delete"></i> Ne participe plus
+                  </button>
+                </form>
               </div>
             </td>
           </tr>
