@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -772,10 +774,14 @@ type EditMdData struct {
 	MultiDistrib    model.MultiDistrib
 	Places          []model.Place
 	DateLabel       string
+	DefaultDate     string // pour le champ date, format 2006-01-02
 	DefaultStart    string
 	DefaultEnd      string
 	DefaultOrdOpen  string
 	DefaultOrdClose string
+	Error           string
+	ExistingID      uint
+	ExistingDate    string
 }
 
 func (h *PagesHandler) DistributionEditMdPage(c *gin.Context) {
@@ -812,12 +818,36 @@ func (h *PagesHandler) DistributionEditMdPage(c *gin.Context) {
 		placeIDStr := c.PostForm("placeId")
 		syncAll := c.PostForm("syncAll") == "on"
 
+		// La date est modifiable : c'est ainsi qu'on reporte une distribution.
+		// Le champ absent ou illisible laisse le jour en place plutôt que de
+		// déplacer la distribution au hasard.
 		dateStr := md.DistribStartDate.Format("2006-01-02")
+		if posted := strings.TrimSpace(c.PostForm("date")); posted != "" {
+			if _, err := time.ParseInLocation("2006-01-02", posted, time.Local); err == nil {
+				dateStr = posted
+			}
+		}
+
 		if t, err := time.ParseInLocation("2006-01-02T15:04", dateStr+"T"+startHour, time.Local); err == nil {
 			md.DistribStartDate = t
 		}
 		if t, err := time.ParseInLocation("2006-01-02T15:04", dateStr+"T"+endHour, time.Local); err == nil {
 			md.DistribEndDate = t
+		}
+
+		// Même règle qu'à la création, en s'ignorant soi-même : deux
+		// distributions le même jour, et les écrans qui travaillent par date
+		// n'en montreraient qu'une.
+		if existing := h.multiDistribOn(pd.Group.ID, md.DistribStartDate, md.ID); existing != nil {
+			data := h.editMdData(pd, md, places)
+			data.DefaultDate = dateStr
+			data.Error = "Une distribution est déjà programmée ce jour-là" + placeSuffix(existing) +
+				". Déplacez plutôt celle-ci à une autre date, ou fusionnez les deux : " +
+				"les listes d'émargement et les écrans de commandes ne retiennent qu'une distribution par jour."
+			data.ExistingID = existing.ID
+			data.ExistingDate = existing.DistribStartDate.Format("02/01/2006 à 15:04")
+			h.renderEditMd(c, data)
+			return
 		}
 		if t, err := time.ParseInLocation("2006-01-02T15:04", ordOpen, time.Local); err == nil {
 			md.OrderStartDate = &t
@@ -854,6 +884,12 @@ func (h *PagesHandler) DistributionEditMdPage(c *gin.Context) {
 		return
 	}
 
+	h.renderEditMd(c, h.editMdData(pd, md, places))
+}
+
+// editMdData compose la vue du formulaire, aussi bien à l'affichage qu'au
+// retour d'un refus — les deux doivent montrer les mêmes champs.
+func (h *PagesHandler) editMdData(pd PageData, md model.MultiDistrib, places []model.Place) EditMdData {
 	frDays := [7]string{"Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"}
 	frMonths := [12]string{"Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"}
 	t := md.DistribStartDate
@@ -873,6 +909,7 @@ func (h *PagesHandler) DistributionEditMdPage(c *gin.Context) {
 		MultiDistrib:    md,
 		Places:          places,
 		DateLabel:       dateLabel,
+		DefaultDate:     md.DistribStartDate.Format("2006-01-02"),
 		DefaultStart:    md.DistribStartDate.Format("15:04"),
 		DefaultEnd:      md.DistribEndDate.Format("15:04"),
 		DefaultOrdOpen:  ordOpen,
@@ -880,7 +917,10 @@ func (h *PagesHandler) DistributionEditMdPage(c *gin.Context) {
 	}
 	data.Title = "Modifier une distribution"
 	data.Category = "distribution"
+	return data
+}
 
+func (h *PagesHandler) renderEditMd(c *gin.Context, data EditMdData) {
 	tmpl, err := loadTemplates("base.html", "design.html", "distribution_edit_md.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -929,6 +969,33 @@ type InsertMdData struct {
 	DefaultEnd     string
 	DefaultOrdOpen string
 	DefaultOrdClose string
+	// Erreur affichée au-dessus du formulaire, avec la distribution en cause.
+	Error        string
+	ExistingID   uint
+	ExistingDate string
+}
+
+// multiDistribOn retourne la distribution déjà programmée ce jour-là pour ce
+// groupe, ou nil. exceptID permet d'ignorer celle qu'on déplace.
+//
+// La journée entière fait foi, et non l'horaire : l'émargement, les commandes
+// par date, la fiche producteur et l'export CSV désignent tous une
+// distribution par sa seule date et n'en retiennent qu'une par jour. Une
+// seconde distribution le même jour existerait en base et recevrait des
+// commandes, mais resterait invisible partout où elle compte — jusqu'à des
+// paniers absents de la liste d'émargement le jour venu.
+func (h *PagesHandler) multiDistribOn(groupID uint, day time.Time, exceptID uint) *model.MultiDistrib {
+	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.Local)
+	q := h.db.Where("group_id = ? AND distrib_start_date >= ? AND distrib_start_date < ?",
+		groupID, start, start.AddDate(0, 0, 1))
+	if exceptID != 0 {
+		q = q.Where("id <> ?", exceptID)
+	}
+	var md model.MultiDistrib
+	if q.Preload("Place").First(&md).Error != nil {
+		return nil
+	}
+	return &md
 }
 
 func (h *PagesHandler) DistributionInsertMdPage(c *gin.Context) {
@@ -954,6 +1021,30 @@ func (h *PagesHandler) DistributionInsertMdPage(c *gin.Context) {
 		placeID, err3 := strconv.ParseUint(placeIDStr, 10, 64)
 		if err1 != nil || err2 != nil || err3 != nil {
 			c.String(http.StatusBadRequest, "paramètres invalides")
+			return
+		}
+
+		// Une seule distribution par jour et par groupe : au-delà, les écrans
+		// qui travaillent par date n'en verraient qu'une, et les commandes de
+		// l'autre disparaîtraient sans un mot.
+		if existing := h.multiDistribOn(pd.Group.ID, distribStart, 0); existing != nil {
+			data := InsertMdData{
+				PageData:        pd,
+				Places:          places,
+				DefaultDate:     dateStr,
+				DefaultStart:    startHour,
+				DefaultEnd:      endHour,
+				DefaultOrdOpen:  ordOpen,
+				DefaultOrdClose: ordClose,
+				Error: "Une distribution est déjà programmée ce jour-là" +
+					placeSuffix(existing) + ". Ajoutez-y vos producteurs plutôt que d'en créer une seconde : " +
+					"les listes d'émargement et les écrans de commandes ne retiennent qu'une distribution par jour.",
+				ExistingID:   existing.ID,
+				ExistingDate: existing.DistribStartDate.Format("02/01/2006 à 15:04"),
+			}
+			data.Title = "Créer une distribution générale"
+			data.Category = "distribution"
+			h.renderInsertMd(c, data)
 			return
 		}
 
@@ -986,7 +1077,19 @@ func (h *PagesHandler) DistributionInsertMdPage(c *gin.Context) {
 	}
 	data.Title = "Créer une distribution générale"
 	data.Category = "distribution"
+	h.renderInsertMd(c, data)
+}
 
+// placeSuffix nomme le lieu d'une distribution quand il est connu, pour que le
+// refus dise laquelle est déjà là plutôt qu'un simple « ce jour est pris ».
+func placeSuffix(md *model.MultiDistrib) string {
+	if md == nil || md.Place.Name == "" {
+		return ""
+	}
+	return " à " + md.Place.Name
+}
+
+func (h *PagesHandler) renderInsertMd(c *gin.Context, data InsertMdData) {
 	t, err := loadTemplates("base.html", "design.html", "distribution_insert_md.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -1053,7 +1156,11 @@ func (h *PagesHandler) DistributionInsertMdCyclePage(c *gin.Context) {
 			interval = 7
 		}
 
-		// Génération des MultiDistribs
+		// Génération des MultiDistribs. Les jours déjà pourvus sont sautés, et
+		// non doublés : un cycle relancé sur une période déjà couverte — pour
+		// la prolonger de quelques semaines — remplissait sinon le calendrier
+		// de distributions jumelles dont une seule serait jamais visible.
+		created, skipped := 0, 0
 		for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, interval) {
 			distribStart, _ := time.ParseInLocation("2006-01-02T15:04", d.Format("2006-01-02")+"T"+startHour, time.Local)
 			distribEnd, _ := time.ParseInLocation("2006-01-02T15:04", d.Format("2006-01-02")+"T"+endHour, time.Local)
@@ -1061,6 +1168,11 @@ func (h *PagesHandler) DistributionInsertMdCyclePage(c *gin.Context) {
 			ordCloseDate := d.AddDate(0, 0, -daysBeforeClose)
 			ordOpen, _ := time.ParseInLocation("2006-01-02T15:04", ordOpenDate.Format("2006-01-02")+"T"+openingHour, time.Local)
 			ordClose, _ := time.ParseInLocation("2006-01-02T15:04", ordCloseDate.Format("2006-01-02")+"T"+closingHour, time.Local)
+
+			if h.multiDistribOn(pd.Group.ID, distribStart, 0) != nil {
+				skipped++
+				continue
+			}
 
 			md := model.MultiDistrib{
 				GroupID:          pd.Group.ID,
@@ -1071,9 +1183,13 @@ func (h *PagesHandler) DistributionInsertMdCyclePage(c *gin.Context) {
 				OrderEndDate:     &ordClose,
 			}
 			h.db.Create(&md)
+			created++
 		}
 
-		c.Redirect(http.StatusFound, "/distribution")
+		// Compteurs, et non un message tout fait : la page compose la phrase
+		// elle-même, pour qu'un lien forgé ne puisse pas y faire afficher
+		// n'importe quoi.
+		c.Redirect(http.StatusFound, fmt.Sprintf("/distribution?created=%d&skipped=%d", created, skipped))
 		return
 	}
 

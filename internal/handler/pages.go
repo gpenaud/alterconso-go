@@ -1199,6 +1199,19 @@ func (h *PagesHandler) DistributionPage(c *gin.Context) {
 		return
 	}
 
+	// Résultat d'une création par cycle. La phrase se compose ici, à partir de
+	// deux compteurs, plutôt que d'arriver toute faite dans l'URL : un lien
+	// forgé pourrait sinon faire afficher n'importe quel message.
+	created, _ := strconv.Atoi(c.Query("created"))
+	skipped, _ := strconv.Atoi(c.Query("skipped"))
+	if created > 0 || skipped > 0 {
+		pd.Flash = frCount(created, "distribution créée", "distributions créées") + "."
+		if skipped > 0 {
+			pd.Flash += " " + frCount(skipped, "date ignorée", "dates ignorées") +
+				" : une distribution y était déjà programmée."
+		}
+	}
+
 	// Period navigation
 	offsetStr := c.DefaultQuery("offset", "0")
 	offsetWeeks, _ := strconv.Atoi(offsetStr)
@@ -1701,6 +1714,19 @@ func (h *PagesHandler) issueTokenAs(userID, groupID, impersonatorID uint) (strin
 // niveau du paquet parce que le helper ci-dessous sert à plusieurs d'entre eux.
 var frMonthsLong = [13]string{"", "Janvier", "Février", "Mars", "Avril", "Mai",
 	"Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"}
+
+// frCount : "1 distribution créée", "3 distributions créées", "aucune
+// distribution créée". Le zéro se dit, il ne s'écrit pas « 0 ».
+func frCount(n int, singulier, pluriel string) string {
+	switch {
+	case n == 0:
+		return "Aucune " + singulier
+	case n == 1:
+		return "1 " + singulier
+	default:
+		return fmt.Sprintf("%d %s", n, pluriel)
+	}
+}
 
 // frDateTimeLabel : "Vendredi 12 Août à 18:00", tel qu'affiché aux membres
 // pour l'ouverture et la clôture des commandes.

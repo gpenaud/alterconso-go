@@ -2,6 +2,20 @@
 <div class="col-md-8">
   <div class="article">
     <h2 style="font-style:italic;"><b>Créer une distribution générale</b></h2>
+
+    {{if .Error}}
+    <div class="alert alert-warning" style="max-width:700px;margin-top:16px;">
+      <i class="icon icon-alert"></i> {{.Error}}
+      {{if .ExistingID}}
+      <div style="margin-top:8px;">
+        <a href="/distribution?open={{.ExistingID}}" class="btn btn-default btn-sm">
+          <i class="icon icon-calendar"></i> Voir la distribution du {{.ExistingDate}}
+        </a>
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+
     <form method="POST" style="margin-top:20px;">
       <table class="table" style="max-width:700px;">
         <tbody>
