@@ -65,3 +65,17 @@ func (p *Product) PriceHT() float64 {
 	}
 	return p.Price / (1 + p.VAT/100)
 }
+
+// StockLimit retourne la quantité disponible, et si elle borne réellement les
+// commandes.
+//
+// Cocher le suivi sans saisir de quantité ne borne rien : NULL n'est pas zéro.
+// L'un dit « non renseigné », l'autre « épuisé », et les confondre fait passer
+// pour dépassé le moindre article d'un produit dont on n'a jamais compté le
+// stock.
+func (p *Product) StockLimit() (float64, bool) {
+	if !p.StockTracked || p.Stock == nil {
+		return 0, false
+	}
+	return *p.Stock, true
+}

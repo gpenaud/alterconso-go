@@ -1726,11 +1726,10 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 				EstimatedTotal: o.Quantity * o.ProductPrice,
 				FeesRate:       o.FeesRate,
 			}
-			if o.Product.StockTracked {
-				stock := 0.0
-				if o.Product.Stock != nil {
-					stock = *o.Product.Stock
-				}
+			// Un stock non renseigné ne borne rien, même quand le suivi est
+			// coché : le lire comme un zéro signalait « stock dépassé » sur
+			// tout produit dont personne n'a jamais saisi la quantité.
+			if stock, bounded := o.Product.StockLimit(); bounded {
 				totalOrdered := totalQtyByProduct[o.ProductID]
 				line.StockTracked = true
 				line.StockAvailable = stock
