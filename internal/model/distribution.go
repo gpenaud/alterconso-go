@@ -82,6 +82,37 @@ func MinOrderStart(now time.Time) time.Time {
 	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 }
 
+// derogates : une date propre déroge-t-elle à celle du jour commun ?
+//
+// Porter une valeur ne suffit pas : la quasi-totalité des distributions en
+// portent une, recopiée du jour à leur création. Ce qui distingue une
+// dérogation, c'est que la valeur diffère — sans quoi le signaler reviendrait
+// à marquer tout le monde comme faisant exception.
+func derogates(own, day *time.Time) bool {
+	if own == nil {
+		return false // suit le jour commun
+	}
+	if day == nil {
+		return true // borne propre là où le jour n'en pose aucune
+	}
+	return !own.Equal(*day)
+}
+
+// DateDerogates : la livraison de ce catalogue diffère-t-elle du jour commun ?
+func (d *Distribution) DateDerogates() bool {
+	return d.Date != nil && !d.Date.Equal(d.MultiDistrib.DistribStartDate)
+}
+
+// OrderStartDerogates : idem pour l'ouverture des commandes.
+func (d *Distribution) OrderStartDerogates() bool {
+	return derogates(d.OrderStartDate, d.MultiDistrib.OrderStartDate)
+}
+
+// OrderEndDerogates : idem pour la clôture.
+func (d *Distribution) OrderEndDerogates() bool {
+	return derogates(d.OrderEndDate, d.MultiDistrib.OrderEndDate)
+}
+
 // EffectiveOrderEnd retourne la clôture qui s'applique : celle de la
 // distribution quand elle en surcharge une, sinon celle du MultiDistrib.
 // Nil : aucune clôture ne borne les commandes.

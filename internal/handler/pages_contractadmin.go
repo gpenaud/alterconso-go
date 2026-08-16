@@ -802,7 +802,10 @@ func (h *PagesHandler) CatalogAdminDistributionsPage(c *gin.Context) {
 				entry.OrderEndValue = end.Format("2006-01-02T15:04")
 				entry.OrderEndLabel = end.Format("02/01/2006 à 15:04")
 			}
-			entry.OrderEndOverridden = d.OrderEndDate != nil
+			// « Modifiée » quand la clôture diffère de celle du jour, et non
+			// quand la distribution en porte une : elles en portent presque
+			// toutes une, recopiée du jour à leur création.
+			entry.OrderEndOverridden = d.OrderEndDerogates()
 		}
 		data.CatalogDistribs = append(data.CatalogDistribs, entry)
 	}
@@ -978,9 +981,13 @@ func (h *PagesHandler) CatalogAdminDistributionDatesPage(c *gin.Context) {
 		BackURL:             backTo,
 		DistribID:           d.ID,
 		CommonDistribLabel:  d.MultiDistrib.DistribStartDate.Format("02/01/2006 à 15:04"),
-		DistribInherited:    d.Date == nil,
-		OrderStartInherited: d.OrderStartDate == nil,
-		OrderEndInherited:   d.OrderEndDate == nil,
+		// « Hérité » au sens où la date ne déroge pas au jour, et non au sens
+		// où elle serait absente : presque toutes les distributions portent une
+		// copie des dates du jour, et tester leur seule présence marquait tout
+		// le monde comme faisant exception.
+		DistribInherited:    !d.DateDerogates(),
+		OrderStartInherited: !d.OrderStartDerogates(),
+		OrderEndInherited:   !d.OrderEndDerogates(),
 		Error:               formError,
 	}
 	page.DistribValue = d.EffectiveDate().Format("2006-01-02T15:04")

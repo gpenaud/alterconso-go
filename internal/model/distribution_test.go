@@ -249,3 +249,60 @@ func TestDistributionEffectiveOrderDates(t *testing.T) {
 		t.Error("sans aucune date, rien ne borne les commandes")
 	}
 }
+
+// Ce qui fait qu'une date « déroge » : qu'elle diffère du jour, non qu'elle
+// existe. Presque toutes les distributions portent une copie des dates du
+// jour ; les marquer toutes comme exceptions revenait à n'en marquer aucune.
+func TestDerogations(t *testing.T) {
+	jour := time.Date(2026, 9, 4, 17, 0, 0, 0, time.Local)
+	ouverture := time.Date(2026, 8, 28, 8, 0, 0, 0, time.Local)
+	cloture := time.Date(2026, 9, 3, 9, 0, 0, 0, time.Local)
+	autre := time.Date(2026, 8, 20, 9, 0, 0, 0, time.Local)
+
+	md := MultiDistrib{DistribStartDate: jour, OrderStartDate: &ouverture, OrderEndDate: &cloture}
+	copie := func(t time.Time) *time.Time { return &t }
+
+	cases := []struct {
+		nom              string
+		d                Distribution
+		date, start, end bool
+	}{
+		{"aucune valeur propre", Distribution{MultiDistrib: md}, false, false, false},
+		{
+			// Le cas de la quasi-totalité des distributions en base.
+			"copie conforme du jour",
+			Distribution{MultiDistrib: md, Date: copie(jour), OrderStartDate: copie(ouverture), OrderEndDate: copie(cloture)},
+			false, false, false,
+		},
+		{
+			"clôture avancée",
+			Distribution{MultiDistrib: md, Date: copie(jour), OrderEndDate: copie(autre)},
+			false, false, true,
+		},
+		{
+			"livraison décalée d'une heure",
+			Distribution{MultiDistrib: md, Date: copie(jour.Add(time.Hour))},
+			true, false, false,
+		},
+		{
+			"borne posée là où le jour n'en a pas",
+			Distribution{MultiDistrib: MultiDistrib{DistribStartDate: jour}, OrderEndDate: copie(cloture)},
+			false, false, true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.nom, func(t *testing.T) {
+			d := tc.d
+			if got := d.DateDerogates(); got != tc.date {
+				t.Errorf("DateDerogates = %v, attendu %v", got, tc.date)
+			}
+			if got := d.OrderStartDerogates(); got != tc.start {
+				t.Errorf("OrderStartDerogates = %v, attendu %v", got, tc.start)
+			}
+			if got := d.OrderEndDerogates(); got != tc.end {
+				t.Errorf("OrderEndDerogates = %v, attendu %v", got, tc.end)
+			}
+		})
+	}
+}
