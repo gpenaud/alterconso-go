@@ -636,6 +636,11 @@ func (h *PagesHandler) ChoosePage(c *gin.Context) {
 
 // ---- Home page ----
 
+// Largeur de la fenêtre affichée par /home, en jours. Trois semaines : les
+// distributions étant hebdomadaires, l'accueil montre trois commandes à la
+// fois plutôt que deux.
+const homePeriodDays = 21
+
 func (h *PagesHandler) HomePage(c *gin.Context) {
 	pd := h.buildPageData(c)
 	if pd.User == nil {
@@ -666,12 +671,15 @@ func (h *PagesHandler) HomePage(c *gin.Context) {
 	frDays := [...]string{"Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"}
 
 	now := time.Now()
-	// 2-week window starting on last Saturday
+	// Fenêtre de 3 semaines démarrant au samedi précédent : à raison d'une
+	// distribution hebdomadaire, la page affiche trois commandes par cran de
+	// navigation. Les flèches se déplacent d'une fenêtre entière, d'où le même
+	// pas des deux côtés.
 	weekday := int(now.Weekday()) // 0=Sun
 	daysSinceSat := (weekday + 1) % 7
-	periodStart := now.AddDate(0, 0, -daysSinceSat+offsetWeeks*14)
+	periodStart := now.AddDate(0, 0, -daysSinceSat+offsetWeeks*homePeriodDays)
 	periodStart = time.Date(periodStart.Year(), periodStart.Month(), periodStart.Day(), 0, 0, 0, 0, periodStart.Location())
-	periodEnd := periodStart.AddDate(0, 0, 14)
+	periodEnd := periodStart.AddDate(0, 0, homePeriodDays)
 	pd.PeriodLabel = fmt.Sprintf("Du %s %d %s %d au %s %d %s %d",
 		frDays[periodStart.Weekday()], periodStart.Day(), frMonthsFull[periodStart.Month()], periodStart.Year(),
 		frDays[periodEnd.Weekday()], periodEnd.Day(), frMonthsFull[periodEnd.Month()], periodEnd.Year(),
