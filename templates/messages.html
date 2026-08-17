@@ -74,6 +74,10 @@
         <div class="col-sm-9">
           <input type="text" name="senderName" class="form-control"
             value="{{if .User}}{{.User.FirstName}} {{.User.LastName}}{{end}}" required />
+          <span style="font-size:0.85em;color:#999;">
+            Le message part au nom {{if .Group}}de « {{.Group.Name}} »{{else}}du groupe{{end}} ;
+            votre nom et votre adresse figurent en signature et reçoivent les réponses.
+          </span>
         </div>
       </div>
       <div class="form-group row">
@@ -126,7 +130,7 @@
   {{range .SentMessages}}
   <div class="article" id="msg-{{.ID}}" style="margin-top:12px;padding:18px 22px;">
     <h4 style="margin-top:0;">{{.Title}} <small style="color:#999;">{{.Date}}</small></h4>
-    <p style="margin-bottom:0;">{{.Body}}</p>
+    <p style="margin-bottom:0;">{{nl2br .Body}}</p>
   </div>
   {{end}}
 </div>

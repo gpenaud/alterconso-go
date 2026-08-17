@@ -1,12 +1,36 @@
 package mailer
 
 import (
+	"encoding/base64"
 	"fmt"
+	"mime"
 	"net/smtp"
 	"strings"
 
 	"github.com/gpenaud/alterconso/internal/config"
 )
+
+// encodeHeader rend un en-tête transportable : les valeurs purement ASCII
+// passent telles quelles, les autres sont encodées en Q (RFC 2047).
+func encodeHeader(s string) string {
+	return mime.QEncoding.Encode("UTF-8", s)
+}
+
+// encodeBody encode le corps en base64 découpé en lignes de 76 caractères,
+// comme l'impose le format MIME.
+func encodeBody(body string) string {
+	enc := base64.StdEncoding.EncodeToString([]byte(body))
+
+	var b strings.Builder
+	for len(enc) > 76 {
+		b.WriteString(enc[:76])
+		b.WriteString("\r\n")
+		enc = enc[76:]
+	}
+	b.WriteString(enc)
+	b.WriteString("\r\n")
+	return b.String()
+}
 
 // Mail représente un email à envoyer.
 type Mail struct {
@@ -60,7 +84,7 @@ func (m *Mailer) sendSMTP(mail *Mail) error {
 	for i, r := range mail.To {
 		toAddrs[i] = r.Email
 		if r.Name != "" {
-			toHeaders[i] = fmt.Sprintf("%s <%s>", r.Name, r.Email)
+			toHeaders[i] = fmt.Sprintf("%s <%s>", encodeHeader(r.Name), r.Email)
 		} else {
 			toHeaders[i] = r.Email
 		}
@@ -68,21 +92,28 @@ func (m *Mailer) sendSMTP(mail *Mail) error {
 
 	fromHeader := fromAddr
 	if mail.FromName != "" {
-		fromHeader = fmt.Sprintf("%s <%s>", mail.FromName, fromAddr)
+		fromHeader = fmt.Sprintf("%s <%s>", encodeHeader(mail.FromName), fromAddr)
 	}
 
 	headers := []string{
 		fmt.Sprintf("From: %s", fromHeader),
 		fmt.Sprintf("To: %s", strings.Join(toHeaders, ", ")),
-		fmt.Sprintf("Subject: %s", mail.Subject),
+		// Un sujet français est presque toujours accentué : sans encodage
+		// RFC 2047, l'UTF-8 brut dans l'en-tête ressort en caractères
+		// illisibles selon la messagerie du destinataire.
+		fmt.Sprintf("Subject: %s", encodeHeader(mail.Subject)),
 		"MIME-Version: 1.0",
 		"Content-Type: text/html; charset=UTF-8",
+		// Le corps HTML tient sur peu de lignes très longues, au-delà de la
+		// limite SMTP de 998 octets : le base64 le redécoupe et met du même
+		// coup les accents à l'abri des relais 7 bits.
+		"Content-Transfer-Encoding: base64",
 	}
 	if mail.ReplyTo != "" {
 		headers = append(headers, fmt.Sprintf("Reply-To: %s", mail.ReplyTo))
 	}
 
-	msg := []byte(strings.Join(headers, "\r\n") + "\r\n\r\n" + mail.HTMLBody)
+	msg := []byte(strings.Join(headers, "\r\n") + "\r\n\r\n" + encodeBody(mail.HTMLBody))
 
 	// Brevo port 587 = STARTTLS
 	auth := smtp.PlainAuth("", m.cfg.SMTPUser, m.cfg.SMTPPassword, m.cfg.SMTPHost)

@@ -28,11 +28,24 @@ var funcMap = template.FuncMap{
 		}
 		return *s
 	},
-	"nl2br": func(s *string) template.HTML {
-		if s == nil {
+	// Accepte indifféremment une chaîne ou un pointeur : les champs de modèle
+	// sont nullables, ceux des vues ne le sont pas, et les deux passent par ce
+	// helper.
+	"nl2br": func(v any) template.HTML {
+		var s string
+		switch t := v.(type) {
+		case string:
+			s = t
+		case *string:
+			if t == nil {
+				return ""
+			}
+			s = *t
+		default:
 			return ""
 		}
-		return template.HTML(strings.ReplaceAll(template.HTMLEscapeString(*s), "\n", "<br>"))
+		s = strings.ReplaceAll(s, "\r\n", "\n")
+		return template.HTML(strings.ReplaceAll(template.HTMLEscapeString(s), "\n", "<br>"))
 	},
 	"derefFloat": func(f *float64) float64 {
 		if f == nil {

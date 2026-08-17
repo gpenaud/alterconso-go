@@ -1769,14 +1769,27 @@ func (h *PagesHandler) MessagesPage(c *gin.Context) {
 				return
 			}
 
+			// L'expéditeur affiché est le groupe, pas l'adhérent : les envois
+			// partent tous de la même adresse technique, et un « From » au nom
+			// d'un particulier y était à la fois trompeur et mauvais pour la
+			// délivrabilité. L'adhérent reste joignable par le Reply-To et
+			// nommé dans le pied du message.
+			groupName := strings.TrimSpace(pd.Group.Name)
+			fromName := groupName
+			if fromName == "" {
+				fromName = "Alterconso"
+			}
+			// Le corps est identique pour tous : on le met en page une fois.
+			htmlBody := renderMessageHTML(groupName, senderName, senderEmail, h.cfg.Host, body)
+
 			sent, failed := 0, 0
 			for _, to := range recipients {
 				m := &mailer.Mail{
 					From:     h.cfg.DefaultEmail,
-					FromName: senderName,
+					FromName: fromName,
 					ReplyTo:  senderEmail,
 					Subject:  subject,
-					HTMLBody: body,
+					HTMLBody: htmlBody,
 				}
 				m.AddRecipient(to, "")
 				if err := h.mailer.Send(m); err != nil {
