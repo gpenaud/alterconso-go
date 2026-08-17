@@ -9,9 +9,9 @@
   <h2 style="margin:0 0 12px;padding:0 4px;">Distributions</h2>
 
   <div style="display:flex;align-items:center;margin-bottom:20px;gap:8px;flex-wrap:wrap;">
-    <a href="/distribution?offset=-1" class="btn btn-default btn-sm"><i class="icon icon-chevron-left"></i></a>
+    <a href="/distribution?offset={{.PrevOffset}}" class="btn btn-default btn-sm" title="Période précédente"><i class="icon icon-chevron-left"></i></a>
     <span class="btn btn-default btn-sm" style="pointer-events:none;">{{.PeriodLabel}}</span>
-    <a href="/distribution?offset=1" class="btn btn-default btn-sm"><i class="icon icon-chevron-right"></i></a>
+    <a href="/distribution?offset={{.NextOffset}}" class="btn btn-default btn-sm" title="Période suivante"><i class="icon icon-chevron-right"></i></a>
     <div style="flex:1;"></div>
     <a href="/distribution/insertMd" class="btn btn-default btn-sm"><i class="icon icon-plus"></i> Distribution ponctuelle</a>
     <a href="/distribution/insertMdCycle" class="btn btn-default btn-sm"><i class="icon icon-plus"></i> Cycle de distributions</a>

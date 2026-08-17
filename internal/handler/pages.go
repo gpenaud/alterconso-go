@@ -176,6 +176,11 @@ type PageData struct {
 	// distribution page (reuses MultiDistribs above but also:)
 	AllDistribs []DistribAdminView
 	PeriodLabel string
+	// Périodes voisines, calculées à partir de celle qu'on regarde. Les flèches
+	// portaient un offset fixe (-1 et 1) : elles avançaient d'un cran depuis
+	// l'origine, puis rejouaient le même lien sans plus rien changer.
+	PrevOffset int
+	NextOffset int
 	// amapadmin page
 	Places           []model.Place
 	Admins           []model.User
@@ -650,6 +655,11 @@ func (h *PagesHandler) HomePage(c *gin.Context) {
 	// Period navigation
 	offsetStr := c.DefaultQuery("offset", "0")
 	offsetWeeks, _ := strconv.Atoi(offsetStr)
+	// Les flèches se déplacent depuis la période affichée, et non depuis
+	// l'origine : avec un offset fixe, la seconde pression rejouait le même
+	// lien et la page ne bougeait plus.
+	pd.PrevOffset = offsetWeeks - 1
+	pd.NextOffset = offsetWeeks + 1
 
 	frMonthsFull := [...]string{"", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"}
 	frDaysFull := [...]string{"Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"}
@@ -1215,6 +1225,11 @@ func (h *PagesHandler) DistributionPage(c *gin.Context) {
 	// Period navigation
 	offsetStr := c.DefaultQuery("offset", "0")
 	offsetWeeks, _ := strconv.Atoi(offsetStr)
+	// Les flèches se déplacent depuis la période affichée, et non depuis
+	// l'origine : avec un offset fixe, la seconde pression rejouait le même
+	// lien et la page ne bougeait plus.
+	pd.PrevOffset = offsetWeeks - 1
+	pd.NextOffset = offsetWeeks + 1
 
 	frMonthsFull := [...]string{"", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"}
 	frDaysFull := [...]string{"Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"}
