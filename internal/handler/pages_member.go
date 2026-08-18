@@ -1435,27 +1435,31 @@ func groupHeadEmail(g *model.Group, heads []model.UserGroup) []string {
 	return out
 }
 
-// groupManagerEmails retourne les destinataires du courrier adressé aux
-// responsables du groupe : le responsable du groupe et le responsable
-// technique.
+// groupManagerEmails retourne les destinataires du courrier adressé au
+// responsable du groupe — lui seul.
 //
-// Les délégations — distributions, paramètres — n'y ouvrent pas. Leurs porteurs
-// administrent une part du groupe sans en être responsables, et le courrier
-// qu'un adhérent adresse à son responsable n'a pas à leur parvenir.
+// Le responsable technique n'y figure plus. Il y était du temps où le
+// super-administrateur servait de recours à tout : quiconque écrivait « aux
+// responsables » lui écrivait aussi, et lui-même, choisissant cette entrée,
+// s'envoyait le message. Il a désormais son entrée propre, que chacun peut
+// choisir quand c'est bien à lui qu'il veut s'adresser.
+//
+// Les délégations — distributions, paramètres — n'y ouvrent pas davantage.
+// Leurs porteurs administrent une part du groupe sans en être responsables.
 func (h *PagesHandler) groupManagerEmails(groupID uint) []string {
 	var g model.Group
 	if err := h.db.First(&g, groupID).Error; err != nil {
-		return managerRecipientEmails(nil, h.groupHeads(groupID), h.technicalManagerEmails())
+		return managerRecipientEmails(nil, h.groupHeads(groupID))
 	}
-	return managerRecipientEmails(&g, h.groupHeads(groupID), h.technicalManagerEmails())
+	return managerRecipientEmails(&g, h.groupHeads(groupID))
 }
 
-// managerRecipientEmails assemble la liste, responsable du groupe d'abord. Le
-// responsable technique est souvent aussi responsable d'un groupe, ou déclaré
-// comme son adresse de contact : la déduplication lui évite de recevoir deux
-// fois le même message.
-func managerRecipientEmails(g *model.Group, heads []model.UserGroup, technical []string) []string {
-	emails := make([]string, 0, len(heads)+len(technical))
+// managerRecipientEmails assemble la liste des adresses du responsable :
+// l'adresse de fonction du groupe, celle de son compte, ou les deux. La
+// déduplication évite de lui envoyer deux fois le même message quand elles se
+// confondent.
+func managerRecipientEmails(g *model.Group, heads []model.UserGroup) []string {
+	emails := make([]string, 0, len(heads)+1)
 	seen := make(map[string]bool)
 	add := func(email string) {
 		if email == "" || seen[email] {
@@ -1466,9 +1470,6 @@ func managerRecipientEmails(g *model.Group, heads []model.UserGroup, technical [
 	}
 
 	for _, e := range groupHeadEmail(g, heads) {
-		add(e)
-	}
-	for _, e := range technical {
 		add(e)
 	}
 	return emails
@@ -1511,6 +1512,10 @@ func (h *PagesHandler) buildScopedRecipients(pd PageData, now time.Time) ([]Reci
 		for k, v := range full {
 			emails[k] = v
 		}
+		// Le responsable technique a son entrée ici aussi : un responsable de
+		// groupe doit pouvoir le joindre, et lui-même s'adresser au groupe sans
+		// se retrouver dans ses propres destinataires.
+		add("technical-manager", model.LabelTechnicalManager, h.technicalManagerEmails())
 		opts = append(opts,
 			RecipientOption{Value: "all", Name: "Tout le monde", Count: len(full["all"])},
 			// Nommée d'après ce qu'elle contient : le responsable du groupe et

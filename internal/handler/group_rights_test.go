@@ -105,30 +105,24 @@ func TestWhoCanManageRights(t *testing.T) {
 	}
 }
 
-// Les destinataires du courrier adresse aux responsables : le responsable du
-// groupe et le responsable technique, personne d'autre.
+// Le courrier adresse au responsable du groupe ne va qu'a lui. Le responsable
+// technique n'y figure pas : il y etait du temps ou le super-administrateur
+// servait de recours a tout, si bien qu'en choisissant cette entree il
+// s'envoyait le message a lui-meme.
 func TestManagerRecipientEmails(t *testing.T) {
+	SetTechnicalManager("technique@exemple.fr")
+	defer SetTechnicalManager("")
+
 	head := model.UserGroup{User: model.User{Email: "responsable@exemple.fr"}}
 
-	got := managerRecipientEmails(nil, []model.UserGroup{head}, []string{"technique@exemple.fr"})
-	want := []string{"responsable@exemple.fr", "technique@exemple.fr"}
-	if strings.Join(got, ",") != strings.Join(want, ",") {
-		t.Errorf("attendu %v, obtenu %v", want, got)
-	}
-
-	// Le responsable technique est souvent aussi responsable d'un groupe : une
-	// seule fois.
-	deux := managerRecipientEmails(nil,
-		[]model.UserGroup{{User: model.User{Email: "technique@exemple.fr"}}},
-		[]string{"technique@exemple.fr"},
-	)
-	if len(deux) != 1 {
-		t.Errorf("le cumul des deux roles doit donner un destinataire, obtenu %v", deux)
+	got := managerRecipientEmails(nil, []model.UserGroup{head})
+	if strings.Join(got, ",") != "responsable@exemple.fr" {
+		t.Errorf("attendu le seul responsable du groupe, obtenu %v", got)
 	}
 
 	// Un membre sans email ne produit pas de destinataire vide, qui ferait
 	// echouer l'envoi sans rien dire.
-	sansEmail := managerRecipientEmails(nil, []model.UserGroup{{User: model.User{}}}, nil)
+	sansEmail := managerRecipientEmails(nil, []model.UserGroup{{User: model.User{}}})
 	if len(sansEmail) != 0 {
 		t.Errorf("attendu aucun destinataire, obtenu %v", sansEmail)
 	}
@@ -222,7 +216,7 @@ func TestTechnicalManagerIsNotAGroupHead(t *testing.T) {
 
 	// Et donc pas davantage derriere l'entree « responsable du groupe » de la
 	// messagerie, qui part de cette liste.
-	got := managerRecipientEmails(nil, heads, nil)
+	got := managerRecipientEmails(nil, heads)
 	if len(got) != 1 || got[0] != "responsable@exemple.fr" {
 		t.Errorf("attendu le seul responsable du groupe, obtenu %v", got)
 	}
