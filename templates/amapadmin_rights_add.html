@@ -21,10 +21,17 @@
         {{/* Rôle à titulaire unique : l'accorder ici le retire à son détenteur
              actuel, d'où le rappel de son nom. Le responsable technique, lui,
              ne s'attribue pas ici : il tient son rôle de la configuration. */}}
+        {{if .CanAssignGroupHead}}
         <label style="font-weight:normal;">
           <input type="checkbox" name="right_group_admin"> Responsable de groupe
           {{if .GroupAdminHolder}}<span style="color:#999;">— actuellement {{.GroupAdminHolder}}, qui le perdra</span>{{end}}
         </label><br>
+        {{else}}
+        <div style="color:#999;margin-bottom:6px;">
+          Responsable de groupe : {{if .GroupAdminHolder}}{{.GroupAdminHolder}}{{else}}personne{{end}}
+          — ce rôle est attribué par le responsable technique.
+        </div>
+        {{end}}
         {{/* Délégations : cumulables, elles n'ouvrent qu'un écran chacune et
              ne font pas de leur porteur un responsable du groupe — ces derniers
              seuls reçoivent les messages qui leur sont adressés. */}}

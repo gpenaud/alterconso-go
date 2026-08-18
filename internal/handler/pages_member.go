@@ -1357,9 +1357,23 @@ func (h *PagesHandler) groupHeads(groupID uint) []model.UserGroup {
 		Order("users.last_name, users.first_name").
 		Find(&ugs)
 
+	return selectGroupHeads(ugs)
+}
+
+// selectGroupHeads retient les responsables parmi les membres d'un groupe.
+//
+// Le responsable technique en est écarté, comme il l'est déjà du calcul des
+// titulaires exclusifs. Le compte d'installation porte presque toujours
+// « GroupAdmin » en base, hérité de la création du groupe : il figurait alors
+// comme responsable de CE groupe, alors que son rôle vaut pour tous et qu'il a
+// sa propre entrée dans la messagerie.
+//
+// Le droit reste en base : il reprend effet si la configuration cesse de
+// désigner cette adresse.
+func selectGroupHeads(ugs []model.UserGroup) []model.UserGroup {
 	heads := make([]model.UserGroup, 0, 1)
 	for _, ug := range ugs {
-		if ug.IsGroupHead() {
+		if ug.IsGroupHead() && !isTechnicalManagerEmail(ug.User.Email) {
 			heads = append(heads, ug)
 		}
 	}

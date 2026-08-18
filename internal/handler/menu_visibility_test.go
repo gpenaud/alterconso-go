@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"html/template"
 	"os"
 	"strings"
 	"testing"
@@ -88,6 +89,14 @@ func chdirRepoRoot(t *testing.T) {
 	if err := os.Chdir("../.."); err != nil {
 		t.Fatalf("chdir : %v", err)
 	}
+}
+
+// loadTemplatesFromRoot charge des gabarits depuis la racine du depot, ou
+// qu'ait demarre le test.
+func loadTemplatesFromRoot(t *testing.T, names ...string) (*template.Template, error) {
+	t.Helper()
+	chdirRepoRoot(t)
+	return loadTemplates(names...)
 }
 
 func renderNav(t *testing.T, pd PageData) string {

@@ -694,6 +694,11 @@ type AmapAdminRightsAddData struct {
 	// Titulaire actuel du rôle à titulaire unique, pour prévenir que l'accorder
 	// ici le lui retirera.
 	GroupAdminHolder string
+
+	// CanAssignGroupHead : le rôle de responsable de groupe ne se donne que par
+	// le responsable technique. Le responsable en place distribue les autres
+	// droits, mais ne transfère pas le sien.
+	CanAssignGroupHead bool
 }
 
 func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
@@ -704,6 +709,7 @@ func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
 
 	data := AmapAdminRightsAddData{AmapAdminPageData: base}
 	data.Title = "Ajouter un droit"
+	data.CanAssignGroupHead = base.IsTechnicalManager
 
 	h.db.Where("group_id = ?", base.Group.ID).Preload("User").Find(&data.Members)
 	// Le responsable technique a tous les droits par construction (cf.
@@ -775,7 +781,11 @@ func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
 			}()})
 		}
 
-		if c.PostForm("right_group_admin") != "" {
+		// Le rôle de responsable ne se donne que par le responsable technique :
+		// c'est lui qui l'attribue à l'ouverture d'un groupe, et lui seul qui
+		// le déplace ensuite. Le contrôle est refait ici, le formulaire ne
+		// masquant la case que côté affichage.
+		if data.CanAssignGroupHead && c.PostForm("right_group_admin") != "" {
 			addRight(model.RightGroupAdmin)
 		}
 		if c.PostForm("right_membership") != "" {
@@ -858,6 +868,9 @@ type AmapAdminRightsEditData struct {
 
 	// Titulaire actuel du rôle à titulaire unique, hors membre édité.
 	GroupAdminHolder string
+
+	// CanAssignGroupHead : voir AmapAdminRightsAddData.
+	CanAssignGroupHead bool
 }
 
 func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
@@ -896,6 +909,7 @@ func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
 		CatalogRights:     make(map[string]bool),
 	}
 	data.Title = "Modifier les droits"
+	data.CanAssignGroupHead = base.IsTechnicalManager
 
 	if holder := exclusiveHolder(h.db, base.Group.ID, uint(userID), model.RightGroupAdmin); holder != nil {
 		data.GroupAdminHolder = holder.User.Name()
@@ -928,7 +942,16 @@ func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
 
 	if c.Request.Method == http.MethodPost {
 		var rights []model.UserRight
-		if c.PostForm("right_group_admin") != "" {
+		switch {
+		case data.CanAssignGroupHead:
+			if c.PostForm("right_group_admin") != "" {
+				rights = append(rights, model.UserRight{Right: model.RightGroupAdmin})
+			}
+		case ug.IsGroupHead():
+			// Le formulaire ne montre pas la case à qui ne peut pas l'accorder,
+			// donc le POST ne la porte pas : reconstruire la liste sans elle
+			// retirerait son rôle au responsable dès qu'on touche à ses autres
+			// droits. On le reconduit explicitement.
 			rights = append(rights, model.UserRight{Right: model.RightGroupAdmin})
 		}
 		if c.PostForm("right_membership") != "" {

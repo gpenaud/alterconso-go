@@ -180,3 +180,72 @@ func TestTechnicalManagerRecognition(t *testing.T) {
 		t.Error("une autre adresse ne tient pas le role")
 	}
 }
+
+// Le compte d'installation porte presque toujours « GroupAdmin » en base. Il
+// ne doit pas pour autant figurer comme responsable du groupe : son role vaut
+// pour tous les groupes, et il a sa propre entree dans la messagerie.
+func TestTechnicalManagerIsNotAGroupHead(t *testing.T) {
+	SetTechnicalManager("alterconso@leportail.org")
+	defer SetTechnicalManager("")
+
+	membres := []model.UserGroup{
+		{User: model.User{Email: "alterconso@leportail.org"}, Rights: `[{"right":"GroupAdmin"}]`},
+		{User: model.User{Email: "responsable@exemple.fr"}, Rights: `[{"right":"GroupAdmin"}]`},
+		{User: model.User{Email: "adherent@exemple.fr"}, Rights: `[]`},
+	}
+
+	heads := selectGroupHeads(membres)
+	if len(heads) != 1 || heads[0].User.Email != "responsable@exemple.fr" {
+		t.Fatalf("attendu le seul responsable du groupe, obtenu %v", heads)
+	}
+
+	// Et donc pas davantage derriere l'entree « responsable du groupe » de la
+	// messagerie, qui part de cette liste.
+	got := managerRecipientEmails(nil, heads, nil)
+	if len(got) != 1 || got[0] != "responsable@exemple.fr" {
+		t.Errorf("attendu le seul responsable du groupe, obtenu %v", got)
+	}
+
+	// Sans adresse configuree, plus personne n'est ecarte : le droit en base
+	// reprend effet.
+	SetTechnicalManager("")
+	if len(selectGroupHeads(membres)) != 2 {
+		t.Error("les deux porteurs de GroupAdmin devraient revenir")
+	}
+}
+
+// Le role de responsable s'attribue par le responsable technique : c'est lui
+// qui le designe a l'ouverture d'un groupe, et lui seul qui le deplace ensuite.
+// Le responsable en place distribue les autres droits, mais ne transfere pas
+// le sien.
+func TestGroupHeadRoleIsAssignedByTechnicalManagerOnly(t *testing.T) {
+	tpl, err := loadTemplatesFromRoot(t, "amapadmin_layout.html", "amapadmin_rights_edit.html")
+	if err != nil {
+		t.Fatalf("parse : %v", err)
+	}
+
+	// Vu par le responsable du groupe : le role s'affiche, sans case a cocher.
+	var parLeResponsable strings.Builder
+	if err := tpl.ExecuteTemplate(&parLeResponsable, "content", AmapAdminRightsEditData{
+		HasGroupAdmin: true, CanAssignGroupHead: false,
+	}); err != nil {
+		t.Fatalf("render : %v", err)
+	}
+	if strings.Contains(parLeResponsable.String(), `name="right_group_admin"`) {
+		t.Error("le responsable du groupe ne doit pas pouvoir transferer son role")
+	}
+	if !strings.Contains(parLeResponsable.String(), "attribué par le responsable technique") {
+		t.Error("l'ecran devrait dire a qui revient l'attribution")
+	}
+
+	// Vu par le responsable technique : la case est la.
+	var parLeTechnique strings.Builder
+	if err := tpl.ExecuteTemplate(&parLeTechnique, "content", AmapAdminRightsEditData{
+		CanAssignGroupHead: true,
+	}); err != nil {
+		t.Fatalf("render : %v", err)
+	}
+	if !strings.Contains(parLeTechnique.String(), `name="right_group_admin"`) {
+		t.Error("le responsable technique doit pouvoir designer le responsable")
+	}
+}
