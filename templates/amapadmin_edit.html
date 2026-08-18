@@ -51,6 +51,13 @@
             Laissée vide, c'est l'adresse personnelle du responsable qui sert ;
             une adresse de fonction survit au changement de responsable.
           </span>
+          <label style="font-weight:normal;display:block;margin-top:8px;">
+            <input type="checkbox" name="head_email_include_account" value="1"
+                   {{if .Group.HeadEmailIncludeAccount}}checked{{end}} />
+            Écrire aussi à l'adresse du compte du responsable
+            <span style="color:#999;">— les deux boîtes reçoivent, utile quand
+            l'adresse de fonction n'est pas relevée tous les jours</span>
+          </label>
         </div>
       </div>
 

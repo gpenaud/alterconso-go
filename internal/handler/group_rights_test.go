@@ -152,6 +152,27 @@ func TestGroupHeadEmailPrefersDeclaredAddress(t *testing.T) {
 		t.Errorf("repli sur l'adresse du responsable attendu, obtenu %v", got)
 	}
 
+	// L'option cumule les deux boites : l'adresse de fonction n'est pas
+	// toujours relevee tous les jours.
+	g.HeadEmailIncludeAccount = true
+	got = groupHeadEmail(g, heads)
+	if len(got) != 2 || got[0] != declared || got[1] != "perso@exemple.fr" {
+		t.Errorf("attendu les deux adresses, fonction d'abord, obtenu %v", got)
+	}
+
+	// L'adresse du compte peut etre celle de fonction : pas deux envois.
+	memeAdresse := []model.UserGroup{{User: model.User{Email: "Contact@ValdeBrenne.fr"}}}
+	if got := groupHeadEmail(g, memeAdresse); len(got) != 1 {
+		t.Errorf("attendu une seule adresse, obtenu %v", got)
+	}
+
+	// Sans adresse de fonction, l'option ne change rien : c'est deja celle du
+	// compte qui sert.
+	if got := groupHeadEmail(&model.Group{HeadEmailIncludeAccount: true}, heads); len(got) != 1 ||
+		got[0] != "perso@exemple.fr" {
+		t.Errorf("attendu la seule adresse du compte, obtenu %v", got)
+	}
+
 	// Une valeur blanche vaut une absence.
 	blanche := "   "
 	if got := groupHeadEmail(&model.Group{HeadEmail: &blanche}, heads); len(got) != 1 || got[0] != "perso@exemple.fr" {

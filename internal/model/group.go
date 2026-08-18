@@ -59,6 +59,15 @@ type Group struct {
 	// personnelle de qui l'occupe.
 	HeadEmail *string `gorm:"size:128" json:"headEmail,omitempty"`
 
+	// HeadEmailIncludeAccount : écrire AUSSI à l'adresse du compte du
+	// responsable, en plus de l'adresse de fonction.
+	//
+	// Les deux plutôt que l'une ou l'autre : une boîte de fonction n'est pas
+	// toujours relevée tous les jours, et le responsable veut être averti sur
+	// sa propre adresse. Sans effet quand aucune adresse de fonction n'est
+	// déclarée — c'est déjà celle du compte qui sert alors.
+	HeadEmailIncludeAccount bool `gorm:"default:false" json:"headEmailIncludeAccount"`
+
 	// Contact et représentant légal
 	ContactID             *uint `json:"-"`
 	Contact               *User `gorm:"foreignKey:ContactID" json:"contact,omitempty"`

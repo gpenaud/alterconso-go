@@ -1751,6 +1751,7 @@ func (h *PagesHandler) AmapAdminUpdate(c *gin.Context) {
 	} else {
 		updates["head_email"] = nil
 	}
+	updates["head_email_include_account"] = c.PostForm("head_email_include_account") == "1"
 
 	if cid, err := strconv.ParseUint(c.PostForm("contact_id"), 10, 64); err == nil && cid > 0 {
 		updates["contact_id"] = uint(cid)

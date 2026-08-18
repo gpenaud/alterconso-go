@@ -1393,23 +1393,43 @@ func (h *PagesHandler) technicalManagerEmails() []string {
 	return []string{email}
 }
 
-// groupHeadEmail retourne l'adresse à laquelle joindre le responsable d'un
+// groupHeadEmail retourne les adresses auxquelles joindre le responsable d'un
 // groupe : celle que le groupe a déclarée, à défaut celle du membre qui porte
 // le rôle.
 //
 // L'adresse déclarée l'emporte pour une raison pratique : une adresse de
 // fonction survit au changement de responsable, là où l'adresse personnelle
 // oblige à reprendre tous les envois — et expose une boîte privée.
+//
+// Les deux servent ensemble quand le groupe le demande : une boîte de fonction
+// n'est pas toujours relevée tous les jours, et le responsable veut être averti
+// sur sa propre adresse.
 func groupHeadEmail(g *model.Group, heads []model.UserGroup) []string {
-	if g != nil && g.HeadEmail != nil {
-		if e := strings.TrimSpace(*g.HeadEmail); e != "" {
-			return []string{e}
+	accounts := make([]string, 0, len(heads))
+	for _, ug := range heads {
+		if e := strings.TrimSpace(ug.User.Email); e != "" {
+			accounts = append(accounts, e)
 		}
 	}
-	out := make([]string, 0, len(heads))
-	for _, ug := range heads {
-		if ug.User.Email != "" {
-			out = append(out, ug.User.Email)
+
+	declared := ""
+	if g != nil && g.HeadEmail != nil {
+		declared = strings.TrimSpace(*g.HeadEmail)
+	}
+	if declared == "" {
+		return accounts
+	}
+
+	out := []string{declared}
+	if g.HeadEmailIncludeAccount {
+		// L'adresse du compte peut être celle de fonction : le responsable
+		// recevrait sinon deux fois le même message.
+		seen := map[string]bool{strings.ToLower(declared): true}
+		for _, e := range accounts {
+			if k := strings.ToLower(e); !seen[k] {
+				seen[k] = true
+				out = append(out, e)
+			}
 		}
 	}
 	return out
