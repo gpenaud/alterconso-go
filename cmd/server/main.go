@@ -95,6 +95,10 @@ func main() {
 	if err := db.RestoreDelegatedMembersAndCatalogs(database); err != nil {
 		log.Printf("warning: RestoreDelegatedMembersAndCatalogs: %v", err)
 	}
+	// Repare l'elargissement errone de la correction ci-dessus.
+	if err := db.RevertOverreachingMembersAndCatalogs(database); err != nil {
+		log.Printf("warning: RevertOverreachingMembersAndCatalogs: %v", err)
+	}
 	if err := db.EnsureTechnicalManager(database, cfg); err != nil {
 		log.Printf("warning: EnsureTechnicalManager: %v", err)
 	}

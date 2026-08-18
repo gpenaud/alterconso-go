@@ -15,14 +15,14 @@ func TestRestoreTargetsConvertedAdministration(t *testing.T) {
 	}
 }
 
-// Un « DatabaseAdmin » seul n'a rien laisse derriere lui : la liste vide est sa
-// signature, qu'un membre jamais dote ne porte pas — sa colonne est vide.
-func TestRestoreTargetsEmptiedRights(t *testing.T) {
-	if _, changed := restoreMembersAndCatalogs(`[]`); !changed {
-		t.Error("une liste vide doit etre corrigee")
-	}
-	if _, changed := restoreMembersAndCatalogs(``); changed {
-		t.Error("un membre jamais dote ne doit pas recevoir de droits")
+// La liste vide n'est PAS une signature de conversion : c'est l'etat ordinaire
+// d'un adherent sans droits. L'avoir prise pour telle a elargi 88
+// appartenances au lieu de 4.
+func TestRestoreLeavesPlainMembersAlone(t *testing.T) {
+	for _, raw := range []string{`[]`, ``, `null`} {
+		if _, changed := restoreMembersAndCatalogs(raw); changed {
+			t.Errorf("un adherent sans droits (%q) ne doit rien recevoir", raw)
+		}
 	}
 }
 

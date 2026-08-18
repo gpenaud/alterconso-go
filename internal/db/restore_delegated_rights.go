@@ -22,12 +22,15 @@ const restoreDelegatedRightsName = "2026-08-18-rend-membres-et-catalogues"
 // qui s'en servaient. La correction ne rend que ces deux acces : le reste du
 // decoupage est voulu.
 //
-// Elle vise l'etat exact laisse par la conversion, et rien d'autre :
+// Elle ne vise qu'une signature : les deux delegations ensemble, laissees par
+// un « Administration » converti.
 //
-//   - les deux delegations ensemble, signature d'un « Administration » converti ;
-//   - une liste vide, signature d'un « DatabaseAdmin » seul, qui n'a rien laisse
-//     derriere lui — a distinguer d'un membre jamais dote, dont la colonne est
-//     nulle ou vide, non pas « [] ».
+// La liste vide en faisait partie a l'origine, tenue pour la trace d'un
+// « DatabaseAdmin » retire. C'etait faux — « [] » est l'etat ordinaire d'un
+// adherent sans aucun droit — et 88 appartenances ont ete elargies au lieu de 4
+// avant que RevertOverreachingMembersAndCatalogs ne repare. Les anciens
+// porteurs de « DatabaseAdmin » seul restent donc a rattraper a la main : leur
+// etat d'avant conversion ne se lit plus nulle part.
 //
 // Ponctuelle : passee une fois, elle ne se rejouera pas, sans quoi elle
 // rendrait aussi ces droits a qui on vient de les retirer.
@@ -80,8 +83,7 @@ func restoreMembersAndCatalogs(raw string) (string, bool) {
 		return false
 	}
 
-	converti := (has(model.RightDistributions) && has(model.RightParameters)) ||
-		len(rights) == 0
+	converti := has(model.RightDistributions) && has(model.RightParameters)
 	if !converti {
 		return raw, false
 	}
