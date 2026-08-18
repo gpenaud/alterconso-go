@@ -112,6 +112,13 @@ func main() {
 		log.Printf("warning: BackfillVerifiedUsers: %v", err)
 	}
 
+	// Subcommand "rights-report" : imprime les droits en vigueur, puis quitte.
+	// Lecture seule — de quoi verifier ce qu'une correction a laisse.
+	if len(os.Args) > 1 && os.Args[1] == "rights-report" {
+		runRightsReport(database)
+		return
+	}
+
 	// Subcommand "migrate" : exécute db.Migrate() puis quitte.
 	// Utile pour préparer un import (création des tables GORM avant transformation Haxe).
 	if len(os.Args) > 1 && os.Args[1] == "migrate" {
