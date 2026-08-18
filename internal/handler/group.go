@@ -21,7 +21,7 @@ func NewGroupHandler(db *gorm.DB, cfg *config.Config) *GroupHandler {
 }
 
 // List retourne les groupes dont l'utilisateur est membre.
-// Les superadmins site-wide voient tous les groupes existants.
+// Le responsable technique voit tous les groupes existants.
 //
 //	@Summary      Liste des groupes
 //	@Tags         groups
@@ -33,7 +33,7 @@ func (h *GroupHandler) List(c *gin.Context) {
 	claims := middleware.GetClaims(c)
 
 	var groups []model.Group
-	if isSiteAdmin(h.db, claims.UserID) {
+	if isTechnicalManager(h.db, claims.UserID) {
 		h.db.Order("name").Find(&groups)
 		c.JSON(http.StatusOK, groups)
 		return

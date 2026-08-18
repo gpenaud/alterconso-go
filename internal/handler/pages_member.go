@@ -588,8 +588,8 @@ func (h *PagesHandler) MemberDelete(c *gin.Context) {
 		c.String(http.StatusBadRequest, "id invalide")
 		return
 	}
-	if isSiteAdmin(h.db, uint(id)) {
-		c.String(http.StatusForbidden, "le superadmin global ne peut pas être retiré")
+	if isTechnicalManager(h.db, uint(id)) {
+		c.String(http.StatusForbidden, "le responsable technique ne peut pas être retiré")
 		return
 	}
 	h.db.Where("user_id = ? AND group_id = ?", id, pd.Group.ID).Delete(&model.UserGroup{})
@@ -613,8 +613,8 @@ func (h *PagesHandler) MemberFullDelete(c *gin.Context) {
 		c.String(http.StatusBadRequest, "vous ne pouvez pas supprimer votre propre compte")
 		return
 	}
-	if isSiteAdmin(h.db, uint(id)) {
-		c.String(http.StatusForbidden, "le superadmin global ne peut pas être supprimé")
+	if isTechnicalManager(h.db, uint(id)) {
+		c.String(http.StatusForbidden, "le responsable technique ne peut pas être supprimé")
 		return
 	}
 	uid := uint(id)
@@ -1219,10 +1219,14 @@ type ActivityCategoryView struct {
 }
 
 type MessageView struct {
-	ID      uint
-	Title   string
-	Date    string
-	Body    string
+	ID    uint
+	Title string
+	Date  string
+	Body  string
+	// Sender : qui a écrit le message. Les archives ne le montraient pas, et
+	// une liste de sujets sans auteur ne dit pas à qui s'adresser pour la
+	// suite.
+	Sender string
 }
 
 // buildRecipientEmails retourne les emails par valeur de destinataire :
@@ -1362,35 +1366,62 @@ func (h *PagesHandler) groupHeads(groupID uint) []model.UserGroup {
 	return heads
 }
 
-// superAdmins retourne les comptes administrateurs de l'application.
+// technicalManagerEmails retourne l'adresse du responsable technique, ou rien
+// si la configuration n'en désigne aucun.
 //
-// Leurs droits portent sur tous les groupes à la fois : ils restent le recours
-// quand le responsable d'un groupe ne répond pas, et reçoivent à ce titre le
-// courrier qui lui est adressé, qu'ils soient membres du groupe ou non.
-func (h *PagesHandler) superAdmins() []model.User {
-	var users []model.User
-	h.db.Where("rights & 1 <> 0 OR id = 1").Where("email <> ''").
-		Order("last_name, first_name").Find(&users)
-	return users
+// Il est le recours quand le responsable d'un groupe ne répond pas, et reçoit à
+// ce titre le courrier qui lui est adressé, qu'il soit membre du groupe ou non.
+func (h *PagesHandler) technicalManagerEmails() []string {
+	email := strings.TrimSpace(h.cfg.TechnicalManager.Email)
+	if email == "" {
+		return nil
+	}
+	return []string{email}
+}
+
+// groupHeadEmail retourne l'adresse à laquelle joindre le responsable d'un
+// groupe : celle que le groupe a déclarée, à défaut celle du membre qui porte
+// le rôle.
+//
+// L'adresse déclarée l'emporte pour une raison pratique : une adresse de
+// fonction survit au changement de responsable, là où l'adresse personnelle
+// oblige à reprendre tous les envois — et expose une boîte privée.
+func groupHeadEmail(g *model.Group, heads []model.UserGroup) []string {
+	if g != nil && g.HeadEmail != nil {
+		if e := strings.TrimSpace(*g.HeadEmail); e != "" {
+			return []string{e}
+		}
+	}
+	out := make([]string, 0, len(heads))
+	for _, ug := range heads {
+		if ug.User.Email != "" {
+			out = append(out, ug.User.Email)
+		}
+	}
+	return out
 }
 
 // groupManagerEmails retourne les destinataires du courrier adressé aux
-// responsables du groupe : le responsable lui-même, et le super-administrateur.
+// responsables du groupe : le responsable du groupe et le responsable
+// technique.
 //
-// Les « droits administrateur » n'y ouvrent pas. Leurs porteurs administrent le
-// groupe sans en être responsables — c'est précisément ce que distingue
-// RightAdministration de RightGroupAdmin — et le courrier qu'un adhérent
-// adresse à son responsable n'a pas à leur parvenir.
+// Les délégations — distributions, paramètres — n'y ouvrent pas. Leurs porteurs
+// administrent une part du groupe sans en être responsables, et le courrier
+// qu'un adhérent adresse à son responsable n'a pas à leur parvenir.
 func (h *PagesHandler) groupManagerEmails(groupID uint) []string {
-	return managerRecipientEmails(h.groupHeads(groupID), h.superAdmins())
+	var g model.Group
+	if err := h.db.First(&g, groupID).Error; err != nil {
+		return managerRecipientEmails(nil, h.groupHeads(groupID), h.technicalManagerEmails())
+	}
+	return managerRecipientEmails(&g, h.groupHeads(groupID), h.technicalManagerEmails())
 }
 
-// managerRecipientEmails assemble la liste, responsables d'abord. Le
-// super-administrateur détient souvent aussi le rôle de responsable, hérité de
-// l'installation : la déduplication lui évite de recevoir deux fois le même
-// message.
-func managerRecipientEmails(heads []model.UserGroup, admins []model.User) []string {
-	emails := make([]string, 0, len(heads)+len(admins))
+// managerRecipientEmails assemble la liste, responsable du groupe d'abord. Le
+// responsable technique est souvent aussi responsable d'un groupe, ou déclaré
+// comme son adresse de contact : la déduplication lui évite de recevoir deux
+// fois le même message.
+func managerRecipientEmails(g *model.Group, heads []model.UserGroup, technical []string) []string {
+	emails := make([]string, 0, len(heads)+len(technical))
 	seen := make(map[string]bool)
 	add := func(email string) {
 		if email == "" || seen[email] {
@@ -1400,11 +1431,11 @@ func managerRecipientEmails(heads []model.UserGroup, admins []model.User) []stri
 		emails = append(emails, email)
 	}
 
-	for _, ug := range heads {
-		add(ug.User.Email)
+	for _, e := range groupHeadEmail(g, heads) {
+		add(e)
 	}
-	for _, u := range admins {
-		add(u.Email)
+	for _, e := range technical {
+		add(e)
 	}
 	return emails
 }
@@ -1449,7 +1480,7 @@ func (h *PagesHandler) buildScopedRecipients(pd PageData, now time.Time) ([]Reci
 		opts = append(opts,
 			RecipientOption{Value: "all", Name: "Tout le monde", Count: len(full["all"])},
 			// Nommée d'après ce qu'elle contient : le responsable du groupe et
-			// le super-administrateur. « Gestionnaires » englobait aussi les
+			// le responsable technique. « Gestionnaires » englobait aussi les
 			// porteurs des droits administrateur, que cette liste exclut.
 			RecipientOption{Value: "managers", Name: h.groupManagersLabel(), Count: len(full["managers"])},
 			RecipientOption{Value: "members", Name: "Membres uniquement", Count: len(full["members"])},
@@ -1483,8 +1514,16 @@ func (h *PagesHandler) buildScopedRecipients(pd PageData, now time.Time) ([]Reci
 		}
 	}
 
-	// ── Tout utilisateur : responsables du groupe et contacts techniques ────
-	add("group-managers", h.groupManagersLabel(), h.groupManagerEmails(pd.Group.ID))
+	// ── Tout utilisateur : les deux responsables, et rien d'autre ───────────
+	//
+	// Deux entrées distinctes plutôt qu'une liste fusionnée : un adhérent
+	// n'écrit pas la même chose à son responsable de groupe qu'au responsable
+	// technique, et rien ne justifie de déranger l'un pour l'affaire de
+	// l'autre. Aucune entrée ne désigne d'autres adhérents : un membre ne
+	// dispose pas des adresses de ses pairs.
+	add("group-head", h.groupManagersLabel(),
+		groupHeadEmail(pd.Group, h.groupHeads(pd.Group.ID)))
+	add("technical-manager", model.LabelTechnicalManager, h.technicalManagerEmails())
 
 	for i, tc := range h.cfg.Messages.TechnicalContacts {
 		name := tc.Name
@@ -1530,7 +1569,7 @@ func (h *PagesHandler) buildRecipientEmails(groupID uint, now time.Time) map[str
 		}
 		out["all"] = append(out["all"], email)
 		// « Membres » est le complémentaire exact de « responsables » : un
-		// super-administrateur membre du groupe ne doit pas figurer dans les
+		// responsable technique membre du groupe ne doit pas figurer dans les
 		// deux listes à la fois.
 		if !isManager[email] {
 			out["members"] = append(out["members"], email)
@@ -1621,6 +1660,7 @@ func (h *PagesHandler) MessagesPage(c *gin.Context) {
 
 	var msgs []model.Message
 	h.db.Where("group_id = ?", pd.Group.ID).
+		Preload("Sender").
 		Order("created_at DESC").
 		Limit(50).
 		Find(&msgs)
@@ -1628,11 +1668,16 @@ func (h *PagesHandler) MessagesPage(c *gin.Context) {
 	data := MessagesData{PageData: pd}
 	data.Title = "Messages"
 	for _, m := range msgs {
+		// Un expéditeur supprimé depuis laisse un message sans nom : on
+		// l'affiche alors sans mention plutôt qu'avec un blanc entre deux
+		// espaces.
+		sender := strings.TrimSpace(m.Sender.FirstName + " " + m.Sender.LastName)
 		data.SentMessages = append(data.SentMessages, MessageView{
-			ID:    m.ID,
-			Title: m.Subject,
-			Date:  m.CreatedAt.Format("02/01/2006 15:04"),
-			Body:  m.Body,
+			ID:     m.ID,
+			Title:  m.Subject,
+			Date:   m.CreatedAt.Format("02/01/2006 15:04"),
+			Body:   m.Body,
+			Sender: sender,
 		})
 	}
 

@@ -63,12 +63,12 @@ type WaitingListData struct {
 }
 
 type WaitingEntry struct {
-	UserID   uint
-	Name     string
-	Email    string
-	Phone    string
-	Date     string
-	Message  string
+	UserID  uint
+	Name    string
+	Email   string
+	Phone   string
+	Date    string
+	Message string
 }
 
 func (h *PagesHandler) MemberWaitingPage(c *gin.Context) {
@@ -529,37 +529,27 @@ type AmapAdminRightsData struct {
 }
 
 type RightUserView struct {
-	UserID       uint
-	Name         string
-	Rights       []string
-	IsSuperAdmin bool
+	UserID uint
+	Name   string
+	Rights []string
+	// IsTechnicalManager : rôle tenu de la configuration, non modifiable ici.
+	IsTechnicalManager bool
 }
 
 func formatRightLabels(rights []model.UserRight, catalogMap map[string]string) []string {
 	// Le responsable de groupe a tous les droits : les énumérer n'apprendrait
-	// rien. Le rôle technique fait exception — il n'a qu'un titulaire, et savoir
-	// qui le porte compte, même si le responsable de groupe y accède aussi.
+	// rien, et les délégations qu'il porterait par ailleurs sont redondantes.
 	for _, r := range rights {
-		if r.Right != model.RightGroupAdmin && r.Right != model.RightAdministration {
-			continue
+		if r.Right == model.RightGroupAdmin {
+			return []string{r.Right.Label()}
 		}
-		out := []string{r.Right.Label()}
-		for _, r2 := range rights {
-			if r2.Right == model.RightDatabaseAdmin {
-				out = append(out, model.RightDatabaseAdmin.Label())
-			}
-		}
-		return out
 	}
 	var labels []string
 	for _, r := range rights {
 		switch r.Right {
-		case model.RightMembership:
-			labels = append(labels, "Gestion des membres")
-		case model.RightMessages:
-			labels = append(labels, "Messages")
-		case model.RightDatabaseAdmin:
-			labels = append(labels, model.RightDatabaseAdmin.Label())
+		case model.RightMembership, model.RightMessages,
+			model.RightDistributions, model.RightParameters:
+			labels = append(labels, r.Right.Label())
 		case model.RightCatalogAdmin:
 			if len(r.Params) == 0 {
 				labels = append(labels, "Gestion des catalogues : tous")
@@ -602,28 +592,27 @@ func (h *PagesHandler) AmapAdminRightsPage(c *gin.Context) {
 
 	for _, ug := range ugs {
 		rights := ug.GetRights()
-		isSA := ug.User.IsAdmin()
-		// Le superadmin global est toujours listé avec tous les droits, même
-		// s'il n'a pas de UserGroup.Rights persisté (cf. loadGroupAccess).
-		if len(rights) == 0 && !isSA {
+		isTech := isTechnicalManagerEmail(ug.User.Email)
+		// Le responsable technique est toujours listé, même sans droits
+		// persistés : loadGroupAccess les lui accorde tous à la volée.
+		if len(rights) == 0 && !isTech {
 			continue
 		}
-		// Le super-administrateur porte un rôle à part, qui ne se confond avec
-		// aucun de ceux du groupe : il les vaut tous, sur tous les groupes. Le
-		// compte par défaut de l'application détient aussi « GroupAdmin » en
-		// base, hérité de l'installation — l'énumérer le ferait passer pour le
-		// responsable de CE groupe, place qui revient à un membre.
+		// Son rôle ne se confond avec aucun de ceux du groupe : il les vaut
+		// tous, sur tous les groupes, et vient de la configuration. L'énumérer
+		// parmi les droits du groupe le ferait passer pour le responsable de
+		// CELUI-CI, place qui revient à un membre.
 		var labels []string
-		if isSA {
-			labels = []string{model.LabelSuperAdmin}
+		if isTech {
+			labels = []string{model.LabelTechnicalManager}
 		} else {
 			labels = formatRightLabels(rights, catalogMap)
 		}
 		rv := RightUserView{
-			UserID:       ug.UserID,
-			Name:         ug.User.FirstName + " " + ug.User.LastName,
-			Rights:       labels,
-			IsSuperAdmin: isSA,
+			UserID:             ug.UserID,
+			Name:               ug.User.FirstName + " " + ug.User.LastName,
+			Rights:             labels,
+			IsTechnicalManager: isTech,
 		}
 		data.RightUsers = append(data.RightUsers, rv)
 	}
@@ -637,7 +626,6 @@ func (h *PagesHandler) AmapAdminRightsPage(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "render error: %v", err)
 	}
 }
-
 
 // ---- GET+POST /group/create/ ----
 
@@ -703,10 +691,9 @@ type AmapAdminRightsAddData struct {
 	Error    string
 	Success  string
 
-	// Titulaires actuels des rôles à titulaire unique, pour prévenir que les
-	// accorder ici les leur retirera.
+	// Titulaire actuel du rôle à titulaire unique, pour prévenir que l'accorder
+	// ici le lui retirera.
 	GroupAdminHolder string
-	TechAdminHolder  string
 }
 
 func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
@@ -719,11 +706,11 @@ func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
 	data.Title = "Ajouter un droit"
 
 	h.db.Where("group_id = ?", base.Group.ID).Preload("User").Find(&data.Members)
-	// Le superadmin global a tous les droits par construction (cf. loadGroupAccess) :
-	// il ne doit pas apparaître dans la liste des cibles modifiables.
+	// Le responsable technique a tous les droits par construction (cf.
+	// loadGroupAccess) : il ne doit pas apparaître parmi les cibles modifiables.
 	filtered := data.Members[:0]
 	for _, ug := range data.Members {
-		if !ug.User.IsAdmin() {
+		if !isTechnicalManagerEmail(ug.User.Email) {
 			filtered = append(filtered, ug)
 		}
 	}
@@ -732,9 +719,6 @@ func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
 
 	if h := exclusiveHolder(h.db, base.Group.ID, 0, model.RightGroupAdmin); h != nil {
 		data.GroupAdminHolder = h.User.Name()
-	}
-	if h := exclusiveHolder(h.db, base.Group.ID, 0, model.RightDatabaseAdmin); h != nil {
-		data.TechAdminHolder = h.User.Name()
 	}
 
 	if c.Request.Method == http.MethodPost {
@@ -746,8 +730,8 @@ func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
 			return
 		}
 
-		if isSiteAdmin(h.db, uint(userID)) {
-			data.Error = "Les droits du superadmin global ne sont pas modifiables."
+		if isTechnicalManager(h.db, uint(userID)) {
+			data.Error = "Le responsable technique tient son rôle de la configuration : ses droits ne se modifient pas ici."
 			renderRightsAdd(c, data)
 			return
 		}
@@ -800,11 +784,11 @@ func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
 		if c.PostForm("right_messages") != "" {
 			addRight(model.RightMessages)
 		}
-		if c.PostForm("right_database_admin") != "" {
-			addRight(model.RightDatabaseAdmin)
+		if c.PostForm("right_distributions") != "" {
+			addRight(model.RightDistributions)
 		}
-		if c.PostForm("right_administration") != "" {
-			addRight(model.RightAdministration)
+		if c.PostForm("right_parameters") != "" {
+			addRight(model.RightParameters)
 		}
 		if c.PostForm("catalog_all") != "" {
 			addRight(model.RightCatalogAdmin)
@@ -861,20 +845,19 @@ func renderRightsAdd(c *gin.Context, data AmapAdminRightsAddData) {
 
 type AmapAdminRightsEditData struct {
 	AmapAdminPageData
-	Member         model.UserGroup
-	Catalogs       []model.Catalog
+	Member           model.UserGroup
+	Catalogs         []model.Catalog
 	HasGroupAdmin    bool
 	HasMembership    bool
 	HasMessages      bool
-	HasDatabaseAdmin bool
-	HasAdministration bool
+	HasDistributions bool
+	HasParameters    bool
 	HasAllCatalogs   bool
-	CatalogRights  map[string]bool
-	Error          string
+	CatalogRights    map[string]bool
+	Error            string
 
-	// Titulaires actuels des rôles à titulaire unique, hors membre édité.
+	// Titulaire actuel du rôle à titulaire unique, hors membre édité.
 	GroupAdminHolder string
-	TechAdminHolder  string
 }
 
 func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
@@ -889,10 +872,11 @@ func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
 		return
 	}
 
-	// Les droits du superadmin global ne sont pas modifiables : il a tous les
-	// droits par construction (cf. handler.loadGroupAccess).
-	if isSiteAdmin(h.db, uint(userID)) {
-		c.String(http.StatusForbidden, "les droits du superadmin global ne sont pas modifiables")
+	// Les droits du responsable technique ne sont pas modifiables : il les a
+	// tous par construction (cf. handler.loadGroupAccess), et son rôle se
+	// transfère en changeant la configuration, pas depuis cet écran.
+	if isTechnicalManager(h.db, uint(userID)) {
+		c.String(http.StatusForbidden, "le responsable technique tient son rôle de la configuration : ses droits ne se modifient pas ici")
 		return
 	}
 
@@ -916,9 +900,6 @@ func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
 	if holder := exclusiveHolder(h.db, base.Group.ID, uint(userID), model.RightGroupAdmin); holder != nil {
 		data.GroupAdminHolder = holder.User.Name()
 	}
-	if holder := exclusiveHolder(h.db, base.Group.ID, uint(userID), model.RightDatabaseAdmin); holder != nil {
-		data.TechAdminHolder = holder.User.Name()
-	}
 
 	fillRightsState := func(rights []model.UserRight) {
 		for _, r := range rights {
@@ -929,10 +910,10 @@ func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
 				data.HasMembership = true
 			case model.RightMessages:
 				data.HasMessages = true
-			case model.RightDatabaseAdmin:
-				data.HasDatabaseAdmin = true
-			case model.RightAdministration:
-				data.HasAdministration = true
+			case model.RightDistributions:
+				data.HasDistributions = true
+			case model.RightParameters:
+				data.HasParameters = true
 			case model.RightCatalogAdmin:
 				if len(r.Params) == 0 {
 					data.HasAllCatalogs = true
@@ -956,14 +937,11 @@ func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
 		if c.PostForm("right_messages") != "" {
 			rights = append(rights, model.UserRight{Right: model.RightMessages})
 		}
-		// Absent de cette liste, le droit technique ne pouvait pas être accordé
-		// depuis ce formulaire, et son titulaire le perdait à la première
-		// modification de ses autres droits — le formulaire l'affichait pourtant.
-		if c.PostForm("right_database_admin") != "" {
-			rights = append(rights, model.UserRight{Right: model.RightDatabaseAdmin})
+		if c.PostForm("right_distributions") != "" {
+			rights = append(rights, model.UserRight{Right: model.RightDistributions})
 		}
-		if c.PostForm("right_administration") != "" {
-			rights = append(rights, model.UserRight{Right: model.RightAdministration})
+		if c.PostForm("right_parameters") != "" {
+			rights = append(rights, model.UserRight{Right: model.RightParameters})
 		}
 		if c.PostForm("catalog_all") != "" {
 			rights = append(rights, model.UserRight{Right: model.RightCatalogAdmin})
@@ -982,7 +960,7 @@ func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
 
 		// Le groupe ne doit pas se retrouver sans responsable : le seul
 		// titulaire ne peut pas se retirer le rôle sans le passer à quelqu'un.
-		// Le superadmin global resterait un recours, mais plus aucun membre ne
+		// Le responsable technique resterait un recours, mais plus aucun membre ne
 		// pourrait administrer le groupe.
 		if leavesGroupWithoutManager(h.db, base.Group.ID, uint(userID), rights) {
 			data.Error = "Ce membre est le seul responsable du groupe. Désignez d'abord quelqu'un d'autre."
@@ -1057,7 +1035,9 @@ type AmapAdminPageData struct {
 
 func (h *PagesHandler) buildAmapAdminData(c *gin.Context, tab string) (AmapAdminPageData, bool) {
 	pd := h.buildPageData(c)
-	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
+	// La délégation « paramètres » suffit : elle a été taillée pour ces écrans.
+	// L'attribution des droits, elle, reste gardée par RequireRightsManagement.
+	if pd.User == nil || pd.Group == nil || !pd.HasParameters {
 		c.Redirect(http.StatusFound, "/home")
 		return AmapAdminPageData{}, false
 	}

@@ -228,10 +228,10 @@ func (h *MemberHandler) Remove(c *gin.Context) {
 		return
 	}
 
-	// Le superadmin global ne peut pas être retiré : il est administrateur
+	// Le responsable technique ne peut pas être retiré : il est administrateur
 	// perpétuel de tous les groupes par construction.
-	if isSiteAdmin(h.db, uint(userID)) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "cannot remove the global super-admin"})
+	if isTechnicalManager(h.db, uint(userID)) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "cannot remove the technical manager"})
 		return
 	}
 

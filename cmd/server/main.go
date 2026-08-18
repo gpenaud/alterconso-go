@@ -84,8 +84,14 @@ func main() {
 	if err := db.Migrate(database); err != nil {
 		log.Fatalf("failed to migrate database: %v", err)
 	}
-	if err := db.EnsureSuperAdmin(database, cfg); err != nil {
-		log.Printf("warning: EnsureSuperAdmin: %v", err)
+	// Avant tout le reste : les gardes de routes lisent les droits convertis,
+	// et un demarrage sur l'ancien modele ouvrirait la base a d'anciens
+	// porteurs du role technique de groupe.
+	if err := db.MigrateRightsModel(database); err != nil {
+		log.Printf("warning: MigrateRightsModel: %v", err)
+	}
+	if err := db.EnsureTechnicalManager(database, cfg); err != nil {
+		log.Printf("warning: EnsureTechnicalManager: %v", err)
 	}
 	if err := db.SeedTxpCategories(database); err != nil {
 		log.Printf("warning: SeedTxpCategories: %v", err)

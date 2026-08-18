@@ -59,8 +59,8 @@ var funcMap = template.FuncMap{
 		}
 		return fmt.Sprintf("%d", *i)
 	},
-	"hasFlag":    func(flags uint, f uint) bool { return flags&f != 0 },
-	"derefUint":  func(i *uint) string {
+	"hasFlag": func(flags uint, f uint) bool { return flags&f != 0 },
+	"derefUint": func(i *uint) string {
 		if i == nil {
 			return ""
 		}
@@ -145,25 +145,36 @@ type BreadcrumbItem struct {
 }
 
 type PageData struct {
-	Title          string
-	User           *model.User
-	Group          *model.Group
-	IsGroupManager    bool
-	HasMembership     bool
-	HasMessages       bool
-	HasCatalogAdmin   bool
-	HasDatabaseAdmin  bool
-	// CanManageRights : peut attribuer les droits. Plus étroit que
-	// IsGroupManager, qui couvre aussi les « droits administrateur ».
+	Title            string
+	User             *model.User
+	Group            *model.Group
+	IsGroupManager   bool
+	HasMembership    bool
+	HasMessages      bool
+	HasCatalogAdmin  bool
+	HasDatabaseAdmin bool
+	// Les deux délégations qui ont remplacé les anciens « droits
+	// administrateur » : elles ouvrent un écran chacune, pas le groupe entier.
+	HasDistributions bool
+	HasParameters    bool
+	// IsTechnicalManager : rôle unique de l'installation, tenu de la
+	// configuration. Il vaut tous les droits sur tous les groupes.
+	IsTechnicalManager bool
+	// ShowVendorsTab : l'écran des producteurs est-il proposé ? Vrai pour qui a
+	// une fonction dans le groupe, et pour tous si la configuration rouvre
+	// l'onglet (ui.vendors_tab_for_members).
+	ShowVendorsTab bool
+	// CanManageRights : peut attribuer les droits — le responsable de groupe et
+	// le responsable technique, personne d'autre.
 	CanManageRights   bool
 	AllowedCatalogIDs []uint // nil = tous (GroupManager ou CatalogAdmin global)
-	Category       string
-	Breadcrumb     []BreadcrumbItem
-	Flash          string
-	FlashError     bool
-	Redirect       string
-	Container      string
-	HideNav        bool
+	Category          string
+	Breadcrumb        []BreadcrumbItem
+	Flash             string
+	FlashError        bool
+	Redirect          string
+	Container         string
+	HideNav           bool
 	// impersonation (« se connecter en tant que »)
 	IsImpersonating  bool
 	ImpersonatorName string
@@ -175,9 +186,9 @@ type PageData struct {
 	Catalog      *model.Catalog
 	Products     []model.Product
 	ProductViews []ProductView
-	Vendor   *model.Vendor
-	Contact  *model.User
-	Distribs []DistribView
+	Vendor       *model.Vendor
+	Contact      *model.User
+	Distribs     []DistribView
 	// shop page
 	MultiDistribID uint
 	TargetUserID   uint
@@ -310,29 +321,29 @@ type MemberView struct {
 }
 
 type DistribAdminView struct {
-	ID                  uint
-	DayOfWeek           string
-	Day                 string
-	Month               string
-	Date                string
-	DateISO             string // YYYY-MM-DD for URL
-	StartHour           string
-	EndHour             string
-	Place               string
-	PlaceAddress        string
-	OrderStartDate      string
-	OrderEndDate        string
-	Catalogs            []string
-	DistribLinks        []DistribLink
-	Validated           bool
-	NbOrders            int
-	NbVolunteers        int
+	ID                   uint
+	DayOfWeek            string
+	Day                  string
+	Month                string
+	Date                 string
+	DateISO              string // YYYY-MM-DD for URL
+	StartHour            string
+	EndHour              string
+	Place                string
+	PlaceAddress         string
+	OrderStartDate       string
+	OrderEndDate         string
+	Catalogs             []string
+	DistribLinks         []DistribLink
+	Validated            bool
+	NbOrders             int
+	NbVolunteers         int
 	NbVolunteersRequired int
-	TotalAmount         float64
-	IsFuture            bool
-	IsOrderOpen         bool
-	IsPast              bool
-	IsToday             bool
+	TotalAmount          float64
+	IsFuture             bool
+	IsOrderOpen          bool
+	IsPast               bool
+	IsToday              bool
 }
 
 type CatalogAdminRow struct {
@@ -345,12 +356,12 @@ type CatalogAdminRow struct {
 }
 
 type DistribLink struct {
-	DistribID         uint
-	CatalogID         uint
-	CatalogName       string
-	VendorName        string
-	CustomOrderStart  string // si la date d'ouverture diffère du parent
-	CustomOrderEnd    string // si la date de fermeture diffère du parent
+	DistribID        uint
+	CatalogID        uint
+	CatalogName      string
+	VendorName       string
+	CustomOrderStart string // si la date d'ouverture diffère du parent
+	CustomOrderEnd   string // si la date de fermeture diffère du parent
 }
 
 // ---- Handler ----
@@ -418,8 +429,14 @@ func (h *PagesHandler) buildPageData(c *gin.Context) PageData {
 			pd.HasMembership = pd.IsGroupManager || ug.HasRight(model.RightMembership)
 			pd.HasMessages = pd.IsGroupManager || ug.HasRight(model.RightMessages)
 			pd.HasCatalogAdmin = pd.IsGroupManager || ug.HasRight(model.RightCatalogAdmin)
-			// Pas pd.IsGroupManager : les « droits administrateur » ouvrent tout
-			// sauf cette porte-ci.
+			pd.HasDistributions = ug.CanManageDistributions()
+			pd.HasParameters = ug.CanManageParameters()
+			pd.IsTechnicalManager = pd.User != nil && isTechnicalManagerEmail(pd.User.Email)
+			// Une fonction dans le groupe rend l'écran utile ; sinon il ne
+			// s'ouvre que si la configuration le demande.
+			pd.ShowVendorsTab = h.cfg.UI.VendorsTabForMembers ||
+				pd.IsGroupManager || pd.HasCatalogAdmin ||
+				pd.HasDistributions || pd.HasParameters || pd.HasMembership
 			pd.HasDatabaseAdmin = ug.CanAdminDatabase()
 			pd.CanManageRights = ug.CanManageRights()
 			if pd.HasCatalogAdmin && !pd.IsGroupManager {
@@ -560,13 +577,13 @@ func (h *PagesHandler) ChoosePage(c *gin.Context) {
 	}
 
 	// If ?group=id → switch group and redirect to /home.
-	// Le superadmin peut basculer vers n'importe quel groupe ; les autres uniquement
+	// Le responsable technique peut basculer vers n'importe quel groupe ; les autres uniquement
 	// vers les groupes dont ils sont membres.
 	if groupIDStr := c.Query("group"); groupIDStr != "" {
 		var groupID uint
 		if _, err := fmt.Sscanf(groupIDStr, "%d", &groupID); err == nil && groupID != 0 {
 			allowed := false
-			if user.IsAdmin() {
+			if isTechnicalManagerEmail(user.Email) {
 				var g model.Group
 				if h.db.First(&g, groupID).Error == nil {
 					allowed = true
@@ -588,9 +605,9 @@ func (h *PagesHandler) ChoosePage(c *gin.Context) {
 		}
 	}
 
-	// Le superadmin voit tous les groupes ; les autres uniquement les leurs.
+	// Le responsable technique voit tous les groupes ; les autres uniquement les leurs.
 	var groups []model.Group
-	if user.IsAdmin() {
+	if isTechnicalManagerEmail(user.Email) {
 		h.db.Preload("Logo").Order("name").Find(&groups)
 	} else {
 		var ugs []model.UserGroup
@@ -927,7 +944,9 @@ func (h *PagesHandler) ContractViewPage(c *gin.Context) {
 			imgURL = FileURL(p.Image.ID, h.cfg.Key, p.Image.Name)
 		}
 		ref := ""
-		if p.Ref != nil { ref = *p.Ref }
+		if p.Ref != nil {
+			ref = *p.Ref
+		}
 		qt := 0.0
 		if p.Qt != nil {
 			qt = *p.Qt
@@ -1225,7 +1244,7 @@ func (h *PagesHandler) DistributionPage(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
-	if !pd.IsGroupManager {
+	if !pd.HasDistributions {
 		c.String(http.StatusForbidden, "accès refusé")
 		return
 	}
@@ -1353,27 +1372,27 @@ func (h *PagesHandler) DistributionPage(c *gin.Context) {
 		}
 
 		pd.AllDistribs = append(pd.AllDistribs, DistribAdminView{
-			ID:                  md.ID,
-			DayOfWeek:           frDaysFull[md.DistribStartDate.Weekday()],
-			Day:                 fmt.Sprintf("%d", md.DistribStartDate.Day()),
-			Month:               frMonthsFull[md.DistribStartDate.Month()],
-			Date:                md.DistribStartDate.Format("02/01/2006"),
-			DateISO:             md.DistribStartDate.Format("2006-01-02"),
-			StartHour:           md.DistribStartDate.Format("15:04"),
-			EndHour:             md.DistribEndDate.Format("15:04"),
-			Place:               md.Place.Name,
-			PlaceAddress:        placeAddr,
-			OrderStartDate:      orderStartStr,
-			OrderEndDate:        orderEndStr,
-			Catalogs:            catalogs,
-			DistribLinks:        links,
-			Validated:           md.Validated,
-			NbOrders:            int(nbOrders),
-			NbVolunteers:        int(nbVols),
+			ID:                   md.ID,
+			DayOfWeek:            frDaysFull[md.DistribStartDate.Weekday()],
+			Day:                  fmt.Sprintf("%d", md.DistribStartDate.Day()),
+			Month:                frMonthsFull[md.DistribStartDate.Month()],
+			Date:                 md.DistribStartDate.Format("02/01/2006"),
+			DateISO:              md.DistribStartDate.Format("2006-01-02"),
+			StartHour:            md.DistribStartDate.Format("15:04"),
+			EndHour:              md.DistribEndDate.Format("15:04"),
+			Place:                md.Place.Name,
+			PlaceAddress:         placeAddr,
+			OrderStartDate:       orderStartStr,
+			OrderEndDate:         orderEndStr,
+			Catalogs:             catalogs,
+			DistribLinks:         links,
+			Validated:            md.Validated,
+			NbOrders:             int(nbOrders),
+			NbVolunteers:         int(nbVols),
 			NbVolunteersRequired: int(nbVolRoles),
-			TotalAmount:         totalAmt,
-			IsFuture:            md.DistribStartDate.After(now),
-			IsPast:              md.DistribStartDate.Before(now),
+			TotalAmount:          totalAmt,
+			IsFuture:             md.DistribStartDate.After(now),
+			IsPast:               md.DistribStartDate.Before(now),
 			IsToday: func() bool {
 				d := md.DistribStartDate
 				return d.Year() == now.Year() && d.Month() == now.Month() && d.Day() == now.Day()
@@ -1425,6 +1444,15 @@ func (h *PagesHandler) AmapPage(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
+	// L'ecran ne sert qu'a qui administre le groupe ou ses catalogues : il
+	// n'offre aucune action a un adherent, dont le menu ne le propose plus. La
+	// porte se ferme aussi cote serveur, faute de quoi l'adresse resterait
+	// accessible a qui la connait — et se rouvre par la meme condition que
+	// l'onglet, pour qu'un groupe qui l'affiche puisse aussi y entrer.
+	if !pd.ShowVendorsTab {
+		c.Redirect(http.StatusFound, "/home")
+		return
+	}
 
 	// Load catalogs with vendor, contact, and product images
 	var catalogs []model.Catalog
@@ -1442,8 +1470,12 @@ func (h *PagesHandler) AmapPage(c *gin.Context) {
 			vendorOrder = append(vendorOrder, v.ID)
 			city := ""
 			zip := ""
-			if v.City != nil { city = *v.City }
-			if v.ZipCode != nil { zip = *v.ZipCode }
+			if v.City != nil {
+				city = *v.City
+			}
+			if v.ZipCode != nil {
+				zip = *v.ZipCode
+			}
 			vendorMap[v.ID] = &AmapVendorView{
 				ID:      v.ID,
 				Name:    v.Name,
@@ -1648,7 +1680,7 @@ func (h *PagesHandler) AmapAdminEditPage(c *gin.Context) {
 
 func (h *PagesHandler) AmapAdminUpdate(c *gin.Context) {
 	pd := h.buildPageData(c)
-	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
+	if pd.User == nil || pd.Group == nil || !pd.HasParameters {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
@@ -1658,18 +1690,33 @@ func (h *PagesHandler) AmapAdminUpdate(c *gin.Context) {
 	txtHome := c.PostForm("txt_home")
 	txtDistrib := c.PostForm("txt_distrib")
 	extURL := c.PostForm("ext_url")
+	headEmail := strings.TrimSpace(c.PostForm("head_email"))
 	groupType := c.PostForm("group_type")
 	regOption := c.PostForm("reg_option")
 
 	// Flags
 	var flags uint
-	if c.PostForm("flag_payments") == "1"            { flags |= uint(model.GroupFlagHasPayments) }
-	if c.PostForm("flag_network") == "1"             { flags |= uint(model.GroupFlagCagetteNetwork) }
-	if c.PostForm("flag_custom_categories") == "1"   { flags |= uint(model.GroupFlagCustomizedCategories) }
-	if c.PostForm("flag_hide_phone") == "1"          { flags |= uint(model.GroupFlagHidePhone) }
-	if c.PostForm("flag_phone_required") == "1"      { flags |= uint(model.GroupFlagPhoneRequired) }
-	if c.PostForm("flag_address_required") == "1"    { flags |= uint(model.GroupFlagAddressRequired) }
-	if c.PostForm("flag_shop_mode") == "1"           { flags |= uint(model.GroupFlagShopMode) }
+	if c.PostForm("flag_payments") == "1" {
+		flags |= uint(model.GroupFlagHasPayments)
+	}
+	if c.PostForm("flag_network") == "1" {
+		flags |= uint(model.GroupFlagCagetteNetwork)
+	}
+	if c.PostForm("flag_custom_categories") == "1" {
+		flags |= uint(model.GroupFlagCustomizedCategories)
+	}
+	if c.PostForm("flag_hide_phone") == "1" {
+		flags |= uint(model.GroupFlagHidePhone)
+	}
+	if c.PostForm("flag_phone_required") == "1" {
+		flags |= uint(model.GroupFlagPhoneRequired)
+	}
+	if c.PostForm("flag_address_required") == "1" {
+		flags |= uint(model.GroupFlagAddressRequired)
+	}
+	if c.PostForm("flag_shop_mode") == "1" {
+		flags |= uint(model.GroupFlagShopMode)
+	}
 
 	updates := map[string]interface{}{
 		"name":       name,
@@ -1677,10 +1724,33 @@ func (h *PagesHandler) AmapAdminUpdate(c *gin.Context) {
 		"reg_option": regOption,
 		"flags":      flags,
 	}
-	if txtIntro != "" { updates["txt_intro"] = txtIntro } else { updates["txt_intro"] = nil }
-	if txtHome != "" { updates["txt_home"] = txtHome } else { updates["txt_home"] = nil }
-	if txtDistrib != "" { updates["txt_distrib"] = txtDistrib } else { updates["txt_distrib"] = nil }
-	if extURL != "" { updates["ext_url"] = extURL } else { updates["ext_url"] = nil }
+	if txtIntro != "" {
+		updates["txt_intro"] = txtIntro
+	} else {
+		updates["txt_intro"] = nil
+	}
+	if txtHome != "" {
+		updates["txt_home"] = txtHome
+	} else {
+		updates["txt_home"] = nil
+	}
+	if txtDistrib != "" {
+		updates["txt_distrib"] = txtDistrib
+	} else {
+		updates["txt_distrib"] = nil
+	}
+	if extURL != "" {
+		updates["ext_url"] = extURL
+	} else {
+		updates["ext_url"] = nil
+	}
+	// Vidé, le champ retombe sur l'adresse personnelle du responsable : c'est
+	// ce que fait groupHeadEmail, et non l'absence de tout destinataire.
+	if headEmail != "" {
+		updates["head_email"] = headEmail
+	} else {
+		updates["head_email"] = nil
+	}
 
 	if cid, err := strconv.ParseUint(c.PostForm("contact_id"), 10, 64); err == nil && cid > 0 {
 		updates["contact_id"] = uint(cid)

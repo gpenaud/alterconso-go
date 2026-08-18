@@ -37,7 +37,7 @@ func (h *FinanceHandler) GetBalance(c *gin.Context) {
 	var ug model.UserGroup
 	if err := h.db.Where("user_id = ? AND group_id = ?", claims.UserID, groupID).First(&ug).Error; err != nil {
 		// Pas membre : un admin site-wide a accès mais n'a pas de balance.
-		if isSiteAdmin(h.db, claims.UserID) {
+		if isTechnicalManager(h.db, claims.UserID) {
 			c.JSON(http.StatusOK, gin.H{"success": true, "balance": 0.0})
 			return
 		}

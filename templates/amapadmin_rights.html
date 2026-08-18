@@ -29,9 +29,9 @@
             </ul>
           </td>
           <td>
-            {{if .IsSuperAdmin}}
+            {{if .IsTechnicalManager}}
             <button type="button" class="btn btn-default btn-xs" disabled
-                    title="Les droits du superadmin global ne sont pas modifiables">
+                    title="Le responsable technique tient son rôle de la configuration : ses droits ne se modifient pas ici">
               <i class="icon icon-lock"></i> Verrouillé
             </button>
             {{else}}

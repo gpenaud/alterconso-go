@@ -24,14 +24,16 @@ key: ""                # ou env APP_KEY
 # Domaine public (utilisé dans les liens des emails)
 host: alterconso.leportail.org
 
-# Superadmin global (créé/maintenu au démarrage si email renseigné).
-# Compte avec tous les droits sur tous les groupes : peut créer et gérer
-# n'importe quel groupe. Voit toujours la page de choix de groupe au login.
-superadmin:
-  email: ""              # ex: admin@alterconso.fr (vide = désactivé)
-  password: ""           # ou env SUPERADMIN_PASSWORD
-  first_name: Super
-  last_name: Admin
+# Responsable technique de l'installation (compte créé/maintenu au démarrage si
+# email renseigné). Unique, et désigné ici plutôt qu'en base : tous les droits
+# sur tous les groupes, il voit toujours la page de choix de groupe au login.
+# L'ancienne clé `superadmin` est encore lue, le temps que les déploiements
+# passent au nouveau nom.
+technical_manager:
+  email: ""              # ex: technique@alterconso.fr (vide = aucun)
+  password: ""           # ou env TECHNICAL_MANAGER_PASSWORD
+  first_name: Responsable
+  last_name: Technique
 
 # Email — SMTP Brevo
 smtp_host: smtp-relay.brevo.com
@@ -86,3 +88,11 @@ notifications:
   # Sémantique : pure correspondance par pattern, sans exclusivité mutuelle.
   # Obligatoire si enabled — boot fatal si vide ou nom inconnu.
   recipient_category: "Membres réguliers"
+
+# Interface — ce qu'un adhérent sans fonction dans le groupe voit.
+ui:
+  # L'onglet « Producteurs » n'est proposé qu'à qui administre le groupe ou ses
+  # catalogues : l'écran n'offre aucune action aux autres. Passer à true le
+  # rouvre à tout adhérent, pour un groupe qui s'en sert comme annuaire de ses
+  # producteurs.
+  vendors_tab_for_members: false

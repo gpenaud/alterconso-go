@@ -83,7 +83,7 @@ func (h *UserHandler) Get(c *gin.Context) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}
-		if !requester.IsAdmin() {
+		if !isTechnicalManagerEmail(requester.Email) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 			return
 		}
@@ -155,7 +155,7 @@ func (h *UserHandler) List(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	if !requester.IsAdmin() {
+	if !isTechnicalManagerEmail(requester.Email) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 		return
 	}

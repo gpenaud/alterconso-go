@@ -6,47 +6,61 @@ import "encoding/json"
 type Right string
 
 const (
-	RightGroupAdmin    Right = "GroupAdmin"   // responsable de groupe — exclusif
-	RightCatalogAdmin  Right = "CatalogAdmin" // peut avoir un catalogID optionnel
-	RightMembership    Right = "Membership"
-	RightMessages      Right = "Messages"
-	RightDatabaseAdmin Right = "DatabaseAdmin" // responsable technique — exclusif
+	RightGroupAdmin   Right = "GroupAdmin"   // responsable de groupe — exclusif
+	RightCatalogAdmin Right = "CatalogAdmin" // peut avoir un catalogID optionnel
+	RightMembership   Right = "Membership"
+	RightMessages     Right = "Messages"
 
-	// RightAdministration : tous les pouvoirs d'administration du groupe, hors
-	// base de données. Cumulable, contrairement aux deux rôles de responsable.
+	// RightDistributions et RightParameters remplacent les anciens « droits
+	// administrateur », qui ouvraient tout le groupe d'un bloc. Deux délégations
+	// nettes valent mieux qu'un pouvoir général : on confie le calendrier des
+	// distributions sans confier les paramètres du groupe, et réciproquement.
 	//
-	// Administrer le groupe n'est pas en être responsable : ses porteurs
-	// n'entrent pas dans les destinataires du courrier adressé au responsable,
-	// que IsGroupHead seul désigne.
-	RightAdministration Right = "Administration"
+	// Ni l'un ni l'autre ne fait de son porteur un responsable : l'accès complet
+	// n'appartient qu'au responsable de groupe et au responsable technique.
+	RightDistributions Right = "Distributions"
+	RightParameters    Right = "Parameters"
 )
 
-// LabelSuperAdmin nomme le rôle du compte administrateur de l'application —
-// celui que garantit EnsureSuperAdmin au démarrage. Il n'est pas un droit de
-// groupe : il porte sur TOUS les groupes à la fois, et ne se cumule ni ne se
-// transfère comme les autres. Le compte par défaut détient souvent en plus un
-// « GroupAdmin » hérité de l'installation, qu'il ne faut pas afficher à sa
-// place : cela le ferait passer pour le responsable d'un groupe en particulier.
-const LabelSuperAdmin = "Super-administrateur"
+// LabelTechnicalManager nomme le rôle du responsable technique de
+// l'application. Ce n'est pas un droit de groupe et il ne s'attribue pas depuis
+// l'interface : il tient à une adresse posée dans la configuration, unique pour
+// toute l'installation. Il s'affiche à côté des droits d'un membre pour
+// expliquer un accès que la liste de ses droits ne justifie pas.
+const LabelTechnicalManager = "Responsable technique"
 
 // RightLabels donne le nom de chaque droit tel qu'il s'affiche.
 var RightLabels = map[Right]string{
-	RightGroupAdmin:     "Responsable de groupe",
-	RightDatabaseAdmin:  "Responsable technique",
-	RightAdministration: "Droits administrateur",
-	RightCatalogAdmin:   "Gestion des catalogues",
-	RightMembership:     "Gestion des membres",
-	RightMessages:       "Messages",
+	RightGroupAdmin:    "Responsable de groupe",
+	RightCatalogAdmin:  "Gestion des catalogues",
+	RightMembership:    "Gestion des membres",
+	RightMessages:      "Messages",
+	RightDistributions: "Gestion des distributions",
+	RightParameters:    "Gestion des paramètres",
+}
+
+// AssignableRights énumère les droits attribuables depuis l'interface, dans
+// l'ordre où ils s'affichent : le rôle de responsable d'abord, les délégations
+// ensuite.
+func AssignableRights() []Right {
+	return []Right{
+		RightGroupAdmin,
+		RightDistributions,
+		RightParameters,
+		RightCatalogAdmin,
+		RightMembership,
+		RightMessages,
+	}
 }
 
 // exclusiveRights : droits qu'un seul membre du groupe peut détenir à la fois.
 //
 // Les accorder à quelqu'un les retire à son prédécesseur — c'est un transfert,
-// pas un cumul. Le superadmin global n'entre pas dans ce compte : il tient ses
-// droits d'ailleurs, sur tous les groupes à la fois.
+// pas un cumul. Le responsable de groupe est désormais le seul dans ce cas : le
+// rôle technique a quitté les droits de groupe pour la configuration, où il
+// vaut pour toute l'installation.
 var exclusiveRights = map[Right]bool{
-	RightGroupAdmin:    true,
-	RightDatabaseAdmin: true,
+	RightGroupAdmin: true,
 }
 
 // IsExclusiveRight indique si un droit n'admet qu'un titulaire par groupe.
@@ -54,7 +68,7 @@ func IsExclusiveRight(r Right) bool { return exclusiveRights[r] }
 
 // ExclusiveRights énumère les droits à titulaire unique, dans un ordre stable.
 func ExclusiveRights() []Right {
-	return []Right{RightGroupAdmin, RightDatabaseAdmin}
+	return []Right{RightGroupAdmin}
 }
 
 // Label retourne le nom affichable d'un droit, ou sa valeur brute s'il n'en a
@@ -75,10 +89,10 @@ type UserRight struct {
 // UserGroup représente l'appartenance d'un user à un groupe, avec ses droits.
 // Clé primaire composite (UserID, GroupID).
 type UserGroup struct {
-	UserID  uint    `gorm:"primaryKey" json:"userId"`
-	GroupID uint    `gorm:"primaryKey" json:"groupId"`
-	User    User    `gorm:"foreignKey:UserID" json:"-"`
-	Group   Group   `gorm:"foreignKey:GroupID" json:"-"`
+	UserID  uint  `gorm:"primaryKey" json:"userId"`
+	GroupID uint  `gorm:"primaryKey" json:"groupId"`
+	User    User  `gorm:"foreignKey:UserID" json:"-"`
+	Group   Group `gorm:"foreignKey:GroupID" json:"-"`
 
 	// Balance du compte dans la devise du groupe
 	Balance float64 `gorm:"default:0" json:"balance"`
@@ -128,42 +142,45 @@ func (ug *UserGroup) GetRights() []UserRight {
 	return rights
 }
 
-// IsGroupManager : détient les pleins pouvoirs d'administration du groupe.
+// IsGroupManager : détient les pleins pouvoirs sur le groupe.
 //
-// Vrai pour les trois : responsable de groupe, responsable technique — qui a
-// les mêmes droits que lui — et porteur des « droits administrateur », dont
-// l'accès s'arrête à la base de données et à l'attribution des droits. Ces deux
-// portes-là ne s'ouvrent pas ici, mais par CanAdminDatabase et CanManageRights.
+// Le responsable de groupe est désormais le seul dans ce cas côté groupe. Le
+// responsable technique les a aussi, mais il ne se lit pas dans les droits d'un
+// membre : son rôle vient de la configuration et vaut sur tous les groupes, si
+// bien qu'il s'ajoute à ce test là où l'application le connaît — buildPageData
+// et les gardes de routes — plutôt qu'ici.
 //
-// Une dizaine de handlers appellent cette méthode en direct : c'est le point de
-// passage qu'il faut élargir, plutôt que de les reprendre un à un.
+// Les délégations « distributions » et « paramètres » ne donnent pas les pleins
+// pouvoirs : c'est tout l'objet de leur découpage.
 func (ug *UserGroup) IsGroupManager() bool {
-	return ug.HasRight(RightGroupAdmin) ||
-		ug.HasRight(RightDatabaseAdmin) ||
-		ug.HasRight(RightAdministration)
+	return ug.HasRight(RightGroupAdmin)
 }
 
-// CanManageRights : peut attribuer et retirer les droits des membres.
-//
-// Fermé aux « droits administrateur » : sans quoi leur porteur s'accorderait le
-// rôle technique, et par lui la base de données que ce droit lui refuse. La
-// restriction ne tiendrait qu'aussi longtemps qu'il ne chercherait pas à la
-// contourner.
+// CanManageRights : peut attribuer et retirer les droits des membres. Réservé
+// au responsable du groupe, et au responsable technique par ailleurs.
 func (ug *UserGroup) CanManageRights() bool {
-	return ug.HasRight(RightGroupAdmin) || ug.HasRight(RightDatabaseAdmin)
+	return ug.HasRight(RightGroupAdmin)
 }
 
 // IsGroupHead : responsable de groupe à proprement parler, celui qui porte le
-// rôle unique. À distinguer de IsGroupManager, plus large.
+// rôle unique et reçoit le courrier qui lui est adressé.
 func (ug *UserGroup) IsGroupHead() bool {
 	return ug.HasRight(RightGroupAdmin)
 }
 
 // CanAdminDatabase : accès à l'édition directe des tables.
-//
-// Les « droits administrateur » s'arrêtent à cette porte, comme à celle de
-// CanManageRights — les deux seules que le responsable de groupe et le
-// responsable technique ne partagent pas avec eux.
 func (ug *UserGroup) CanAdminDatabase() bool {
-	return ug.HasRight(RightGroupAdmin) || ug.HasRight(RightDatabaseAdmin)
+	return ug.HasRight(RightGroupAdmin)
+}
+
+// CanManageDistributions : tient le calendrier des distributions sans pour
+// autant administrer le reste du groupe.
+func (ug *UserGroup) CanManageDistributions() bool {
+	return ug.HasRight(RightGroupAdmin) || ug.HasRight(RightDistributions)
+}
+
+// CanManageParameters : règle les paramètres du groupe — identité, adhésions,
+// devise, documents — sans toucher au calendrier ni aux membres.
+func (ug *UserGroup) CanManageParameters() bool {
+	return ug.HasRight(RightGroupAdmin) || ug.HasRight(RightParameters)
 }

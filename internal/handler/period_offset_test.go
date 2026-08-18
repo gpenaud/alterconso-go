@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"os"
 	"strings"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 // portaient -1 et 1 en dur : depuis l'origine le premier clic fonctionnait,
 // puis chaque pression rejouait le même lien et la page ne bougeait plus.
 func TestPeriodArrowsFollowCurrentOffset(t *testing.T) {
-	os.Chdir("../..")
+	chdirRepoRoot(t)
 
 	cases := []struct {
 		nom      string

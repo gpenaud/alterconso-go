@@ -77,7 +77,7 @@ func (h *OrderHandler) GetForUser(c *gin.Context) {
 		}
 		if uint(uid) != claims.UserID {
 			var requester model.User
-			if err := h.db.First(&requester, claims.UserID).Error; err != nil || !requester.IsAdmin() {
+			if err := h.db.First(&requester, claims.UserID).Error; err != nil || !isTechnicalManagerEmail(requester.Email) {
 				c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 				return
 			}

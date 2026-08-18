@@ -129,7 +129,9 @@
 
   {{range .SentMessages}}
   <div class="article" id="msg-{{.ID}}" style="margin-top:12px;padding:18px 22px;">
-    <h4 style="margin-top:0;">{{.Title}} <small style="color:#999;">{{.Date}}</small></h4>
+    <h4 style="margin-top:0;">{{.Title}}
+      <small style="color:#999;">{{.Date}}{{if .Sender}} — envoyé par {{.Sender}}{{end}}</small>
+    </h4>
     <p style="margin-bottom:0;">{{nl2br .Body}}</p>
   </div>
   {{end}}
@@ -177,7 +179,7 @@
       {{range .SentMessages}}
       <a href="#msg-{{.ID}}" style="display:block;padding:8px 0;border-bottom:1px solid #eee;color:#5a8a00;text-decoration:none;">
         {{.Title}}
-        <div style="color:#888;font-size:11px;">{{.Date}}</div>
+        <div style="color:#888;font-size:11px;">{{.Date}}{{if .Sender}} — {{.Sender}}{{end}}</div>
       </a>
       {{end}}
     </div>

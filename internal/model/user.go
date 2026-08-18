@@ -1,7 +1,6 @@
 package model
 
 import (
-	"encoding/json"
 	"strings"
 	"time"
 
@@ -42,9 +41,9 @@ type User struct {
 	City     *string `gorm:"size:25" json:"city,omitempty"`
 
 	// Identité légale
-	BirthDate           *time.Time `json:"birthDate,omitempty"`
-	Nationality         *string    `gorm:"size:2" json:"nationality,omitempty"`
-	CountryOfResidence  *string    `gorm:"size:2" json:"countryOfResidence,omitempty"`
+	BirthDate          *time.Time `json:"birthDate,omitempty"`
+	Nationality        *string    `gorm:"size:2" json:"nationality,omitempty"`
+	CountryOfResidence *string    `gorm:"size:2" json:"countryOfResidence,omitempty"`
 
 	// Sécurité
 	Pass   string  `gorm:"size:255;not null;default:''" json:"-"`
@@ -74,22 +73,11 @@ type User struct {
 
 func (u *User) TableName() string { return "users" }
 
-// IsAdmin retourne true si l'utilisateur est administrateur site-wide.
-func (u *User) IsAdmin() bool {
-	return u.Rights&1 != 0 || u.ID == 1
-}
-
-// MarshalJSON expose le flag dérivé isAdmin sans révéler le bitmask Rights.
-func (u User) MarshalJSON() ([]byte, error) {
-	type alias User
-	return json.Marshal(struct {
-		alias
-		IsAdmin bool `json:"isAdmin"`
-	}{
-		alias:   alias(u),
-		IsAdmin: u.IsAdmin(),
-	})
-}
+// Le drapeau « administrateur site-wide » a disparu du modèle : il tenait au
+// bit 0 de Rights, qu'une écriture en base suffisait à poser. Le seul rôle
+// transversal est désormais le responsable technique, désigné par son adresse
+// en configuration — le modèle ne peut donc pas en décider seul, et ce sont les
+// handlers qui portent ce test.
 
 // HasFlag vérifie si un flag est activé.
 func (u *User) HasFlag(f UserFlag) bool {

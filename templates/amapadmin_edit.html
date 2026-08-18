@@ -41,6 +41,19 @@
         </div>
       </div>
 
+      <div class="form-group row">
+        <label class="col-sm-3 control-label">Email du responsable</label>
+        <div class="col-sm-9">
+          <input type="email" name="head_email" class="form-control"
+                 value="{{if .Group.HeadEmail}}{{deref .Group.HeadEmail}}{{end}}" />
+          <span style="font-size:0.85em;color:#999;">
+            Adresse à laquelle les adhérents joignent le responsable du groupe.
+            Laissée vide, c'est l'adresse personnelle du responsable qui sert ;
+            une adresse de fonction survit au changement de responsable.
+          </span>
+        </div>
+      </div>
+
       <div class="form-group">
         <label class="col-sm-3 control-label">Options</label>
         <div class="col-sm-9">

@@ -40,23 +40,79 @@ type Config struct {
 	Host string `yaml:"host"`
 	Key  string `yaml:"key"`
 
-	// Superadmin global (upsert au démarrage si email renseigné)
-	SuperAdmin SuperAdminConfig `yaml:"superadmin"`
+	// Responsable technique de l'installation (upsert au démarrage si email
+	// renseigné).
+	TechnicalManager TechnicalManagerConfig `yaml:"technical_manager"`
+
+	// Ancien nom de la même notion, conservé en lecture seule : les
+	// configurations déployées portent encore `superadmin`, et une clé ignorée
+	// aurait fait démarrer l'application sans aucun responsable technique.
+	// Fusionnée dans TechnicalManager au chargement.
+	LegacySuperAdmin TechnicalManagerConfig `yaml:"superadmin"`
 
 	// Notifications
 	Notifications NotificationsConfig `yaml:"notifications"`
 
 	// Messages (catégories de destinataires de la page /messages)
 	Messages MessagesConfig `yaml:"messages"`
+
+	// Interface (ce que l'application montre selon les droits)
+	UI UIConfig `yaml:"ui"`
 }
 
-// SuperAdminConfig décrit le compte administrateur global garanti au démarrage.
-// Il a tous les droits sur tous les groupes via User.IsAdmin() (Rights bit 0).
-type SuperAdminConfig struct {
+// UIConfig règle ce que voit un adhérent sans fonction dans le groupe.
+type UIConfig struct {
+	// VendorsTabForMembers rouvre l'onglet « Producteurs » à tout adhérent.
+	//
+	// Fermé par défaut : l'écran n'offre aucune action à qui n'administre ni le
+	// groupe ni ses catalogues. Un groupe qui s'en sert comme annuaire de ses
+	// producteurs le rouvre ici, sans qu'il faille reprendre le code — la
+	// décision relève de l'usage de chaque groupe, pas de l'application.
+	VendorsTabForMembers bool `yaml:"vendors_tab_for_members"`
+}
+
+// TechnicalManagerConfig décrit le compte du responsable technique, garanti au
+// démarrage.
+//
+// Il remplace l'ancien super-administrateur, dont les pouvoirs tenaient à un bit
+// en base : le rôle se lit maintenant dans la configuration, ce qui le rend
+// unique pour toute l'installation, non attribuable depuis l'interface, et
+// révocable en changeant une ligne de configuration plutôt qu'une ligne de
+// table.
+type TechnicalManagerConfig struct {
 	Email     string `yaml:"email"`
 	Password  string `yaml:"password"`
 	FirstName string `yaml:"first_name"`
 	LastName  string `yaml:"last_name"`
+}
+
+// fillFrom complète les champs vides depuis une autre déclaration, sans jamais
+// écraser ce qui est déjà posé : le nom courant prime sur l'ancien.
+func (t *TechnicalManagerConfig) fillFrom(other TechnicalManagerConfig) {
+	if t.Email == "" {
+		t.Email = other.Email
+	}
+	if t.Password == "" {
+		t.Password = other.Password
+	}
+	if t.FirstName == "" {
+		t.FirstName = other.FirstName
+	}
+	if t.LastName == "" {
+		t.LastName = other.LastName
+	}
+}
+
+// IsTechnicalManager désigne le responsable technique par son adresse. C'est le
+// seul test : le rôle n'est inscrit nulle part en base, si bien qu'il suffit de
+// changer la configuration pour le transférer, et qu'aucune écriture en base ne
+// peut se l'octroyer.
+func (c *Config) IsTechnicalManager(email string) bool {
+	want := strings.TrimSpace(c.TechnicalManager.Email)
+	if want == "" {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(email), want)
 }
 
 type NotificationsConfig struct {
@@ -88,6 +144,12 @@ func Load() (*Config, error) {
 	if err := loadYAML(cfgFile, cfg); err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("config file %q: %w", cfgFile, err)
 	}
+
+	// L'ancienne clé `superadmin` vaut pour `technical_manager` tant qu'une
+	// configuration ne porte que la première. Champ par champ, et non bloc
+	// entier : une configuration de transition peut ne renseigner que l'adresse
+	// sous le nouveau nom et laisser le mot de passe sous l'ancien.
+	cfg.TechnicalManager.fillFrom(cfg.LegacySuperAdmin)
 
 	// Surcharge par variables d'environnement (secrets Kube, CI)
 	overrideFromEnv(cfg)
@@ -243,11 +305,18 @@ func overrideFromEnv(cfg *Config) {
 	if v := os.Getenv("HOST"); v != "" {
 		cfg.Host = v
 	}
+	if v := os.Getenv("TECHNICAL_MANAGER_EMAIL"); v != "" {
+		cfg.TechnicalManager.Email = v
+	}
+	if v := os.Getenv("TECHNICAL_MANAGER_PASSWORD"); v != "" {
+		cfg.TechnicalManager.Password = v
+	}
+	// Anciens noms, encore posés par les déploiements en place.
 	if v := os.Getenv("SUPERADMIN_EMAIL"); v != "" {
-		cfg.SuperAdmin.Email = v
+		cfg.TechnicalManager.Email = v
 	}
 	if v := os.Getenv("SUPERADMIN_PASSWORD"); v != "" {
-		cfg.SuperAdmin.Password = v
+		cfg.TechnicalManager.Password = v
 	}
 	if v := os.Getenv("NOTIFICATIONS_ENABLED"); v != "" {
 		cfg.Notifications.Enabled = v == "true"

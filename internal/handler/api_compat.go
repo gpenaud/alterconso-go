@@ -88,7 +88,7 @@ func (h *CompatHandler) UserMe(c *gin.Context) {
 		return
 	}
 	out := userInfo(user)
-	out["isAdmin"] = user.IsAdmin()
+	out["isAdmin"] = isTechnicalManagerEmail(user.Email)
 	// hasDatabaseAdmin : droit gating de l'accès à /admin/db. Calé sur la même
 	// logique que PageData.HasDatabaseAdmin (cf. pages.go::buildPageData).
 	if claims.GroupID != 0 {

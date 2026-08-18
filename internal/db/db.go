@@ -42,16 +42,19 @@ func BackfillVerifiedUsers(db *gorm.DB) error {
 	).Error
 }
 
-// EnsureSuperAdmin garantit l'existence du compte administrateur global défini
-// dans la config. Idempotent : à exécuter à chaque démarrage.
-//   - crée le compte s'il n'existe pas (avec Rights bit 0 activé)
-//   - active Rights bit 0 (admin site-wide) sur un compte existant
+// EnsureTechnicalManager garantit l'existence du compte du responsable
+// technique défini dans la config. Idempotent : à exécuter à chaque démarrage.
+//   - crée le compte s'il n'existe pas
 //   - met à jour le mot de passe si fourni dans la config
 //   - marque l'email comme vérifié
 //
-// Si cfg.SuperAdmin.Email est vide, ne fait rien.
-func EnsureSuperAdmin(db *gorm.DB, cfg *config.Config) error {
-	sa := cfg.SuperAdmin
+// Le rôle lui-même ne s'écrit pas en base : il se déduit de l'adresse
+// configurée. Cette fonction ne fait donc qu'assurer qu'un compte existe
+// derrière cette adresse, pour que son titulaire puisse se connecter.
+//
+// Si cfg.TechnicalManager.Email est vide, ne fait rien.
+func EnsureTechnicalManager(db *gorm.DB, cfg *config.Config) error {
+	sa := cfg.TechnicalManager
 	if strings.TrimSpace(sa.Email) == "" {
 		return nil
 	}
@@ -72,7 +75,6 @@ func EnsureSuperAdmin(db *gorm.DB, cfg *config.Config) error {
 	if sa.LastName != "" {
 		u.LastName = sa.LastName
 	}
-	u.Rights |= 1
 	if sa.Password != "" {
 		u.SetPassword(sa.Password, cfg.Key)
 	}

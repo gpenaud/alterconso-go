@@ -46,16 +46,24 @@ type Group struct {
 	Name string `gorm:"size:64;not null" json:"name"`
 
 	// Textes descriptifs
-	TxtIntro  *string `gorm:"type:text" json:"txtIntro,omitempty"`
-	TxtHome   *string `gorm:"type:text" json:"txtHome,omitempty"`
+	TxtIntro   *string `gorm:"type:text" json:"txtIntro,omitempty"`
+	TxtHome    *string `gorm:"type:text" json:"txtHome,omitempty"`
 	TxtDistrib *string `gorm:"type:text" json:"txtDistrib,omitempty"`
-	ExtURL    *string `gorm:"size:64"   json:"extUrl,omitempty"`
+	ExtURL     *string `gorm:"size:64"   json:"extUrl,omitempty"`
+
+	// HeadEmail : adresse à laquelle joindre le responsable du groupe.
+	//
+	// Facultative. Vide, c'est l'adresse personnelle du membre qui porte le
+	// rôle qui sert — mais un groupe préfère souvent une adresse de fonction,
+	// qui survit au changement de responsable et ne livre pas la boîte
+	// personnelle de qui l'occupe.
+	HeadEmail *string `gorm:"size:128" json:"headEmail,omitempty"`
 
 	// Contact et représentant légal
-	ContactID           *uint  `json:"-"`
-	Contact             *User  `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
+	ContactID             *uint `json:"-"`
+	Contact               *User `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
 	LegalRepresentativeID *uint `json:"-"`
-	LegalRepresentative *User  `gorm:"foreignKey:LegalRepresentativeID" json:"legalRepresentative,omitempty"`
+	LegalRepresentative   *User `gorm:"foreignKey:LegalRepresentativeID" json:"legalRepresentative,omitempty"`
 
 	// Adhésions
 	MembershipRenewalDate *time.Time `json:"membershipRenewalDate,omitempty"`
@@ -72,17 +80,17 @@ type Group struct {
 	CurrencyCode string `gorm:"size:3;default:'EUR'" json:"currencyCode"`
 
 	// Paiements
-	AllowedPaymentsType            *string `gorm:"size:255" json:"-"`
-	CheckOrder                     *string `gorm:"size:64"  json:"-"`
-	IBAN                           *string `gorm:"size:40"  json:"-"`
-	AllowMoneyPotWithNegativeBalance *bool  `json:"-"`
+	AllowedPaymentsType              *string `gorm:"size:255" json:"-"`
+	CheckOrder                       *string `gorm:"size:64"  json:"-"`
+	IBAN                             *string `gorm:"size:40"  json:"-"`
+	AllowMoneyPotWithNegativeBalance *bool   `json:"-"`
 
 	// Bénévolat
-	VolunteersMailDaysBeforeDutyPeriod      int    `gorm:"default:4"  json:"-"`
-	VolunteersMailContent                   string `gorm:"type:text"  json:"-"`
-	VacantVolunteerRolesMailDaysBeforeDutyPeriod int `gorm:"default:7" json:"-"`
-	DaysBeforeDutyPeriodsOpen               int    `gorm:"default:60" json:"-"`
-	AlertMailContent                        string `gorm:"type:text"  json:"-"`
+	VolunteersMailDaysBeforeDutyPeriod           int    `gorm:"default:4"  json:"-"`
+	VolunteersMailContent                        string `gorm:"type:text"  json:"-"`
+	VacantVolunteerRolesMailDaysBeforeDutyPeriod int    `gorm:"default:7" json:"-"`
+	DaysBeforeDutyPeriodsOpen                    int    `gorm:"default:60" json:"-"`
+	AlertMailContent                             string `gorm:"type:text"  json:"-"`
 
 	// Lieu principal (cache)
 	MainPlaceID *uint  `json:"-"`
@@ -103,9 +111,9 @@ type Group struct {
 	VatRate4 float64 `gorm:"default:0" json:"-"`
 
 	// Relations
-	Members  []UserGroup    `gorm:"foreignKey:GroupID" json:"-"`
-	Places   []Place        `gorm:"foreignKey:GroupID" json:"-"`
-	Catalogs []Catalog      `gorm:"foreignKey:GroupID" json:"-"`
+	Members  []UserGroup `gorm:"foreignKey:GroupID" json:"-"`
+	Places   []Place     `gorm:"foreignKey:GroupID" json:"-"`
+	Catalogs []Catalog   `gorm:"foreignKey:GroupID" json:"-"`
 }
 
 func (g *Group) TableName() string { return "groups" }
@@ -120,6 +128,6 @@ func (g *Group) SetFlag(f GroupFlag) {
 	g.Flags = uint(GroupFlag(g.Flags) | f)
 }
 
-func (g *Group) HasShopMode() bool   { return g.HasFlag(GroupFlagShopMode) }
-func (g *Group) HasPayments() bool   { return g.HasFlag(GroupFlagHasPayments) }
+func (g *Group) HasShopMode() bool    { return g.HasFlag(GroupFlagShopMode) }
+func (g *Group) HasPayments() bool    { return g.HasFlag(GroupFlagHasPayments) }
 func (g *Group) CanExposePhone() bool { return !g.HasFlag(GroupFlagHidePhone) }

@@ -15,6 +15,11 @@ import (
 
 // Register enregistre toutes les routes de l'application.
 func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
+	// Le responsable technique se reconnaît à son adresse : on la recopie ici,
+	// une fois, plutôt que de traîner la configuration jusqu'aux fonctions de
+	// contrôle d'accès qui n'en ont aucun autre usage.
+	SetTechnicalManager(cfg.TechnicalManager.Email)
+
 
 	auth := middleware.Auth(cfg)
 	pageAuth := middleware.PageAuth(cfg)
@@ -62,10 +67,16 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	// droit Messages n'élargit plus l'accès mais le périmètre des
 	// destinataires (cf. buildScopedRecipients).
 	reqCatalog := pagesH.RequireGroupRight(model.RightCatalogAdmin)   // gestionnaire ou CatalogAdmin
-	reqDBAdmin := pagesH.RequireGroupRight(model.RightDatabaseAdmin)  // gestionnaire ou DatabaseAdmin
+	// L'édition directe des tables n'appartient qu'au responsable de groupe et
+	// au responsable technique : aucune délégation ne l'ouvre.
+	reqDBAdmin := pagesH.RequireGroupRight()
+	// Les deux délégations qui remplacent les anciens « droits administrateur » :
+	// le calendrier d'un côté, les réglages du groupe de l'autre.
+	reqDistributions := pagesH.RequireGroupRight(model.RightDistributions)
+	reqParameters := pagesH.RequireGroupRight(model.RightParameters)
 	reqMembership := pagesH.RequireGroupRight(model.RightMembership)  // gestionnaire ou Membership
 	// Plus étroit que reqManager : l'attribution des droits reste au
-	// responsable de groupe, au responsable technique et au superadmin.
+	// responsable de groupe et au responsable technique.
 	reqRights := pagesH.RequireRightsManagement()
 
 	r.GET("/", func(c *gin.Context) { c.Redirect(302, "/home") })
@@ -82,26 +93,26 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/member", pageAuth, pagesH.MemberPage)
 	r.GET("/distribution", pageAuth, pagesH.DistributionPage)
 	r.GET("/amap", pageAuth, pagesH.AmapPage)
-	r.GET("/amapadmin", pageAuth, reqManager, pagesH.AmapAdminPage)
-	r.GET("/amapadmin/edit", pageAuth, reqManager, pagesH.AmapAdminEditPage)
-	r.POST("/amapadmin/update", pageAuth, reqManager, pagesH.AmapAdminUpdate)
-	r.POST("/amapadmin/logo", pageAuth, reqManager, pagesH.AmapAdminLogoUpload)
-	r.GET("/amapadmin/logo/delete", pageAuth, reqManager, pagesH.AmapAdminLogoDelete)
+	r.GET("/amapadmin", pageAuth, reqParameters, pagesH.AmapAdminPage)
+	r.GET("/amapadmin/edit", pageAuth, reqParameters, pagesH.AmapAdminEditPage)
+	r.POST("/amapadmin/update", pageAuth, reqParameters, pagesH.AmapAdminUpdate)
+	r.POST("/amapadmin/logo", pageAuth, reqParameters, pagesH.AmapAdminLogoUpload)
+	r.GET("/amapadmin/logo/delete", pageAuth, reqParameters, pagesH.AmapAdminLogoDelete)
 	r.GET("/amapadmin/rights", pageAuth, reqRights, pagesH.AmapAdminRightsPage)
 	r.GET("/amapadmin/rights/add", pageAuth, reqRights, pagesH.AmapAdminRightsAddPage)
 	r.POST("/amapadmin/rights/add", pageAuth, reqRights, pagesH.AmapAdminRightsAddPage)
 	r.GET("/amapadmin/rights/edit/:userId", pageAuth, reqRights, pagesH.AmapAdminRightsEditPage)
 	r.POST("/amapadmin/rights/edit/:userId", pageAuth, reqRights, pagesH.AmapAdminRightsEditPage)
-	r.GET("/amapadmin/vatRates", pageAuth, reqManager, pagesH.AmapAdminVatRatesPage)
-	r.POST("/amapadmin/vatRates", pageAuth, reqManager, pagesH.AmapAdminVatRatesUpdate)
-	r.GET("/amapadmin/volunteers", pageAuth, reqManager, pagesH.AmapAdminVolunteersPage)
-	r.GET("/amapadmin/membership", pageAuth, reqManager, pagesH.AmapAdminMembershipPage)
-	r.POST("/amapadmin/membership", pageAuth, reqManager, pagesH.AmapAdminMembershipUpdate)
-	r.GET("/amapadmin/currency", pageAuth, reqManager, pagesH.AmapAdminCurrencyPage)
-	r.POST("/amapadmin/currency", pageAuth, reqManager, pagesH.AmapAdminCurrencyUpdate)
-	r.GET("/amapadmin/documents", pageAuth, reqManager, pagesH.AmapAdminDocumentsPage)
-	r.POST("/amapadmin/documents", pageAuth, reqManager, pagesH.AmapAdminDocumentsUpload)
-	r.GET("/amapadmin/documents/delete/:id", pageAuth, reqManager, pagesH.AmapAdminDocumentsDelete)
+	r.GET("/amapadmin/vatRates", pageAuth, reqParameters, pagesH.AmapAdminVatRatesPage)
+	r.POST("/amapadmin/vatRates", pageAuth, reqParameters, pagesH.AmapAdminVatRatesUpdate)
+	r.GET("/amapadmin/volunteers", pageAuth, reqParameters, pagesH.AmapAdminVolunteersPage)
+	r.GET("/amapadmin/membership", pageAuth, reqParameters, pagesH.AmapAdminMembershipPage)
+	r.POST("/amapadmin/membership", pageAuth, reqParameters, pagesH.AmapAdminMembershipUpdate)
+	r.GET("/amapadmin/currency", pageAuth, reqParameters, pagesH.AmapAdminCurrencyPage)
+	r.POST("/amapadmin/currency", pageAuth, reqParameters, pagesH.AmapAdminCurrencyUpdate)
+	r.GET("/amapadmin/documents", pageAuth, reqParameters, pagesH.AmapAdminDocumentsPage)
+	r.POST("/amapadmin/documents", pageAuth, reqParameters, pagesH.AmapAdminDocumentsUpload)
+	r.GET("/amapadmin/documents/delete/:id", pageAuth, reqParameters, pagesH.AmapAdminDocumentsDelete)
 
 	// ---- Admin base de données (droit DatabaseAdmin) ----
 	r.GET("/admin/db", pageAuth, reqDBAdmin, pagesH.AdminDBIndex)
@@ -172,23 +183,23 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/contractAdmin/subscriptions/:id", pageAuth, reqCatalog, pagesH.CatalogAdminSubscriptionsPage)
 
 	// Distribution admin
-	r.GET("/distribution/editMd/:id", pageAuth, reqManager, pagesH.DistributionEditMdPage)
-	r.POST("/distribution/editMd/:id", pageAuth, reqManager, pagesH.DistributionEditMdPage)
-	r.GET("/distribution/deleteMd/:id", pageAuth, reqManager, pagesH.DistributionDeleteMdPage)
-	r.GET("/distribution/insertMd", pageAuth, reqManager, pagesH.DistributionInsertMdPage)
-	r.POST("/distribution/insertMd", pageAuth, reqManager, pagesH.DistributionInsertMdPage)
-	r.GET("/distribution/insertMdCycle", pageAuth, reqManager, pagesH.DistributionInsertMdCyclePage)
-	r.POST("/distribution/insertMdCycle", pageAuth, reqManager, pagesH.DistributionInsertMdCyclePage)
-	r.GET("/distribution/validate/:id", pageAuth, reqManager, pagesH.DistributionValidatePage)
-	r.GET("/distribution/inviteFarmers/:id", pageAuth, reqManager, pagesH.DistributionInviteFarmersPage)
+	r.GET("/distribution/editMd/:id", pageAuth, reqDistributions, pagesH.DistributionEditMdPage)
+	r.POST("/distribution/editMd/:id", pageAuth, reqDistributions, pagesH.DistributionEditMdPage)
+	r.GET("/distribution/deleteMd/:id", pageAuth, reqDistributions, pagesH.DistributionDeleteMdPage)
+	r.GET("/distribution/insertMd", pageAuth, reqDistributions, pagesH.DistributionInsertMdPage)
+	r.POST("/distribution/insertMd", pageAuth, reqDistributions, pagesH.DistributionInsertMdPage)
+	r.GET("/distribution/insertMdCycle", pageAuth, reqDistributions, pagesH.DistributionInsertMdCyclePage)
+	r.POST("/distribution/insertMdCycle", pageAuth, reqDistributions, pagesH.DistributionInsertMdCyclePage)
+	r.GET("/distribution/validate/:id", pageAuth, reqDistributions, pagesH.DistributionValidatePage)
+	r.GET("/distribution/inviteFarmers/:id", pageAuth, reqDistributions, pagesH.DistributionInviteFarmersPage)
 	// La page listait les producteurs sans permettre d'en ajouter ni d'en
 	// retirer, alors que le bouton qui y mène le promet : elle reçoit son POST.
-	r.POST("/distribution/inviteFarmers/:id", pageAuth, reqManager, pagesH.DistributionInviteFarmersPage)
+	r.POST("/distribution/inviteFarmers/:id", pageAuth, reqDistributions, pagesH.DistributionInviteFarmersPage)
 	// POST, et non GET : ce retrait supprime la distribution d'un producteur.
 	// En GET, un préchargement de lien suffisait à le déclencher.
-	r.POST("/distribution/notAttend/:id", pageAuth, reqManager, pagesH.DistributionNotAttendPage)
-	r.GET("/distribution/shift/:id", pageAuth, reqManager, pagesH.DistributionShiftPage)
-	r.POST("/distribution/shift/:id", pageAuth, reqManager, pagesH.DistributionShiftPage)
+	r.POST("/distribution/notAttend/:id", pageAuth, reqDistributions, pagesH.DistributionNotAttendPage)
+	r.GET("/distribution/shift/:id", pageAuth, reqDistributions, pagesH.DistributionShiftPage)
+	r.POST("/distribution/shift/:id", pageAuth, reqDistributions, pagesH.DistributionShiftPage)
 	r.GET("/edit/:id", pageAuth, reqManager, pagesH.DistributionEditDatesPage)
 	r.POST("/edit/:id", pageAuth, reqManager, pagesH.DistributionEditDatesPage)
 	// Self-service membre (se désinscrire / s'inscrire à un créneau bénévole,
@@ -200,10 +211,10 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/distribution/list/:id", pageAuth, pagesH.DistributionListPage)
 	r.GET("/distribution/listByDate/:date/:groupId", pageAuth, pagesH.DistributionListByDateConfigPage)
 	r.GET("/distribution/listByDate/:date/:groupId/print", pageAuth, pagesH.DistributionListByDatePrintPage)
-	r.GET("/distribution/volunteersSummary/:id", pageAuth, reqManager, pagesH.VolunteersSummaryPage)
-	r.POST("/distribution/volunteersSummary/:id", pageAuth, reqManager, pagesH.VolunteersSummaryPage)
-	r.GET("/distribution/roles/:id", pageAuth, reqManager, pagesH.DistribRolesPage)
-	r.POST("/distribution/roles/:id", pageAuth, reqManager, pagesH.DistribRolesPage)
+	r.GET("/distribution/volunteersSummary/:id", pageAuth, reqDistributions, pagesH.VolunteersSummaryPage)
+	r.POST("/distribution/volunteersSummary/:id", pageAuth, reqDistributions, pagesH.VolunteersSummaryPage)
+	r.GET("/distribution/roles/:id", pageAuth, reqDistributions, pagesH.DistribRolesPage)
+	r.POST("/distribution/roles/:id", pageAuth, reqDistributions, pagesH.DistribRolesPage)
 	r.GET("/distribution/volunteersParticipation", pageAuth, pagesH.VolunteersParticipationPage)
 
 	// Vendor
@@ -355,7 +366,7 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	api.DELETE("/volunteers/:id", volH.Unregister)
 
 	// Orders
-	orderH := NewOrderHandler(db)
+	orderH := NewOrderHandler(db, cfg)
 	api.GET("/orders", orderH.GetForUser)
 	api.POST("/orders", orderH.CreateOrUpdate)
 

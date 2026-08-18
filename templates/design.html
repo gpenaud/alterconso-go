@@ -77,9 +77,15 @@
         <li {{if eq .Category "account"}}class="active"{{end}}>
           <a href="/account"><i class="icon icon-user"></i> Mon compte</a>
         </li>
+        {{/* Producteurs : la page ne sert qu'à qui administre le groupe ou ses
+             catalogues. Un adhérent n'y trouve rien qu'il puisse faire, et
+             l'entrée encombrait son menu — un groupe qui s'en sert comme
+             annuaire la rouvre par ui.vendors_tab_for_members. */}}
+        {{if .ShowVendorsTab}}
         <li {{if eq .Category "amap"}}class="active"{{end}}>
           <a href="/amap"><i class="icon icon-farmer"></i> Producteurs</a>
         </li>
+        {{end}}
         {{/* Messagerie : menu principal et non bloc admin, car ouverte à tout
              membre. Ce que chacun peut y faire dépend de ses droits — un
              adhérent n'y joint que les responsables et les contacts
@@ -91,14 +97,14 @@
       {{/* .HasMessages ne figure plus ici : la messagerie a rejoint le menu
            principal, ce bloc n'en contient plus d'entrée. L'y laisser
            afficherait un bloc admin vide à qui ne détient que ce droit. */}}
-      {{if or .IsGroupManager .HasMembership .HasCatalogAdmin}}
+      {{if or .IsGroupManager .HasMembership .HasCatalogAdmin .HasDistributions .HasParameters}}
       <ul class="nav navbar-nav navbar-right admin">
         {{if or .IsGroupManager .HasMembership}}
         <li {{if eq .Category "member"}}class="active"{{end}}>
           <a href="/member"><i class="icon icon-users"></i> Membres</a>
         </li>
         {{end}}
-        {{if .IsGroupManager}}
+        {{if .HasDistributions}}
         <li {{if eq .Category "distribution"}}class="active"{{end}}>
           <a href="/distribution"><i class="icon icon-calendar"></i> Distributions</a>
         </li>
@@ -108,7 +114,7 @@
           <a href="/contractAdmin"><i class="icon icon-book"></i> Catalogues</a>
         </li>
         {{end}}
-        {{if .IsGroupManager}}
+        {{if .HasParameters}}
         <li {{if eq .Category "amapadmin"}}class="active"{{end}}>
           <a href="/amapadmin"><i class="icon icon-cog"></i> Paramètres</a>
         </li>
