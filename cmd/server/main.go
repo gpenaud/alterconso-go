@@ -90,6 +90,11 @@ func main() {
 	if err := db.MigrateRightsModel(database); err != nil {
 		log.Printf("warning: MigrateRightsModel: %v", err)
 	}
+	// Rattrapage ponctuel de la conversion ci-dessus : elle a retire les
+	// membres et les catalogues a des gens qui s'en servaient.
+	if err := db.RestoreDelegatedMembersAndCatalogs(database); err != nil {
+		log.Printf("warning: RestoreDelegatedMembersAndCatalogs: %v", err)
+	}
 	if err := db.EnsureTechnicalManager(database, cfg); err != nil {
 		log.Printf("warning: EnsureTechnicalManager: %v", err)
 	}
