@@ -26,9 +26,9 @@ export function AperçuRefonte() {
         nbProduits: 84,
       }}
       producteurs={[
-        { id: 1, nom: 'Ferme du Jointout', embleme: 'legume' },
-        { id: 2, nom: 'Articholoko', embleme: 'oeuf' },
-        { id: 3, nom: 'Aux Retrouvailles', embleme: 'fromage' },
+        { id: 1, nom: 'Ferme du Jointout', ville: 'Neuvy-sur-Barangeon', bio: true, embleme: 'legume' },
+        { id: 2, nom: 'Articholoko', ville: 'Vouzeron', bio: true, embleme: 'oeuf' },
+        { id: 3, nom: 'Aux Retrouvailles', ville: 'Nançay', embleme: 'fromage' },
       ]}
       onCommander={() => {}}
     />

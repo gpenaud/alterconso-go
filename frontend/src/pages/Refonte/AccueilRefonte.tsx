@@ -15,6 +15,9 @@
 export interface Producteur {
   id: number
   nom: string
+  /** Localité : elle dit la proximité, qui est ce qui distingue une AMAP d'une épicerie. */
+  ville?: string
+  bio?: boolean
   /** Dessin au trait, en attendant que les producteurs fournissent des photos. */
   embleme: 'legume' | 'oeuf' | 'fromage'
 }
@@ -102,6 +105,16 @@ export function AccueilRefonte({ prenom, groupe, distribution, producteurs, onCo
             >
               <Embleme type={producteur.embleme} />
               <span className="text-center text-[13px] leading-tight">{producteur.nom}</span>
+              {producteur.ville && (
+                <span className="text-center text-[11px] leading-tight text-ink-muted">{producteur.ville}</span>
+              )}
+              {producteur.bio && (
+                // Mention discrète : elle informe sans transformer la rangée en
+                // mur d'étiquettes — ici, presque tout le monde est bio.
+                <span className="rounded-full bg-tint px-2 text-[10px] uppercase tracking-wider text-control">
+                  bio
+                </span>
+              )}
             </li>
           ))}
         </ul>

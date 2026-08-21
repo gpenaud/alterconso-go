@@ -51,6 +51,8 @@ export function AccueilConnecte() {
       producteurs={(distribution.vendors ?? []).map((v, i) => ({
         id: v.id,
         nom: v.name,
+        ville: v.city,
+        bio: v.organic,
         // Trois emblèmes en rotation, faute de savoir ce que chacun produit :
         // le modèle ne porte pas d'activité. Mieux vaut une vignette dessinée
         // qu'un carré gris, et elle sera remplacée par la photo du producteur
