@@ -25,6 +25,7 @@ import { AdminBord } from './pages/Refonte/AdminBord'
 import { AdminCommandes } from './pages/Refonte/AdminCommandes'
 import { AdminDistributions } from './pages/Refonte/AdminDistributions'
 import { AdminCatalogues } from './pages/Refonte/AdminCatalogues'
+import { AdminMembres } from './pages/Refonte/AdminMembres'
 import { LayoutRefonte } from './pages/Refonte/LayoutRefonte'
 import { useAuthStore } from './store/auth'
 
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="/refonte/admin/commandes" element={<Protected><AdminLayout><AdminCommandes /></AdminLayout></Protected>} />
           <Route path="/refonte/admin/distributions" element={<Protected><AdminLayout><AdminDistributions /></AdminLayout></Protected>} />
           <Route path="/refonte/admin/catalogues" element={<Protected><AdminLayout><AdminCatalogues /></AdminLayout></Protected>} />
+          <Route path="/refonte/admin/membres" element={<Protected><AdminLayout><AdminMembres /></AdminLayout></Protected>} />
           <Route path="/refonte/apercu" element={<AperçuRefonte />} />
           <Route path="/groups" element={<Protected><GroupsPage /></Protected>} />
           <Route path="/profile" element={<Protected><ProfilePage /></Protected>} />

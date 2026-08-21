@@ -78,8 +78,9 @@ risque pour les adhérents.
    utilisé aujourd'hui.
 6. Fiche producteur (`/refonte/producteur/:id`), messagerie
    (`/refonte/message`) — **fait**
-7. Administration : tableau de bord, commandes, distributions, catalogues
-8. Membres, adhésions, droits, messagerie
+7. Administration : tableau de bord (`/refonte/admin`), commandes, distributions,
+   catalogues, membres — **fait**
+8. Adhésions, droits, remise des paniers sur mobile — reste à faire
 9. Retrait des tokens `ac-*` et des templates Go correspondants
 
 ### Ajouts côté serveur imposés par le parcours
@@ -98,6 +99,11 @@ Le tunnel demandait des données que l'API ne rendait pas :
   à jour existaient. Restreinte au groupe courant par la jointure sur les
   catalogues — sans quoi un identifiant tapé dans l'URL ouvrirait le catalogue
   d'un autre groupe.
+- `GET /api/admin/distributions/:id/summary`, `.../orders`,
+  `GET /api/admin/distributions`, `GET /api/admin/catalogs/:id/products` : les
+  écrans d'administration. Tous refusent l'accès à qui n'administre pas le
+  groupe, et vérifient que l'objet demandé lui appartient — un identifiant tapé
+  dans l'URL ouvrirait sinon les commandes ou le catalogue d'un autre groupe.
 - `GET /api/messages/recipients` et `POST /api/messages` : la messagerie
   n'existait qu'en formulaire Go. La résolution passe par la même carte
   restreinte aux droits que la page, ce qui empêche un adhérent d'écrire à tout
