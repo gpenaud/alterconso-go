@@ -17,6 +17,7 @@ const entrees = [
   { to: '/refonte/admin/commandes', libelle: 'Commandes' },
   { to: '/refonte/admin/catalogues', libelle: 'Catalogues' },
   { to: '/refonte/admin/membres', libelle: 'Membres' },
+  { to: '/refonte/admin/droits', libelle: 'Droits' },
 ]
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
