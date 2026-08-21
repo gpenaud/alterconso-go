@@ -13,6 +13,10 @@ export interface Catalog {
   name: string
   type: number
   feesRate: number
+  /** Période de validité du catalogue. Le serveur les rend déjà ; elles
+   *  manquaient seulement à ce type. */
+  startDate?: string
+  endDate?: string
   vendor?: { id: number; name: string }
   products: Product[]
 }
