@@ -119,6 +119,13 @@ func main() {
 		return
 	}
 
+	// Subcommand "rights-revoke" : retire un droit a un compte, puis quitte.
+	// N'ecrit qu'avec --apply.
+	if len(os.Args) > 1 && os.Args[1] == "rights-revoke" {
+		runRightsRevoke(database, os.Args[2:])
+		return
+	}
+
 	// Subcommand "migrate" : exécute db.Migrate() puis quitte.
 	// Utile pour préparer un import (création des tables GORM avant transformation Haxe).
 	if len(os.Args) > 1 && os.Args[1] == "migrate" {
