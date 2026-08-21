@@ -7,6 +7,10 @@ type OrderFlag uint
 
 const (
 	OrderFlagInvertSharedOrder OrderFlag = 1 << iota // inverser le tour pour les commandes partagées
+	// OrderFlagDelivered : le panier a ete remis a l adherent. Un bit dans un
+	// champ qui existe deja, plutot qu une colonne : l information ne vit que
+	// le temps d une distribution et ne justifie pas une migration.
+	OrderFlagDelivered
 )
 
 // UserOrder : une commande passée par un utilisateur.

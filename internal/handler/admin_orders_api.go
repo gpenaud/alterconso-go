@@ -28,6 +28,7 @@ type AdminOrderLine struct {
 	// serait faux sans elle.
 	NeedsWeighing bool `json:"needsWeighing"`
 	Weighed       bool `json:"weighed"`
+	Delivered     bool `json:"delivered"`
 }
 
 // AdminDistributionOrders : GET /api/admin/distributions/:id/orders.
@@ -87,6 +88,7 @@ func (h *PagesHandler) AdminDistributionOrders(c *gin.Context) {
 			Total:         o.TotalPrice(),
 			NeedsWeighing: o.Product.MultiWeight || o.Product.VariablePrice,
 			Weighed:       o.ForcedPrice != nil,
+			Delivered:     o.HasFlag(model.OrderFlagDelivered),
 		}
 		total += ligne.Total
 		lignes = append(lignes, ligne)
