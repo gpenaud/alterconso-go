@@ -22,6 +22,7 @@ import { ProducteurRefonte } from './pages/Refonte/ProducteurRefonte'
 import { MessageRefonte } from './pages/Refonte/MessageRefonte'
 import { AdminLayout } from './pages/Refonte/AdminLayout'
 import { AdminBord } from './pages/Refonte/AdminBord'
+import { AdminCommandes } from './pages/Refonte/AdminCommandes'
 import { LayoutRefonte } from './pages/Refonte/LayoutRefonte'
 import { useAuthStore } from './store/auth'
 
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="/refonte/producteur/:vendorId" element={<Protected><LayoutRefonte><ProducteurRefonte /></LayoutRefonte></Protected>} />
           <Route path="/refonte/message" element={<Protected><LayoutRefonte><MessageRefonte /></LayoutRefonte></Protected>} />
           <Route path="/refonte/admin" element={<Protected><AdminLayout><AdminBord /></AdminLayout></Protected>} />
+          <Route path="/refonte/admin/commandes" element={<Protected><AdminLayout><AdminCommandes /></AdminLayout></Protected>} />
           <Route path="/refonte/apercu" element={<AperçuRefonte />} />
           <Route path="/groups" element={<Protected><GroupsPage /></Protected>} />
           <Route path="/profile" element={<Protected><ProfilePage /></Protected>} />

@@ -377,6 +377,7 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	api.POST("/messages", pagesH.MessagesSend)
 	// Synthese d une distribution, pour qui l organise.
 	api.GET("/admin/distributions/:id/summary", pagesH.AdminDistributionSummary)
+	api.GET("/admin/distributions/:id/orders", pagesH.AdminDistributionOrders)
 	api.POST("/orders", orderH.CreateOrUpdate)
 
 	// Home + Account (JSON pour les pages React).
