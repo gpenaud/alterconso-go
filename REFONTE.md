@@ -71,7 +71,11 @@ risque pour les adhérents.
 2. Accueil (`/refonte`), choix de distribution (`/refonte/distributions`) — **fait**
 3. Mes commandes (`/refonte/commandes`), compte (`/refonte/compte`) — **fait**
 4. Boutique et panier : raccordés à l'existant (`/shop/:id`), non réécrits
-5. Confirmation de commande — reste à faire, dépend du flux de la boutique
+5. Confirmation de commande (`/refonte/confirmation/:id`) — **fait**, mais non
+   raccordée : la boutique affiche « Commande enregistrée ! » dans son panneau
+   et n'y redirige pas. Le raccord touche `CartPanel`, qui tourne en production
+   sur `/shop/:id` — il attendra la bascule plutôt que de modifier un flux
+   utilisé aujourd'hui.
 6. Fiche producteur, messagerie adhérent — reste à faire
 7. Administration : tableau de bord, commandes, distributions, catalogues
 8. Membres, adhésions, droits, messagerie
