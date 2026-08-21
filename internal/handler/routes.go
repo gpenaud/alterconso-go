@@ -368,6 +368,8 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	// Orders
 	orderH := NewOrderHandler(db, cfg)
 	api.GET("/orders", orderH.GetForUser)
+	// Historique du compte connecte, groupe par distribution.
+	api.GET("/my-orders", compatH.MyOrders)
 	api.POST("/orders", orderH.CreateOrUpdate)
 
 	// Home + Account (JSON pour les pages React).
