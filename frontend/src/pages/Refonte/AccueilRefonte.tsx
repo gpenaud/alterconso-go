@@ -79,7 +79,7 @@ export function AccueilRefonte({ prenom, groupe, distribution, producteurs, onCo
         <button
           type="button"
           onClick={onCommander}
-          className="flex min-h-[56px] w-full items-center justify-center gap-3 rounded-control bg-action text-lg font-semibold text-card"
+          className="flex min-h-[56px] items-center justify-center gap-3 self-center rounded-control bg-action px-9 text-lg font-semibold text-card"
         >
           Composer mon panier
           <IconeFleche />
