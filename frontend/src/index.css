@@ -1,19 +1,56 @@
-@import url("https://fonts.googleapis.com/css2?family=Cabin:ital,wght@0,400;0,700;1,400&display=swap");
+@import "./fonts.css";
 @import "tailwindcss";
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: Cabin, Helvetica, Arial, sans-serif;
+  font-family: var(--font-body);
   font-size: 16px;
-  color: #333;
+  color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
-  background-color: #f5f5f5;
+  background-color: var(--color-canvas);
 }
 
-/* Couleurs Alterconso originales exposées en utilitaires Tailwind */
+/* Les couleurs portent leur ROLE, pas leur teinte.
+ *
+ * « vert clair » et « vert fonce » ne disent pas quoi en faire ; « surface » et
+ * « control » l imposent. C est ce qui separe une interface ou tout est vert et
+ * ou rien ne ressort, d une ou l oeil sait immediatement ou cliquer.
+ *
+ *   canvas   fond de page
+ *   card     fond des blocs poses dessus
+ *   surface  aplats colores : bandeaux, en-tetes, ecran de confirmation
+ *   control  boutons secondaires, pastilles, cases cochees
+ *   action   action principale — une seule par ecran
+ *   ink      texte ; muted pour le secondaire
+ */
 @theme {
+  --color-canvas:       #faf3e4;
+  --color-card:         #fffaf0;
+  --color-surface:      #a9cd82;
+  --color-surface-deep: #2c4423;
+  --color-control:      #4c7c3c;
+  --color-action:       #c1440e;
+  --color-action-soft:  #fbe9d8;
+  --color-action-ink:   #8f3609;
+  --color-ink:          #22271e;
+  --color-ink-muted:    #6b6f66;
+  --color-ink-faint:    #a3a79c;
+  --color-line:         rgba(34, 39, 30, 0.2);
+  --color-tint:         #efe0c4;
+
+  /* Alegreya porte les titres et les chiffres — c est elle qui donne le ton.
+   * Cabin, deja en place, garde le texte courant : elle change de role plutot
+   * que de disparaitre. */
+  --font-display: Alegreya, Georgia, "Iowan Old Style", serif;
+  --font-body:    Cabin, system-ui, "Segoe UI", sans-serif;
+
+  /* Tokens de l ancienne charte, conserves le temps de la migration : 31
+   * classes les utilisent encore dans huit pages. Les retirer maintenant ne
+   * casserait pas la compilation — Tailwind ignore simplement une classe
+   * inconnue — mais degraderait l affichage sans le moindre avertissement.
+   * A supprimer quand le dernier ecran sera passe aux tokens ci-dessus. */
   --color-ac-green:      #84BD55;
   --color-ac-green-dark: #3c763d;
   --color-ac-orange:     #e95216;
@@ -21,4 +58,14 @@ body {
   --color-ac-border:     #e6e6e6;
   --color-ac-text:       #333333;
   --color-ac-muted:      #777777;
+
+  --radius-card: 6px;
+  --radius-control: 4px;
 }
+
+/* Ombre pleine et decalee plutot que floue : elle evoque l impression, pas
+ * l interface, et c est ce qui distingue cette direction d un back-office. */
+@utility shadow-posee {
+  box-shadow: 4px 4px 0 rgba(34, 39, 30, 0.1);
+}
+
