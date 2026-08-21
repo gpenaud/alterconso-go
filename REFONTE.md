@@ -80,7 +80,8 @@ risque pour les adhérents.
    (`/refonte/message`) — **fait**
 7. Administration : tableau de bord (`/refonte/admin`), commandes, distributions,
    catalogues, membres — **fait**
-8. Adhésions, droits, remise des paniers sur mobile — reste à faire
+8. Adhésions (`/refonte/admin/adhesions`), droits (`.../droits`), remise des
+   paniers (`.../remise`, pensée pour le téléphone) — **fait**
 9. Retrait des tokens `ac-*` et des templates Go correspondants
 
 ### Ajouts côté serveur imposés par le parcours

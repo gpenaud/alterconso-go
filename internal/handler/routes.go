@@ -382,6 +382,7 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	api.GET("/admin/catalogs/:id/products", pagesH.AdminCatalogProducts)
 	api.GET("/admin/rights", pagesH.AdminRights)
 	api.POST("/admin/distributions/:id/delivery", pagesH.AdminMarkDelivered)
+	api.GET("/admin/memberships", pagesH.AdminMemberships)
 	api.POST("/orders", orderH.CreateOrUpdate)
 
 	// Home + Account (JSON pour les pages React).
