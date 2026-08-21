@@ -28,8 +28,12 @@ export interface MultiDistribView {
   past: boolean;
   canOrder: boolean;
   orderNotYetOpen: boolean;
+  /** Déjà mis en forme pour l affichage : « mar 25 août à 20:00 ». */
   orderStartDate?: string;
   orderEndDate?: string;
+  /** Instant brut (ISO), pour calculer un temps restant plutôt que le recopier. */
+  orderStartAt?: string;
+  orderEndAt?: string;
   distributions: boolean;
   userOrders?: UserOrderView[];
   userOrderTotal: number;

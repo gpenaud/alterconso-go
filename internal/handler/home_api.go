@@ -153,9 +153,11 @@ func (h *PagesHandler) HomeJSON(c *gin.Context) {
 			switch {
 			case view.CanOrder && latestEnd != nil:
 				view.OrderEndDate = frDateTimeLabel(*latestEnd)
+				view.OrderEndAt = latestEnd
 			case !view.CanOrder && nextStart != nil:
 				view.OrderNotYetOpen = true
 				view.OrderStartDate = frDateTimeLabel(*nextStart)
+				view.OrderStartAt = nextStart
 			}
 		}
 

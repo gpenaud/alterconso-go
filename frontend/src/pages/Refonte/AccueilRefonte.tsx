@@ -86,6 +86,7 @@ export function AccueilRefonte({ prenom, groupe, distribution, producteurs, onCo
         </button>
       </section>
 
+      {producteurs.length > 0 && (
       <section className="mt-6 flex flex-col gap-3.5 px-5">
         <div className="flex items-center gap-3">
           <h2 className="font-display text-lg italic">Qui sera là</h2>
@@ -105,6 +106,7 @@ export function AccueilRefonte({ prenom, groupe, distribution, producteurs, onCo
           ))}
         </ul>
       </section>
+      )}
     </div>
   )
 }

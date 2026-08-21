@@ -266,6 +266,12 @@ type MultiDistribView struct {
 	OrderNotYetOpen bool               `json:"orderNotYetOpen"`
 	OrderStartDate  string             `json:"orderStartDate,omitempty"`
 	OrderEndDate    string             `json:"orderEndDate,omitempty"`
+	// Les deux dates ci-dessus sont deja mises en forme pour l affichage
+	// (« mar 25 aout a 20:00 »). Celles-ci portent l instant brut : sans lui,
+	// une interface ne peut pas dire « encore deux jours » — elle ne peut que
+	// recopier une date et laisser le lecteur faire le calcul.
+	OrderStartAt *time.Time `json:"orderStartAt,omitempty"`
+	OrderEndAt   *time.Time `json:"orderEndAt,omitempty"`
 	Distributions   bool               `json:"distributions"`
 	UserOrders      []UserOrderView    `json:"userOrders,omitempty"`
 	UserOrderTotal  float64            `json:"userOrderTotal"`
