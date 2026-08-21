@@ -16,7 +16,7 @@ export function AdminMembres() {
   const [recherche, setRecherche] = useState('')
   const [page, setPage] = useState(1)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['members', groupId, page, recherche],
     queryFn: () => getMembers(groupId!, page, recherche || undefined),
     enabled: Boolean(groupId),
@@ -25,6 +25,7 @@ export function AdminMembres() {
   })
 
   if (isLoading && !data) return <Message>Chargement…</Message>
+  if (isError) return <Message>La liste des adhérents ne vous est pas accessible.</Message>
 
   return (
     <div className="flex flex-col">

@@ -10,12 +10,27 @@ import { fetchAdminDistributions, type AdminDistribution } from '../../api/admin
 import { tempsRestant } from './tempsRestant'
 
 export function AdminDistributions() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['admin-distributions'],
     queryFn: fetchAdminDistributions,
   })
 
-  if (isLoading || !data) return <Message>Chargement…</Message>
+  if (isLoading) return <Message>Chargement…</Message>
+
+  // Un ecran blanc ne dit pas s il attend, s il a echoue, ou s il n y a rien a
+  // montrer. Les trois cas se distinguent ici.
+  if (isError) {
+    return (
+      <Message>
+        Le calendrier n'a pas pu être chargé.
+        <span className="mt-2 block text-sm">{messageErreur(error)}</span>
+      </Message>
+    )
+  }
+
+  if (!data || data.length === 0) {
+    return <Message>Aucune distribution n'est programmée dans ce groupe.</Message>
+  }
 
   const aVenir = data.filter((d) => !d.past).sort((a, b) => a.startAt.localeCompare(b.startAt))
   const passees = data.filter((d) => d.past)
@@ -126,6 +141,15 @@ function Date({ jour, mois, grand }: { jour: number; mois: string; grand?: boole
 
 function Message({ children }: { children: React.ReactNode }) {
   return <div className="flex min-h-screen items-center justify-center px-8 text-center text-ink-muted">{children}</div>
+}
+
+/** Le motif du refus compte : un accès refusé n'appelle pas la même réaction
+ *  qu'une panne. */
+function messageErreur(error: unknown): string {
+  const statut = (error as { response?: { status?: number } })?.response?.status
+  if (statut === 403) return "Vous n'avez pas le droit de gestion des distributions sur ce groupe."
+  if (statut === 401) return 'Votre session a expiré.'
+  return statut ? `Erreur ${statut}.` : 'Le serveur est-il démarré ?'
 }
 
 function euros(montant: number) {

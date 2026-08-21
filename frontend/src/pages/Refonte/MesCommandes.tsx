@@ -11,10 +11,17 @@ import { fetchMyOrders, type MyOrder } from '../../api/myOrders'
 
 export function MesCommandes() {
   const navigate = useNavigate()
-  const { data, isLoading } = useQuery({ queryKey: ['my-orders'], queryFn: fetchMyOrders })
+  const { data, isLoading, isError } = useQuery({ queryKey: ['my-orders'], queryFn: fetchMyOrders })
 
-  if (isLoading || !data) {
+  if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-canvas text-ink-muted">Chargement…</div>
+  }
+  if (isError || !data) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-canvas px-8 text-center text-ink-muted">
+        Vos commandes n'ont pas pu être chargées.
+      </div>
+    )
   }
 
   const aVenir = data.orders.filter((o) => !o.past)

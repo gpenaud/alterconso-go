@@ -6,11 +6,10 @@ import { ConfirmationRefonte } from './ConfirmationRefonte'
 export function ConfirmationConnecte() {
   const { multiDistribId } = useParams()
   const navigate = useNavigate()
-  const { data, isLoading } = useQuery({ queryKey: ['home', 0], queryFn: () => fetchHome(0) })
+  const { data, isLoading, isError } = useQuery({ queryKey: ['home', 0], queryFn: () => fetchHome(0) })
 
-  if (isLoading || !data) {
-    return <Message>Chargement…</Message>
-  }
+  if (isLoading) return <Message>Chargement…</Message>
+  if (isError || !data) return <Message>Cette commande n'a pas pu être chargée.</Message>
 
   const distribution = data.multiDistribs.find((d) => String(d.id) === multiDistribId)
   if (!distribution) return <Message>Cette distribution est introuvable.</Message>

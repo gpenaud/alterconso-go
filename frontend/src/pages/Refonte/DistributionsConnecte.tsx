@@ -6,10 +6,17 @@ import { tempsRestant } from './tempsRestant'
 
 export function DistributionsConnecte() {
   const navigate = useNavigate()
-  const { data, isLoading } = useQuery({ queryKey: ['home', 0], queryFn: () => fetchHome(0) })
+  const { data, isLoading, isError } = useQuery({ queryKey: ['home', 0], queryFn: () => fetchHome(0) })
 
-  if (isLoading || !data) {
+  if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-canvas text-ink-muted">Chargement…</div>
+  }
+  if (isError || !data) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-canvas px-8 text-center text-ink-muted">
+        Les distributions n'ont pas pu être chargées.
+      </div>
+    )
   }
 
   const distributions: DistributionListee[] = data.multiDistribs.map((d) => ({
