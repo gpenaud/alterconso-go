@@ -328,6 +328,8 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	// Ressources standalone
 	vendorH := NewVendorHandler(db)
 	api.PUT("/vendors/:id", vendorH.Update)
+	// Fiche publique d un producteur, restreinte au groupe courant.
+	api.GET("/vendors/:id", compatH.VendorDetail)
 
 	catalogH := NewCatalogHandler(db)
 	catalogs := api.Group("/catalogs/:id")

@@ -64,6 +64,7 @@ export function AccueilConnecte() {
       onCommander={() => navigate(`/shop/${distribution.id}`)}
       autresDistributions={data.multiDistribs.filter((d) => !d.past && d.id !== distribution.id).length}
       onVoirAutres={() => navigate('/refonte/distributions')}
+      onProducteur={(id) => navigate(`/refonte/producteur/${id}`)}
     />
   )
 }

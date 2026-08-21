@@ -46,6 +46,8 @@ interface Props {
    *  proposer un choix qui n'en est pas un est une étape pour rien. */
   autresDistributions?: number
   onVoirAutres?: () => void
+  /** Ouvre la fiche d'un producteur. Absent : les cartes restent inertes. */
+  onProducteur?: (id: number) => void
 }
 
 export function AccueilRefonte({
@@ -56,6 +58,7 @@ export function AccueilRefonte({
   onCommander,
   autresDistributions = 0,
   onVoirAutres,
+  onProducteur,
 }: Props) {
   return (
     <div className="flex min-h-screen flex-col bg-canvas text-ink">
@@ -123,10 +126,13 @@ export function AccueilRefonte({
 
         <ul className="flex list-none gap-3 p-0">
           {producteurs.map((producteur) => (
-            <li
-              key={producteur.id}
-              className="flex grow flex-col items-center gap-2.5 rounded-card border-[1.5px] border-line bg-card px-3 py-3.5"
-            >
+            <li key={producteur.id} className="flex grow">
+              <button
+                type="button"
+                onClick={() => onProducteur?.(producteur.id)}
+                disabled={!onProducteur}
+                className="flex grow flex-col items-center gap-2.5 rounded-card border-[1.5px] border-line bg-card px-3 py-3.5"
+              >
               <Embleme type={producteur.embleme} />
               <span className="text-center text-[13px] leading-tight">{producteur.nom}</span>
               {producteur.ville && (
@@ -139,6 +145,7 @@ export function AccueilRefonte({
                   bio
                 </span>
               )}
+              </button>
             </li>
           ))}
         </ul>
