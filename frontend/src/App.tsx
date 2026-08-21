@@ -11,6 +11,8 @@ import { CatalogsPage } from './pages/CatalogsPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { AdminPage } from './pages/AdminPage'
 import { ShopPage } from './pages/ShopPage'
+// Aperçu de la refonte, hors parcours : voir docs/refonte-front.md.
+import { AperçuRefonte } from './pages/Refonte/AperçuRefonte'
 import { useAuthStore } from './store/auth'
 
 const queryClient = new QueryClient({
@@ -33,6 +35,7 @@ export default function App() {
         <PhoneSuggestionBanner />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/refonte" element={<AperçuRefonte />} />
           <Route path="/groups" element={<Protected><GroupsPage /></Protected>} />
           <Route path="/profile" element={<Protected><ProfilePage /></Protected>} />
           <Route path="/groups/:groupId" element={<Protected><DashboardPage /></Protected>} />
