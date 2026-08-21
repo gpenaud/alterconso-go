@@ -7,6 +7,7 @@
  */
 import { useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { getMembers } from '../../api/members'
 import { useAuthStore } from '../../store/auth'
 
@@ -88,9 +89,9 @@ export function AdminMembres() {
               <span className={`text-right font-display text-base ${membre.balance < 0 ? 'text-action-ink' : ''}`}>
                 {membre.balance !== 0 ? euros(membre.balance) : ''}
               </span>
-              <a href={`/member/view/${membre.id}`} className="text-right text-sm text-control no-underline">
+              <Link to={`/refonte/admin/membres/${membre.id}`} className="text-right text-sm text-control no-underline">
                 Ouvrir
-              </a>
+              </Link>
             </div>
           ))}
 

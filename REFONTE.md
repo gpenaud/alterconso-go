@@ -80,8 +80,15 @@ risque pour les adhérents.
    (`/refonte/message`) — **fait**
 7. Administration : tableau de bord (`/refonte/admin`), commandes, distributions,
    catalogues, membres — **fait**
-8. Adhésions (`/refonte/admin/adhesions`), droits (`.../droits`), remise des
-   paniers (`.../remise`, pensée pour le téléphone) — **fait**
+8. Adhésions (`/refonte/admin/adhesions`), droits (`.../droits`), fiche membre
+   (`.../membres/:id`), remise des paniers (`.../remise`, pensée pour le
+   téléphone) — **fait**
+
+Le premier jet est complet : tous les écrans maquettés existent et lisent les
+vraies données. Ce qui reste tient en trois points — le raccord entre la
+validation du panier et l'écran de confirmation, l'écriture depuis les écrans
+d'administration (ils lisent, et renvoient aux écrans Go pour modifier), et la
+bascule elle-même.
 9. Retrait des tokens `ac-*` et des templates Go correspondants
 
 ### Ajouts côté serveur imposés par le parcours

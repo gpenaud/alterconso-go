@@ -29,6 +29,7 @@ import { AdminMembres } from './pages/Refonte/AdminMembres'
 import { AdminDroits } from './pages/Refonte/AdminDroits'
 import { AdminRemise } from './pages/Refonte/AdminRemise'
 import { AdminAdhesions } from './pages/Refonte/AdminAdhesions'
+import { AdminMembre } from './pages/Refonte/AdminMembre'
 import { LayoutRefonte } from './pages/Refonte/LayoutRefonte'
 import { useAuthStore } from './store/auth'
 
@@ -67,6 +68,7 @@ export default function App() {
           <Route path="/refonte/admin/droits" element={<Protected><AdminLayout><AdminDroits /></AdminLayout></Protected>} />
           <Route path="/refonte/admin/remise" element={<Protected><AdminRemise /></Protected>} />
           <Route path="/refonte/admin/adhesions" element={<Protected><AdminLayout><AdminAdhesions /></AdminLayout></Protected>} />
+          <Route path="/refonte/admin/membres/:memberId" element={<Protected><AdminLayout><AdminMembre /></AdminLayout></Protected>} />
           <Route path="/refonte/apercu" element={<AperçuRefonte />} />
           <Route path="/groups" element={<Protected><GroupsPage /></Protected>} />
           <Route path="/profile" element={<Protected><ProfilePage /></Protected>} />
