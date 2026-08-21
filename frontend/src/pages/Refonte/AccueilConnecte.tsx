@@ -45,12 +45,18 @@ export function AccueilConnecte() {
         // retombe sur la date telle que le serveur la met en forme, plutôt que
         // d'afficher un compte à rebours faux.
         tempsRestant: delai ?? distribution.orderEndDate ?? '',
-        nbProducteurs: 0,
+        nbProducteurs: distribution.vendors?.length ?? 0,
         nbProduits: distribution.productImages?.length ?? 0,
       }}
-      // L'API /home n'expose pas encore les producteurs d'une distribution ;
-      // la section reste masquée tant que ce n'est pas le cas.
-      producteurs={[]}
+      producteurs={(distribution.vendors ?? []).map((v, i) => ({
+        id: v.id,
+        nom: v.name,
+        // Trois emblèmes en rotation, faute de savoir ce que chacun produit :
+        // le modèle ne porte pas d'activité. Mieux vaut une vignette dessinée
+        // qu'un carré gris, et elle sera remplacée par la photo du producteur
+        // quand il y en aura une.
+        embleme: (['legume', 'oeuf', 'fromage'] as const)[i % 3],
+      }))}
       onCommander={() => {
         window.location.href = `/shop/${distribution.id}`
       }}

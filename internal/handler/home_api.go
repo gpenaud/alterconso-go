@@ -55,9 +55,11 @@ func (h *PagesHandler) HomeJSON(c *gin.Context) {
 	now := time.Now()
 	weekday := int(now.Weekday())
 	daysSinceSat := (weekday + 1) % 7
-	periodStart := now.AddDate(0, 0, -daysSinceSat+offsetWeeks*14)
+	periodStart := now.AddDate(0, 0, -daysSinceSat+offsetWeeks*homePeriodDays)
 	periodStart = time.Date(periodStart.Year(), periodStart.Month(), periodStart.Day(), 0, 0, 0, 0, periodStart.Location())
-	periodEnd := periodStart.AddDate(0, 0, 14)
+	// Meme largeur que la page /home : sans cette constante partagee, les deux
+	// interfaces annoncaient des periodes differentes au meme adherent.
+	periodEnd := periodStart.AddDate(0, 0, homePeriodDays)
 	periodLabel := fmt.Sprintf("Du %s %d %s %d au %s %d %s %d",
 		frDays[periodStart.Weekday()], periodStart.Day(), frMonthsFull[periodStart.Month()], periodStart.Year(),
 		frDays[periodEnd.Weekday()], periodEnd.Day(), frMonthsFull[periodEnd.Month()], periodEnd.Year(),
@@ -68,6 +70,7 @@ func (h *PagesHandler) HomeJSON(c *gin.Context) {
 		Preload("Place").
 		Preload("Distributions").
 		Preload("Distributions.Catalog").
+		Preload("Distributions.Catalog.Vendor").
 		Order("distrib_start_date ASC").
 		Find(&distribs)
 
@@ -108,6 +111,27 @@ func (h *PagesHandler) HomeJSON(c *gin.Context) {
 			DayLabelFull: fmt.Sprintf("%s %d %s à %02d:%02d", frDaysFull[start.Weekday()], start.Day(), frMonthsFull[start.Month()], start.Hour(), start.Minute()),
 			Active:       now.After(start) && now.Before(end),
 			Past:         !now.Before(time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())),
+		}
+
+		// Producteurs presents. Dedupliques : deux catalogues peuvent appartenir
+		// au meme producteur, qui figurerait sinon deux fois sur l ecran.
+		vus := make(map[uint]bool, len(md.Distributions))
+		for _, d := range md.Distributions {
+			v := d.Catalog.Vendor
+			if v.ID == 0 || vus[v.ID] {
+				continue
+			}
+			vus[v.ID] = true
+			ville := ""
+			if v.City != nil {
+				ville = *v.City
+			}
+			view.Vendors = append(view.Vendors, VendorView{
+				ID:      v.ID,
+				Name:    v.Name,
+				City:    ville,
+				Organic: v.Organic,
+			})
 		}
 
 		// Vignettes produits (8 max sur l'ensemble des catalogues actifs)

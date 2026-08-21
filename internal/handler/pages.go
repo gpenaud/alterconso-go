@@ -272,6 +272,9 @@ type MultiDistribView struct {
 	// recopier une date et laisser le lecteur faire le calcul.
 	OrderStartAt *time.Time `json:"orderStartAt,omitempty"`
 	OrderEndAt   *time.Time `json:"orderEndAt,omitempty"`
+	// Producteurs presents a cette distribution, dedupliques : deux catalogues
+	// peuvent appartenir au meme producteur.
+	Vendors []VendorView `json:"vendors,omitempty"`
 	Distributions   bool               `json:"distributions"`
 	UserOrders      []UserOrderView    `json:"userOrders,omitempty"`
 	UserOrderTotal  float64            `json:"userOrderTotal"`
@@ -292,6 +295,18 @@ type UserOrderView struct {
 type ProductImageView struct {
 	URL  string `json:"url"`
 	Name string `json:"name"`
+}
+
+// VendorView : un producteur present a une distribution. Le nom seul ne suffit
+// pas cote interface — savoir ce qu il apporte est ce qui donne envie d ouvrir
+// la boutique.
+type VendorView struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+	// La localite plutot qu une activite, que le modele ne porte pas : elle dit
+	// la proximite, qui est ce qui distingue une AMAP d une epicerie.
+	City    string `json:"city,omitempty"`
+	Organic bool   `json:"organic"`
 }
 
 type DistribView struct {

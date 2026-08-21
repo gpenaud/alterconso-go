@@ -14,6 +14,13 @@ export interface ProductImageView {
   name: string;
 }
 
+export interface VendorView {
+  id: number;
+  name: string;
+  city?: string;
+  organic: boolean;
+}
+
 export interface MultiDistribView {
   id: number;
   place: string;
@@ -38,6 +45,8 @@ export interface MultiDistribView {
   userOrders?: UserOrderView[];
   userOrderTotal: number;
   productImages?: ProductImageView[];
+  /** Producteurs présents, dédupliqués côté serveur. */
+  vendors?: VendorView[];
   volunteerNeeded: number;
   volunteerRoles?: string[];
 }
