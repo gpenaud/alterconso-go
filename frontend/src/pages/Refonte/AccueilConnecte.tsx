@@ -6,12 +6,14 @@
  * que laissé à l'adhérent, qui distingue ce parcours de l'accueil actuel.
  */
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { fetchHome, type MultiDistribView } from '../../api/home'
 import { AccueilRefonte } from './AccueilRefonte'
 import { tempsRestant } from './tempsRestant'
 import { useAuthStore } from '../../store/auth'
 
 export function AccueilConnecte() {
+  const navigate = useNavigate()
   const utilisateur = useAuthStore((s) => s.user)
   const { data, isLoading, isError } = useQuery({
     queryKey: ['home', 0],
@@ -59,9 +61,9 @@ export function AccueilConnecte() {
         // quand il y en aura une.
         embleme: (['legume', 'oeuf', 'fromage'] as const)[i % 3],
       }))}
-      onCommander={() => {
-        window.location.href = `/shop/${distribution.id}`
-      }}
+      onCommander={() => navigate(`/shop/${distribution.id}`)}
+      autresDistributions={data.multiDistribs.filter((d) => !d.past && d.id !== distribution.id).length}
+      onVoirAutres={() => navigate('/refonte/distributions')}
     />
   )
 }

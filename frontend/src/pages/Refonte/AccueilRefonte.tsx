@@ -42,9 +42,21 @@ interface Props {
   distribution: ProchaineDistribution
   producteurs: Producteur[]
   onCommander: () => void
+  /** Nombre d'autres distributions proposées. Zéro : l'entrée disparaît, car
+   *  proposer un choix qui n'en est pas un est une étape pour rien. */
+  autresDistributions?: number
+  onVoirAutres?: () => void
 }
 
-export function AccueilRefonte({ prenom, groupe, distribution, producteurs, onCommander }: Props) {
+export function AccueilRefonte({
+  prenom,
+  groupe,
+  distribution,
+  producteurs,
+  onCommander,
+  autresDistributions = 0,
+  onVoirAutres,
+}: Props) {
   return (
     <div className="flex min-h-screen flex-col bg-canvas text-ink">
       <header className="relative overflow-hidden bg-surface px-6 pb-32 pt-5">
@@ -87,6 +99,18 @@ export function AccueilRefonte({ prenom, groupe, distribution, producteurs, onCo
           Composer mon panier
           <IconeFleche />
         </button>
+
+        {autresDistributions > 0 && onVoirAutres && (
+          <button
+            type="button"
+            onClick={onVoirAutres}
+            className="self-center bg-transparent p-0 text-[15px] text-control underline"
+          >
+            {autresDistributions === 1
+              ? 'Voir la distribution suivante'
+              : `Voir les ${autresDistributions} autres distributions`}
+          </button>
+        )}
       </section>
 
       {producteurs.length > 0 && (

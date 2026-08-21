@@ -14,6 +14,7 @@ import { ShopPage } from './pages/ShopPage'
 // Aperçu de la refonte, hors parcours : voir docs/refonte-front.md.
 import { AperçuRefonte } from './pages/Refonte/AperçuRefonte'
 import { AccueilConnecte } from './pages/Refonte/AccueilConnecte'
+import { DistributionsConnecte } from './pages/Refonte/DistributionsConnecte'
 import { useAuthStore } from './store/auth'
 
 const queryClient = new QueryClient({
@@ -37,6 +38,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/refonte" element={<Protected><AccueilConnecte /></Protected>} />
+          <Route path="/refonte/distributions" element={<Protected><DistributionsConnecte /></Protected>} />
           <Route path="/refonte/apercu" element={<AperçuRefonte />} />
           <Route path="/groups" element={<Protected><GroupsPage /></Protected>} />
           <Route path="/profile" element={<Protected><ProfilePage /></Protected>} />

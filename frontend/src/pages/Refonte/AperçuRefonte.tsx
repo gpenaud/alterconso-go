@@ -31,6 +31,8 @@ export function AperçuRefonte() {
         { id: 3, nom: 'Aux Retrouvailles', ville: 'Nançay', embleme: 'fromage' },
       ]}
       onCommander={() => {}}
+      autresDistributions={2}
+      onVoirAutres={() => {}}
     />
   )
 }
