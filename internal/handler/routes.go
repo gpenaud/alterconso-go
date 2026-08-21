@@ -372,6 +372,9 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	api.GET("/orders", orderH.GetForUser)
 	// Historique du compte connecte, groupe par distribution.
 	api.GET("/my-orders", compatH.MyOrders)
+	// Messagerie : la liste des destinataires borne aussi l envoi.
+	api.GET("/messages/recipients", pagesH.MessagesRecipients)
+	api.POST("/messages", pagesH.MessagesSend)
 	api.POST("/orders", orderH.CreateOrUpdate)
 
 	// Home + Account (JSON pour les pages React).

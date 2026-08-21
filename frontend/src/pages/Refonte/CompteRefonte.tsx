@@ -4,6 +4,7 @@
  * trouve ailleurs, même pour un responsable.
  */
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { fetchHome } from '../../api/home'
 import { useAuthStore } from '../../store/auth'
 
@@ -38,7 +39,7 @@ export function CompteRefonte() {
 
         <Bloc titre="Mon groupe">
           <Lien libelle="Calendrier des permanences" href="/distribution/volunteersCalendar" />
-          <Lien libelle="Écrire au responsable" href="/messages" />
+          <LienInterne libelle="Écrire au responsable" to="/refonte/message" />
           <Lien libelle="Documents du groupe" href="/amap" />
         </Bloc>
 
@@ -51,6 +52,18 @@ export function CompteRefonte() {
         </button>
       </section>
     </div>
+  )
+}
+
+/* Route interne : le routeur la resout sans recharger la page. */
+function LienInterne({ libelle, to }: { libelle: string; to: string }) {
+  return (
+    <Link to={to} className="flex items-center justify-between border-b border-line px-4 py-4 text-base text-ink no-underline last:border-b-0">
+      {libelle}
+      <svg viewBox="0 0 24 24" className="size-[17px] fill-none stroke-ink-faint" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 6l6 6-6 6" />
+      </svg>
+    </Link>
   )
 }
 

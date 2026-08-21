@@ -76,7 +76,8 @@ risque pour les adhérents.
    et n'y redirige pas. Le raccord touche `CartPanel`, qui tourne en production
    sur `/shop/:id` — il attendra la bascule plutôt que de modifier un flux
    utilisé aujourd'hui.
-6. Fiche producteur, messagerie adhérent — reste à faire
+6. Fiche producteur (`/refonte/producteur/:id`), messagerie
+   (`/refonte/message`) — **fait**
 7. Administration : tableau de bord, commandes, distributions, catalogues
 8. Membres, adhésions, droits, messagerie
 9. Retrait des tokens `ac-*` et des templates Go correspondants
@@ -93,6 +94,14 @@ Le tunnel demandait des données que l'API ne rendait pas :
 - `GET /api/my-orders` : l'historique groupé par distribution, avec le cumul de
   l'année. L'endpoint existant exigeait une distribution précise, ce qui rendait
   tout historique impossible sans interroger chaque jeudi un par un.
+- `GET /api/vendors/:id` : la fiche d'un producteur. Seules la liste et la mise
+  à jour existaient. Restreinte au groupe courant par la jointure sur les
+  catalogues — sans quoi un identifiant tapé dans l'URL ouvrirait le catalogue
+  d'un autre groupe.
+- `GET /api/messages/recipients` et `POST /api/messages` : la messagerie
+  n'existait qu'en formulaire Go. La résolution passe par la même carte
+  restreinte aux droits que la page, ce qui empêche un adhérent d'écrire à tout
+  le groupe en forgeant sa requête.
 
 Au passage, l'API et la page `/home` montraient **des périodes différentes** au
 même adhérent : la première était restée à quatorze jours quand la seconde est

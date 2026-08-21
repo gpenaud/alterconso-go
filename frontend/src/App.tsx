@@ -19,6 +19,7 @@ import { MesCommandes } from './pages/Refonte/MesCommandes'
 import { CompteRefonte } from './pages/Refonte/CompteRefonte'
 import { ConfirmationConnecte } from './pages/Refonte/ConfirmationConnecte'
 import { ProducteurRefonte } from './pages/Refonte/ProducteurRefonte'
+import { MessageRefonte } from './pages/Refonte/MessageRefonte'
 import { LayoutRefonte } from './pages/Refonte/LayoutRefonte'
 import { useAuthStore } from './store/auth'
 
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="/refonte/compte" element={<Protected><LayoutRefonte><CompteRefonte /></LayoutRefonte></Protected>} />
           <Route path="/refonte/confirmation/:multiDistribId" element={<Protected><ConfirmationConnecte /></Protected>} />
           <Route path="/refonte/producteur/:vendorId" element={<Protected><LayoutRefonte><ProducteurRefonte /></LayoutRefonte></Protected>} />
+          <Route path="/refonte/message" element={<Protected><LayoutRefonte><MessageRefonte /></LayoutRefonte></Protected>} />
           <Route path="/refonte/apercu" element={<AperçuRefonte />} />
           <Route path="/groups" element={<Protected><GroupsPage /></Protected>} />
           <Route path="/profile" element={<Protected><ProfilePage /></Protected>} />
