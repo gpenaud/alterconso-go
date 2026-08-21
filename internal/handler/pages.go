@@ -272,6 +272,10 @@ type MultiDistribView struct {
 	// recopier une date et laisser le lecteur faire le calcul.
 	OrderStartAt *time.Time `json:"orderStartAt,omitempty"`
 	OrderEndAt   *time.Time `json:"orderEndAt,omitempty"`
+	// Instant de la distribution elle-meme. Day/Month/DayOfWeek sont deja mis
+	// en forme et ne se recomposent pas en date : une interface qui doit
+	// construire un lien date en a besoin brute.
+	StartAt *time.Time `json:"startAt,omitempty"`
 	// Producteurs presents a cette distribution, dedupliques : deux catalogues
 	// peuvent appartenir au meme producteur.
 	Vendors []VendorView `json:"vendors,omitempty"`

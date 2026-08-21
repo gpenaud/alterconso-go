@@ -41,6 +41,9 @@ export interface MultiDistribView {
   /** Instant brut (ISO), pour calculer un temps restant plutôt que le recopier. */
   orderStartAt?: string;
   orderEndAt?: string;
+  /** Instant de la distribution : day/month sont déjà mis en forme et ne se
+   *  recomposent pas en date. */
+  startAt?: string;
   distributions: boolean;
   userOrders?: UserOrderView[];
   userOrderTotal: number;

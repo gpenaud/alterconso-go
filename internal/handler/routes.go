@@ -375,6 +375,8 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	// Messagerie : la liste des destinataires borne aussi l envoi.
 	api.GET("/messages/recipients", pagesH.MessagesRecipients)
 	api.POST("/messages", pagesH.MessagesSend)
+	// Synthese d une distribution, pour qui l organise.
+	api.GET("/admin/distributions/:id/summary", pagesH.AdminDistributionSummary)
 	api.POST("/orders", orderH.CreateOrUpdate)
 
 	// Home + Account (JSON pour les pages React).

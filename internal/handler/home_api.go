@@ -109,6 +109,7 @@ func (h *PagesHandler) HomeJSON(c *gin.Context) {
 			StartHour:    fmt.Sprintf("%02d:%02d", start.Hour(), start.Minute()),
 			EndHour:      fmt.Sprintf("%02d:%02d", end.Hour(), end.Minute()),
 			DayLabelFull: fmt.Sprintf("%s %d %s à %02d:%02d", frDaysFull[start.Weekday()], start.Day(), frMonthsFull[start.Month()], start.Hour(), start.Minute()),
+			StartAt:      &start,
 			Active:       now.After(start) && now.Before(end),
 			Past:         !now.Before(time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())),
 		}
