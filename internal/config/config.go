@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -141,8 +142,12 @@ func Load() (*Config, error) {
 
 	// Chargement YAML
 	cfgFile := getEnv("CONFIG_FILE", "config.yaml")
-	if err := loadYAML(cfgFile, cfg); err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("config file %q: %w", cfgFile, err)
+	fichierLu := true
+	if err := loadYAML(cfgFile, cfg); err != nil {
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("config file %q: %w", cfgFile, err)
+		}
+		fichierLu = false
 	}
 
 	// L'ancienne clé `superadmin` vaut pour `technical_manager` tant qu'une
@@ -154,15 +159,34 @@ func Load() (*Config, error) {
 	// Surcharge par variables d'environnement (secrets Kube, CI)
 	overrideFromEnv(cfg)
 
-	// Validation des champs obligatoires
+	// Validation des champs obligatoires.
+	//
+	// Le message dit OU la valeur a ete cherchee. « DB_PASSWORD is required »
+	// est exact mais laisse chercher : le fichier existe-t-il ? a-t-il ete lu ?
+	// la cle y est-elle vide ? Trois questions qui coutent un aller-retour
+	// chacune quand la reponse tient en une ligne.
+	manquants := []string{}
 	if cfg.DBPassword == "" {
-		return nil, fmt.Errorf("DB_PASSWORD / db_password is required")
+		manquants = append(manquants, "db_password / DB_PASSWORD")
 	}
 	if cfg.JWTSecret == "" {
-		return nil, fmt.Errorf("JWT_SECRET / jwt_secret is required")
+		manquants = append(manquants, "jwt_secret / JWT_SECRET")
 	}
 	if cfg.Key == "" {
-		return nil, fmt.Errorf("APP_KEY / key is required")
+		manquants = append(manquants, "key / APP_KEY")
+	}
+	if len(manquants) > 0 {
+		chemin, err := filepath.Abs(cfgFile)
+		if err != nil {
+			chemin = cfgFile
+		}
+		origine := fmt.Sprintf("fichier lu : %s", chemin)
+		if !fichierLu {
+			origine = fmt.Sprintf("aucun fichier de configuration a %s (le chemin est relatif au repertoire courant ; CONFIG_FILE le change)", chemin)
+		}
+		return nil, fmt.Errorf(
+			"configuration incomplete — valeur vide ou absente pour : %s.\n  %s\n  Ces valeurs se posent dans le fichier ou par variable d environnement",
+			strings.Join(manquants, ", "), origine)
 	}
 
 	// Si aucune catégorie de destinataires n'est configurée, on en pose 3 par défaut

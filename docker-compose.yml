@@ -11,6 +11,13 @@ services:
 
   db:
     image: mysql:8.0
+    # Publie le port sur la boucle locale uniquement. Sans cela, la base n est
+    # joignable que depuis le reseau Docker, et le « go run ./cmd/server »
+    # propose par CLAUDE.md echoue sur un « connection refused » qui ne dit pas
+    # pourquoi. Restreint a 127.0.0.1 : une base de developpement n a rien a
+    # ecouter sur le reseau.
+    ports:
+      - "127.0.0.1:3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: alterconso
