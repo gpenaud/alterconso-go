@@ -73,8 +73,12 @@ func (h *PagesHandler) RequireGroupRight(rights ...model.Right) gin.HandlerFunc 
 		}
 		if claims.GroupID == 0 {
 			// Les droits sont par groupe : sans groupe courant, pas de
-			// décision possible → on renvoie au choix de groupe.
-			c.Redirect(http.StatusFound, "/user/choose")
+			// décision possible → on renvoie au choix de groupe, en lui
+			// confiant la destination. Sans elle, un lien reçu par courrier
+			// s'arrête sur l'accueil et le lecteur doit retrouver seul l'écran
+			// qu'on venait de lui montrer.
+			c.Redirect(http.StatusFound, "/user/choose?__redirect="+
+				url.QueryEscape(c.Request.URL.RequestURI()))
 			c.Abort()
 			return
 		}
@@ -106,7 +110,8 @@ func (h *PagesHandler) RequireRightsManagement() gin.HandlerFunc {
 			return
 		}
 		if claims.GroupID == 0 {
-			c.Redirect(http.StatusFound, "/user/choose")
+			c.Redirect(http.StatusFound, "/user/choose?__redirect="+
+				url.QueryEscape(c.Request.URL.RequestURI()))
 			c.Abort()
 			return
 		}
@@ -278,4 +283,16 @@ func hasRightInGroup(db *gorm.DB, groupID, userID uint, r model.Right) bool {
 		return false
 	}
 	return ug.HasRight(r)
+}
+
+// safeRedirectPath filtre une destination reçue en paramètre.
+//
+// Seuls les chemins internes passent : « //ailleurs.example » est une URL
+// absolue pour un navigateur, et la laisser passer ferait de l'écran de
+// connexion un tremplin vers n'importe quel site sous le nom du nôtre.
+func safeRedirectPath(raw string) string {
+	if raw == "" || !strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "//") {
+		return ""
+	}
+	return raw
 }

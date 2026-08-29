@@ -17,7 +17,6 @@ func NewMemberHandler(db *gorm.DB) *MemberHandler { return &MemberHandler{db: db
 
 // List retourne les membres d'un groupe avec leur balance, paginés.
 // Query params : ?page=N (défaut 1), ?perPage=M (défaut 10, plafonné 200).
-// Retourne aussi waitingListCount pour la sidebar de la page Membres.
 func (h *MemberHandler) List(c *gin.Context) {
 	groupID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -106,19 +105,12 @@ func (h *MemberHandler) List(c *gin.Context) {
 		totalPages++
 	}
 
-	var waitingListCount int64
-	h.db.Model(&model.WaitingList{}).
-		Joins("JOIN catalogs ON catalogs.id = waiting_lists.catalog_id").
-		Where("catalogs.group_id = ?", groupID).
-		Count(&waitingListCount)
-
 	c.JSON(http.StatusOK, gin.H{
-		"members":          members,
-		"total":            total,
-		"totalPages":       totalPages,
-		"page":             page,
-		"perPage":          perPage,
-		"waitingListCount": waitingListCount,
+		"members":    members,
+		"total":      total,
+		"totalPages": totalPages,
+		"page":       page,
+		"perPage":    perPage,
 	})
 }
 

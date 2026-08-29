@@ -86,21 +86,6 @@ type Membership struct {
 
 func (m *Membership) TableName() string { return "memberships" }
 
-// WaitingList : liste d'attente pour un catalogue.
-type WaitingList struct {
-	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	CreatedAt time.Time `json:"cdate"`
-
-	UserID    uint    `json:"-"`
-	User      User    `gorm:"foreignKey:UserID" json:"-"`
-	CatalogID uint    `json:"-"`
-	Catalog   Catalog `gorm:"foreignKey:CatalogID" json:"-"`
-
-	Message *string `gorm:"type:text" json:"message,omitempty"`
-}
-
-func (w *WaitingList) TableName() string { return "waiting_lists" }
-
 // Volunteer : bénévole inscrit pour une permanence.
 type Volunteer struct {
 	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`

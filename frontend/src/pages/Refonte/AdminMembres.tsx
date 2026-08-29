@@ -34,7 +34,6 @@ export function AdminMembres() {
           <h1 className="m-0 font-display text-2xl">Membres</h1>
           <p className="m-0 text-sm text-surface-deep">
             {data?.total ?? 0} adhérents
-            {data && data.waitingListCount > 0 && ` · ${data.waitingListCount} en liste d'attente`}
           </p>
         </div>
         <a

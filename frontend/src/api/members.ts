@@ -17,7 +17,6 @@ export interface MembersResponse {
   totalPages: number
   page: number
   perPage: number
-  waitingListCount: number
 }
 
 export function getMembers(groupId: number, page = 1, q?: string) {
