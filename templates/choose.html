@@ -16,14 +16,31 @@
       </a>
     </div>
     {{else}}
+    {{if not .PendingGroups}}
     <div class="col-md-12">
       <div class="article" style="max-width:560px;margin:0 auto;padding:24px 28px;text-align:center;">
         <p style="margin:0;color:#555;">Vous n'appartenez à aucun groupe pour l'instant.</p>
       </div>
     </div>
     {{end}}
+    {{end}}
   </div>
 </div>
+
+{{if .PendingGroups}}
+<div class="col-md-12">
+  <div class="article" style="max-width:560px;margin:16px auto 0;padding:20px 28px;">
+    <h4 style="margin:0 0 10px;">Demande{{if gt (len .PendingGroups) 1}}s{{end}} en cours</h4>
+    <p style="color:#555;margin:0 0 10px;">
+      Votre demande a bien été transmise. Elle attend qu'une des personnes qui
+      gèrent les membres y réponde ; vous recevrez un email à ce moment-là.
+    </p>
+    <ul style="margin:0;color:#555;">
+      {{range .PendingGroups}}<li>{{.Name}}</li>{{end}}
+    </ul>
+  </div>
+</div>
+{{end}}
 
 <div class="col-md-12 text-center" style="margin-top:24px;margin-bottom:12px;">
   <a class="btn btn-default btn-lg" href="/group/create/">

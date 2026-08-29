@@ -29,6 +29,12 @@
           Un email d'activation a été envoyé à <b>{{.Email}}</b>.<br/>
           Cliquez sur le lien qu'il contient pour activer votre compte.
         </p>
+        <p style="color:#555;margin-top:14px;margin-bottom:0;">
+          Une fois votre compte activé, votre demande{{if .GroupName}} pour rejoindre
+          <b>{{.GroupName}}</b>{{end}} sera transmise aux personnes qui gèrent les
+          membres du groupe. Vous recevrez un email dès que l'une d'elles y aura
+          répondu.
+        </p>
         <p style="color:#888;font-size:0.9em;margin-top:16px;">
           Pas reçu ? Vérifiez les spams. Le lien est valable 24h.
         </p>
@@ -62,10 +68,38 @@
           <label style="font-weight:600;color:#555;display:block;margin-bottom:4px;">Mot de passe <span style="font-weight:normal;color:#888;font-size:0.9em;">(8 caractères min.)</span></label>
           <input type="password" name="password" class="form-control" required minlength="8" autocomplete="new-password" />
         </div>
-        <div class="form-group" style="margin-bottom:18px;">
+        <div class="form-group" style="margin-bottom:14px;">
           <label style="font-weight:600;color:#555;display:block;margin-bottom:4px;">Confirmer le mot de passe</label>
           <input type="password" name="passwordConfirm" class="form-control" required minlength="8" autocomplete="new-password" />
         </div>
+
+        <hr style="margin:20px 0;" />
+
+        <div class="form-group" style="margin-bottom:14px;">
+          <label style="font-weight:600;color:#555;display:block;margin-bottom:4px;">Groupe que vous souhaitez rejoindre</label>
+          {{if .OpenGroups}}
+          <select name="groupId" class="form-control" required>
+            <option value="">— Choisissez un groupe —</option>
+            {{range .OpenGroups}}
+            <option value="{{.ID}}" {{if eq .ID $.GroupID}}selected{{end}}>{{.Name}}</option>
+            {{end}}
+          </select>
+          {{else}}
+          <p style="color:#c0392b;margin:0;">Aucun groupe n'accepte d'inscription pour le moment.</p>
+          {{end}}
+        </div>
+        <div class="form-group" style="margin-bottom:18px;">
+          <label style="font-weight:600;color:#555;display:block;margin-bottom:4px;">
+            Un mot pour le groupe <span style="font-weight:normal;color:#888;font-size:0.9em;">(facultatif)</span>
+          </label>
+          <textarea name="message" class="form-control" rows="3"
+                    placeholder="Qui vous a parlé du groupe, ce que vous cherchez…">{{.Message}}</textarea>
+          <p style="color:#888;font-size:0.85em;margin:6px 0 0;">
+            Votre demande sera examinée par les personnes qui gèrent les membres
+            du groupe ; vous serez prévenu par email de leur réponse.
+          </p>
+        </div>
+
         <button type="submit" class="btn btn-success" style="width:100%;padding:10px;font-weight:bold;">
           <i class="icon icon-chevron-right"></i> Créer mon compte
         </button>

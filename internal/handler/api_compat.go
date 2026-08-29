@@ -540,41 +540,6 @@ func orderInfo(o model.UserOrder) gin.H {
 	}
 }
 
-// ---- /api/user/register ----
-// POST form-data : email, password, firstName, lastName
-
-func (h *CompatHandler) UserRegister(c *gin.Context) {
-	email := strings.TrimSpace(c.PostForm("email"))
-	password := c.PostForm("password")
-	firstName := strings.TrimSpace(c.PostForm("firstName"))
-	lastName := strings.TrimSpace(c.PostForm("lastName"))
-
-	if email == "" || password == "" || firstName == "" || lastName == "" {
-		c.JSON(http.StatusOK, gin.H{"error": gin.H{"message": "Tous les champs sont requis."}})
-		return
-	}
-
-	// Check email uniqueness
-	var existing model.User
-	if err := h.db.Where("email = ?", email).First(&existing).Error; err == nil {
-		c.JSON(http.StatusOK, gin.H{"error": gin.H{"message": "Cet email est déjà utilisé."}})
-		return
-	}
-
-	user := model.User{
-		Email:     email,
-		FirstName: firstName,
-		LastName:  lastName,
-	}
-	user.SetPassword(password, h.cfg.Key)
-
-	if err := h.db.Create(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"message": "Erreur lors de la création du compte."}})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "user": userInfo(user)})
-}
-
 // ---- /api/shop/init/:multiDistribId ----
 
 func (h *CompatHandler) ShopInit(c *gin.Context) {

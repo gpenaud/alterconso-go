@@ -142,7 +142,17 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.POST("/member/edit/:id", pageAuth, reqMembership, pagesH.MemberEditPage)
 	r.GET("/member/delete/:id", pageAuth, reqMembership, pagesH.MemberDelete)
 	r.POST("/member/fullDelete/:id", pageAuth, reqManager, pagesH.MemberFullDelete)
-	r.GET("/member/waiting", pageAuth, reqManager, pagesH.MemberWaitingPage)
+	// Demandes d'adhésion au groupe, déposées à l'inscription. Elles
+	// rétablissent la liste d'attente de l'application d'origine, dont la table
+	// pointait le groupe ; la réécriture l'avait rattachée au catalogue, où
+	// rien ne pouvait plus la remplir ni lui donner sens.
+	//
+	// reqMembership et non reqManager : « gestion des membres » est exactement
+	// la délégation dont il s'agit, et le responsable de groupe la couvre.
+	r.GET("/member/requests", pageAuth, reqMembership, pagesH.MemberRequestsPage)
+	// La décision passe par POST : en GET, un préchargement de lien ferait
+	// entrer quelqu'un dans le groupe sans que personne n'ait cliqué.
+	r.POST("/member/requests/:id/:decision", pageAuth, reqMembership, pagesH.MemberRequestDecide)
 	r.GET("/member/invoice/:multiDistribId", pageAuth, pagesH.MemberInvoicePage)
 	r.POST("/member/membership/:id", pageAuth, reqMembership, pagesH.MembershipUpsert)
 
@@ -249,9 +259,15 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 
 	// ---- API compatibilité frontend original ----
 	compatH := NewCompatHandler(db, cfg)
-	// Login / register public (pas de middleware auth)
+	// Login public (pas de middleware auth).
+	//
+	// L'inscription ne figure plus ici. Elle y créait un compte sans confirmer
+	// l'adresse et sans demande d'adhésion : depuis que rejoindre un groupe
+	// passe par l'accord d'un gestionnaire, un compte né par cette voie
+	// n'aurait plus aucun moyen d'aboutir quelque part. Aucun client ne
+	// l'appelait — ni le frontend d'origine, ni la SPA. /user/register est le
+	// seul chemin d'inscription.
 	r.POST("/api/user/login", compatH.UserLogin)
-	r.POST("/api/user/register", compatH.UserRegister)
 	// Endpoints authentifiés via cookie ou Bearer
 	apiCompat := r.Group("/api", auth)
 	apiCompat.GET("/user/me", compatH.UserMe)
@@ -338,11 +354,6 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 		subH := NewSubscriptionHandler(db)
 		catalogs.GET("/subscriptions", subH.GetForCatalog)
 		catalogs.POST("/subscriptions", subH.Subscribe)
-
-		wlH := NewWaitingListHandler(db)
-		catalogs.GET("/waiting-list", wlH.GetForCatalog)
-		catalogs.POST("/waiting-list", wlH.Join)
-		catalogs.DELETE("/waiting-list", wlH.Leave)
 	}
 
 	distribH := NewDistributionHandler(db)

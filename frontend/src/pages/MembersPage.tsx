@@ -125,14 +125,6 @@ export function MembersPage() {
               <li className="text-gray-700">
                 Membres du groupe ({data?.total ?? '…'})
               </li>
-              <li>
-                <a
-                  href="/member/waiting"
-                  className="text-ac-green-dark hover:underline"
-                >
-                  Liste d'attente ({data?.waitingListCount ?? '…'})
-                </a>
-              </li>
             </ul>
           </Card>
         </aside>

@@ -60,7 +60,9 @@
       <li style="margin-bottom:6px;"><a href="/member?filter=neverConnected" style="color:#5a8a00;">Ne s'est jamais connecté</a></li>
       <li style="margin-bottom:6px;"><a href="/member?filter=renewMembership" style="color:#5a8a00;">Adhésion à renouveler</a></li>
       <li style="margin-bottom:6px;"><a href="/member?filter=upToDate" style="color:#5a8a00;">Adhésion à jour (0)</a></li>
-      <li><a href="/member/waiting" style="color:#5a8a00;">Liste d'attente ({{.WaitingListCount}})</a></li>
+      {{if .HasMembership}}
+      <li><a href="/member/requests" style="color:#5a8a00;{{if gt .JoinRequestCount 0}}font-weight:bold;{{end}}">Demandes d'adhésion ({{.JoinRequestCount}})</a></li>
+      {{end}}
     </ul>
   </div>
   <form method="get" action="/member">

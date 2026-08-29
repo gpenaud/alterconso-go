@@ -182,6 +182,10 @@ type PageData struct {
 	Groups        []model.Group
 	MultiDistribs []MultiDistribView
 	OpenCatalogs  []model.Catalog
+	// PendingGroups : groupes où l'utilisateur attend une décision. L'écran de
+	// choix annonçait « vous n'appartenez à aucun groupe » à un candidat dont
+	// la demande était pourtant partie, ce qui se lit comme un échec.
+	PendingGroups []model.Group
 	// contract_view page
 	Catalog      *model.Catalog
 	Products     []model.Product
@@ -227,7 +231,10 @@ type PageData struct {
 	TotalMembers     int
 	TotalPages       int
 	CurrentPage      int
-	WaitingListCount int
+	// JoinRequestCount : demandes d'adhésion en attente. Le compteur est ce qui
+	// fait revenir sur l'écran — un lien seul se laisse oublier, et une demande
+	// oubliée est un adhérent qui ne vient jamais.
+	JoinRequestCount int
 	SearchQuery      string
 }
 
@@ -598,7 +605,7 @@ func (h *PagesHandler) ChoosePage(c *gin.Context) {
 				newToken, err := h.issueTokenAs(claims.UserID, groupID, claims.ImpersonatorID)
 				if err == nil {
 					c.SetCookie("token", newToken, 3600*24*7, "/", "", false, true)
-					c.Redirect(http.StatusFound, "/home")
+					c.Redirect(http.StatusFound, chooseDestination(c))
 					return
 				}
 			}
@@ -626,13 +633,13 @@ func (h *PagesHandler) ChoosePage(c *gin.Context) {
 	// sinon /home renvoie ici et la navigation boucle.
 	if len(groups) == 1 {
 		if claims.GroupID == groups[0].ID {
-			c.Redirect(http.StatusFound, "/home")
+			c.Redirect(http.StatusFound, chooseDestination(c))
 			return
 		}
 		newToken, err := h.issueTokenAs(claims.UserID, groups[0].ID, claims.ImpersonatorID)
 		if err == nil {
 			c.SetCookie("token", newToken, 3600*24*7, "/", "", false, true)
-			c.Redirect(http.StatusFound, "/home")
+			c.Redirect(http.StatusFound, chooseDestination(c))
 			return
 		}
 		// Émission impossible : on retombe sur la page de choix plutôt que de
@@ -652,16 +659,34 @@ func (h *PagesHandler) ChoosePage(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
 	}
+	var pending []model.Group
+	for _, r := range PendingJoinRequestsFor(h.db, claims.UserID) {
+		pending = append(pending, r.Group)
+	}
+
 	pd := PageData{
-		Title:   "Choisir un groupe",
-		User:    &user,
-		Groups:  groups,
-		HideNav: true,
-		LogoURL: logoURL,
+		Title:         "Choisir un groupe",
+		User:          &user,
+		Groups:        groups,
+		PendingGroups: pending,
+		HideNav:       true,
+		LogoURL:       logoURL,
 	}
 	if err := t.ExecuteTemplate(c.Writer, "base", pd); err != nil {
 		c.String(http.StatusInternalServerError, "render error: %v", err)
 	}
+}
+
+// chooseDestination : où mener une fois le groupe courant fixé.
+//
+// L'accueil par défaut, mais l'écran demandé quand on y a été renvoyé faute de
+// groupe courant : c'est ce qui permet à un lien reçu par courrier d'aboutir
+// là où il promettait.
+func chooseDestination(c *gin.Context) string {
+	if dest := safeRedirectPath(c.Query("__redirect")); dest != "" {
+		return dest
+	}
+	return "/home"
 }
 
 // ---- Home page ----
@@ -1215,12 +1240,7 @@ func (h *PagesHandler) MemberPage(c *gin.Context) {
 	pd.CurrentPage = page
 	pd.SearchQuery = search
 
-	var waitingCount int64
-	h.db.Model(&model.WaitingList{}).
-		Joins("JOIN catalogs ON catalogs.id = waiting_lists.catalog_id").
-		Where("catalogs.group_id = ?", pd.Group.ID).
-		Count(&waitingCount)
-	pd.WaitingListCount = int(waitingCount)
+	pd.JoinRequestCount = pendingJoinRequestCount(h.db, pd.Group.ID)
 
 	pd.Title = "Membres"
 	pd.Category = "member"
