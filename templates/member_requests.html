@@ -1,0 +1,61 @@
+{{define "content"}}
+<div class="col-md-12">
+  <div class="article">
+    <h3>Demandes d'adhésion</h3>
+    <p class="text-muted" style="margin-bottom:16px;">
+      Ces personnes ont créé un compte et demandé à rejoindre le groupe. Accepter
+      les fait entrer immédiatement ; il suffit que l'un des gestionnaires
+      tranche.
+    </p>
+
+    {{if .Requests}}
+    <table class="table table-bordered table-hover table-condensed">
+      <thead>
+        <tr class="greyhead">
+          <th>Nom</th>
+          <th>Email</th>
+          <th>Téléphone</th>
+          <th>Commune</th>
+          <th>Demandé le</th>
+          <th>Message</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Requests}}
+        <tr>
+          <td><b>{{.Name}}</b></td>
+          <td>{{.Email}}</td>
+          <td>{{if .Phone}}{{.Phone}}{{else}}<span class="text-muted">—</span>{{end}}</td>
+          <td>{{if .City}}{{.City}}{{else}}<span class="text-muted">—</span>{{end}}</td>
+          <td>{{.Date}}</td>
+          <td>{{if .Message}}{{nl2br .Message}}{{else}}<span class="text-muted">—</span>{{end}}</td>
+          <td style="white-space:nowrap;">
+            <form method="POST" action="/member/requests/{{.ID}}/accept" style="display:inline;"
+                  onsubmit="return confirm('Accepter {{.Name}} dans le groupe ?')">
+              <button type="submit" class="btn btn-success btn-xs">
+                <i class="icon icon-check"></i> Accepter
+              </button>
+            </form>
+            &nbsp;
+            <form method="POST" action="/member/requests/{{.ID}}/refuse" style="display:inline;"
+                  onsubmit="return confirm('Refuser la demande de {{.Name}} ?')">
+              <button type="submit" class="btn btn-danger btn-xs">
+                <i class="icon icon-delete"></i> Refuser
+              </button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <p class="text-muted">Aucune demande en attente.</p>
+    {{end}}
+
+    <a href="/member" class="btn btn-default btn-sm">
+      <i class="icon icon-chevron-left"></i> Retour
+    </a>
+  </div>
+</div>
+{{end}}

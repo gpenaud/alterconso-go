@@ -625,7 +625,10 @@ func (h *PagesHandler) MemberFullDelete(c *gin.Context) {
 	h.db.Where("user_id = ?", uid).Delete(&model.Volunteer{})
 	h.db.Where("user_id = ?", uid).Delete(&model.Subscription{})
 	h.db.Where("user_id = ?", uid).Delete(&model.Membership{})
-	h.db.Where("user_id = ?", uid).Delete(&model.WaitingList{})
+	// Sans cette ligne, la demande d'adhésion d'un compte supprimé survivrait
+	// au compte : l'écran des gestionnaires la rouvrirait sous un nom vide,
+	// que plus aucune décision ne pourrait clore.
+	h.db.Where("user_id = ?", uid).Delete(&model.GroupJoinRequest{})
 	h.db.Where("user_id = ?", uid).Delete(&model.Basket{})
 	h.db.Where("user_id = ?", uid).Delete(&model.PasswordResetToken{})
 	h.db.Where("user_id = ?", uid).Delete(&model.EmailVerifyToken{})
@@ -860,10 +863,23 @@ type RegisterData struct {
 	Email     string
 	FirstName string
 	LastName  string
+	// Groupe demandé et mot du candidat : l'inscription ne crée plus un compte
+	// flottant, elle dépose une demande d'adhésion à un groupe précis.
+	//
+	// OpenGroups et non Groups : PageData porte déjà un champ de ce nom, et
+	// deux champs homonymes dans une structure imbriquée laissent le gabarit
+	// choisir silencieusement le plus superficiel.
+	OpenGroups []model.Group
+	GroupID    uint
+	Message    string
+	// GroupName : nom du groupe demandé, pour l'écran de confirmation, qui
+	// n'affiche plus la seule boîte mail à surveiller mais aussi ce qui suivra.
+	GroupName string
 }
 
 func (h *PagesHandler) RegisterPage(c *gin.Context) {
 	data := RegisterData{Step: 1}
+	data.OpenGroups = openForRegistrationGroups(h.db)
 
 	if c.Request.Method == http.MethodPost {
 		email := strings.ToLower(strings.TrimSpace(c.PostForm("email")))
@@ -871,10 +887,20 @@ func (h *PagesHandler) RegisterPage(c *gin.Context) {
 		passwordConfirm := c.PostForm("passwordConfirm")
 		firstName := strings.TrimSpace(c.PostForm("firstName"))
 		lastName := strings.TrimSpace(c.PostForm("lastName"))
+		message := strings.TrimSpace(c.PostForm("message"))
+		groupID64, _ := strconv.ParseUint(c.PostForm("groupId"), 10, 64)
+		groupID := uint(groupID64)
 
 		data.Email = email
 		data.FirstName = firstName
 		data.LastName = lastName
+		data.GroupID = groupID
+		data.Message = message
+
+		var msgPtr *string
+		if message != "" {
+			msgPtr = &message
+		}
 
 		switch {
 		case email == "" || firstName == "" || lastName == "" || password == "":
@@ -883,13 +909,27 @@ func (h *PagesHandler) RegisterPage(c *gin.Context) {
 			data.Error = "Le mot de passe doit faire au moins 8 caractères."
 		case password != passwordConfirm:
 			data.Error = "Les deux mots de passe ne correspondent pas."
+		case len(data.OpenGroups) == 0:
+			// Aucun groupe n'accueille : mieux vaut le dire que créer un compte
+			// dont la demande n'aurait aucun destinataire.
+			data.Error = "Aucun groupe n'accepte d'inscription pour le moment."
+		case !isGroupOpenForRegistration(h.db, groupID):
+			data.Error = "Choisissez le groupe que vous souhaitez rejoindre."
 		default:
+			data.GroupName = groupNameByID(h.db, groupID)
+
 			var existing model.User
 			if err := h.db.Where("email = ?", email).First(&existing).Error; err == nil {
 				if existing.EmailVerifiedAt != nil {
 					data.Error = "Cet email est déjà utilisé."
 				} else {
-					// Compte non vérifié : on régénère un token et renvoie un email
+					// Compte non vérifié : on régénère un token et renvoie un email.
+					// La demande est réécrite au passage — le candidat a pu se
+					// tromper de groupe la première fois.
+					if err := upsertJoinRequest(h.db, existing.ID, groupID, msgPtr); err != nil {
+						data.Error = "Erreur lors de l'enregistrement de la demande."
+						break
+					}
 					h.db.Where("user_id = ?", existing.ID).Delete(&model.EmailVerifyToken{})
 					token := newSecureToken()
 					h.db.Create(&model.EmailVerifyToken{
@@ -908,6 +948,14 @@ func (h *PagesHandler) RegisterPage(c *gin.Context) {
 			user.SetPassword(password, h.cfg.Key)
 			if err := h.db.Create(&user).Error; err != nil {
 				data.Error = "Erreur lors de la création du compte."
+				break
+			}
+			// La demande est déposée maintenant, mais les gestionnaires ne
+			// seront prévenus qu'à l'activation du compte : un formulaire
+			// public suffirait sinon à leur faire défiler des adresses que
+			// personne n'a confirmées.
+			if err := upsertJoinRequest(h.db, user.ID, groupID, msgPtr); err != nil {
+				data.Error = "Erreur lors de l'enregistrement de la demande."
 				break
 			}
 			token := newSecureToken()
@@ -955,20 +1003,13 @@ func (h *PagesHandler) VerifyEmailPage(c *gin.Context) {
 			h.db.Model(&model.User{}).Where("id = ?", t.UserID).Update("email_verified_at", now)
 			h.db.Delete(&t)
 
-			// Auto-ajout aux groupes en mode d'inscription "Ouvert"
-			var autoGroups []model.Group
-			h.db.Where("reg_option = ?", string(model.RegOptionOpen)).Find(&autoGroups)
-			for _, g := range autoGroups {
-				var existing model.UserGroup
-				if err := h.db.Where("user_id = ? AND group_id = ?", t.UserID, g.ID).First(&existing).Error; err == nil {
-					continue // déjà membre
-				}
-				h.db.Create(&model.UserGroup{
-					UserID:  t.UserID,
-					GroupID: g.ID,
-					Rights:  "[]",
-				})
-			}
+			// L'adresse est confirmée : les gestionnaires du groupe demandé
+			// peuvent maintenant être prévenus.
+			//
+			// L'activation n'ajoute plus personne d'office aux groupes
+			// « ouverts » : ce mode dit que le groupe cherche des adhérents,
+			// pas que quiconque s'y installe sans l'accord d'un gestionnaire.
+			h.notifyPendingJoinRequests(t.UserID)
 
 			// Auto-login : émission d'un JWT et cookie, puis redirection vers la complétion du profil
 			if jwtToken, err := h.issueToken(t.UserID, 0); err == nil {
