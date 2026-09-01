@@ -677,19 +677,29 @@ func (h *CompatHandler) ShopAllProducts(c *gin.Context) {
 		Preload("Catalog").
 		Find(&distribs)
 
-	// Un gestionnaire garde en rayon les catalogues déjà clos : il vient
-	// corriger une commande, et c'est presque toujours après la clôture. Un
-	// catalogue qui n'a pas encore ouvert lui reste fermé comme aux autres —
-	// il n'y a rien à y corriger.
-	manager := h.callerManages(c, md.GroupID)
+	// Les catalogues CLOS restent en rayon, et c'est délibéré. Les en retirer
+	// les faisait disparaître sans un mot : l'adhérent cherchait son
+	// producteur habituel, ne le trouvait pas, et rien ne lui disait qu'il
+	// avait simplement fermé. Le shop les affiche désormais estompés, avec
+	// « Commandes closes » à la place du bouton — il lit la clôture par
+	// catalogue dans le « canOrder » que /api/shop/init renvoie déjà.
+	//
+	// Un gestionnaire, lui, les garde commandables : /api/shop/init lui répond
+	// canOrder=true sur un catalogue clos, car corriger une commande après la
+	// clôture fait partie de son travail. Le rayon n'a donc plus à distinguer
+	// qui regarde.
+	//
+	// Deux cas sortent quand même :
+	//   - le catalogue qui n'accepte pas la commande en ligne, qui n'a jamais
+	//     eu sa place ici ;
+	//   - celui dont l'ouverture n'est pas venue, qu'annoncer d'avance ne
+	//     ferait qu'égarer — et pour lequel « closes » serait un contresens.
 	now := time.Now()
 
 	catalogIDs := make([]uint, 0, len(distribs))
 	for _, d := range distribs {
 		d.MultiDistrib = md
-		if !d.CanOrderNow() && !(manager && d.OrderWindowStarted(now)) {
-			// Catalogue clos : ses produits n'ont rien à faire en rayon, ils
-			// ne seraient pas commandables une fois au panier.
+		if !d.ShowsInShop(now) {
 			continue
 		}
 		catalogIDs = append(catalogIDs, d.CatalogID)

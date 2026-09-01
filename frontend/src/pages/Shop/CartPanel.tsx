@@ -25,6 +25,10 @@ interface Props {
    *  destinataire : tant qu'on n'a pas pu la charger, le panier ne la reflète
    *  pas, et l'envoyer l'effacerait au lieu de la modifier. */
   blockReason?: string;
+  /** Catalogues dont la commande est close. Leurs lignes restent visibles —
+   *  elles font partie de la commande — mais ne sont ni modifiables ni
+   *  renvoyées au serveur. */
+  closedCatalogIds?: ReadonlySet<number>;
 }
 
 /**
@@ -40,6 +44,7 @@ export function CartPanel({
   existingCatalogIds = [],
   returnTo,
   blockReason,
+  closedCatalogIds = new Set<number>(),
 }: Props) {
   const items = useCartStore((s) => s.items);
   const subtotal = useCartStore((s) => s.subtotal());
@@ -71,10 +76,28 @@ export function CartPanel({
     };
   }, [onClose]);
 
+  // Une ligne dont le producteur a ferme : elle reste au panier pour que
+  // l'adherent voie sa commande entiere, mais elle n'est plus a lui.
+  const estClos = (catalogId?: number) =>
+    catalogId != null && closedCatalogIds.has(catalogId);
+  const lignesModifiables = items.filter((it) => !estClos(it.catalogId));
+  const lignesCloses = items.filter((it) => estClos(it.catalogId));
+
   // Le panier peut être validé même vide si l'utilisateur avait déjà des
   // commandes — c'est l'équivalent d'une annulation (delete-then-insert avec
   // 0 ligne). On bloque seulement quand il n'y a rien à dire au serveur.
-  const canSubmit = items.length > 0 || existingCatalogIds.length > 0;
+  //
+  // Les lignes closes ne comptent pas : elles ne partiront pas. Un panier qui
+  // ne contiendrait qu'elles n'a rien a envoyer, et proposer « Commander »
+  // n'aboutirait qu'a une requete vide.
+  const canSubmit =
+    lignesModifiables.length > 0 || existingCatalogIds.length > 0;
+
+  // Le message d'erreur doit parler a l'adherent : il connait « Les olives de
+  // Marie », pas le catalogue 29. A defaut de nom de produit, on retombe sur
+  // l'identifiant plutot que de n'afficher rien.
+  const nomCatalogue = (catalogId: number, lot: typeof items) =>
+    lot[0]?.name ?? `catalogue #${catalogId}`;
 
   const submit = async () => {
     if (!canSubmit || multiDistribId == null || blockReason) return;
@@ -86,7 +109,10 @@ export function CartPanel({
       // existingCatalogIds qui n'ont plus d'items dans le panier — sinon le
       // serveur garde leurs anciennes commandes intactes.
       const groups = new Map<number, typeof items>();
-      for (const it of items) {
+      // Seules les lignes encore modifiables sont envoyees. Celles d'un
+      // producteur clos sont deja enregistrees cote serveur : les inclure les
+      // faisait refuser d'un 403, et le refus emportait la commande entiere.
+      for (const it of lignesModifiables) {
         if (!it.catalogId) {
           throw new Error(`Article "${it.name}" sans catalogue — panier corrompu`);
         }
@@ -94,18 +120,42 @@ export function CartPanel({
         arr.push(it);
         groups.set(it.catalogId, arr);
       }
+      // existingCatalogIds a deja ete purge des catalogues clos par ShopPage.
       for (const cid of existingCatalogIds) {
         if (!groups.has(cid)) groups.set(cid, []);
       }
+
+      // Un catalogue par requete, et un echec ne doit plus faire tomber les
+      // suivants : c'est exactement ce qui privait l'adherent de TOUTE sa
+      // commande des qu'un seul producteur la refusait. Les catalogues qui
+      // passent sont enregistres ; on ne rapporte que ceux qui ont echoue.
+      const echecs: string[] = [];
       for (const [catalogId, arr] of groups) {
-        await submitOrder(multiDistribId, {
-          catalogId,
-          userId: targetUserId,
-          orders: arr.map((it) => ({
-            productId: it.productId,
-            qt: it.quantity,
-          })),
-        });
+        try {
+          await submitOrder(multiDistribId, {
+            catalogId,
+            userId: targetUserId,
+            orders: arr.map((it) => ({
+              productId: it.productId,
+              qt: it.quantity,
+            })),
+          });
+        } catch (e) {
+          const detail = (e as Error).message ?? "erreur inconnue";
+          echecs.push(`${nomCatalogue(catalogId, arr)} : ${detail}`);
+        }
+      }
+      if (echecs.length > 0) {
+        // Le reste a bien ete enregistre : l'invalidation ci-dessous fera
+        // reapparaitre l'etat reel, et le panier n'est pas vide pour que rien
+        // ne soit perdu de vue.
+        queryClient.invalidateQueries({ queryKey: ["shop", "existingOrders"] });
+        queryClient.invalidateQueries({ queryKey: ["home"] });
+        throw new Error(
+          echecs.length === 1
+            ? `Cette commande n'a pas pu être enregistrée — ${echecs[0]}. Le reste de votre panier l'a bien été.`
+            : `Ces commandes n'ont pas pu être enregistrées — ${echecs.join(" ; ")}. Le reste de votre panier l'a bien été.`,
+        );
       }
       clear();
       // Invalide les caches dépendant de l'état serveur de la commande, sinon
@@ -251,6 +301,28 @@ export function CartPanel({
               )}
             </div>
           ) : (
+            <>
+            {/* Sans un mot d'explication, une ligne grisee qu'on ne peut plus
+                retirer passe pour une panne. */}
+            {lignesCloses.length > 0 && (
+              <div
+                style={{
+                  backgroundColor: "#fdf3d7",
+                  border: "1px solid #f0e0a8",
+                  color: "#7a5c00",
+                  borderRadius: 6,
+                  padding: "8px 10px",
+                  marginBottom: 8,
+                  fontSize: "0.8rem",
+                  lineHeight: 1.35,
+                }}
+              >
+                {lignesCloses.length === 1
+                  ? "Un producteur a clos ses commandes : sa ligne reste dans votre panier mais ne peut plus être modifiée."
+                  : "Des producteurs ont clos leurs commandes : leurs lignes restent dans votre panier mais ne peuvent plus être modifiées."}{" "}
+                Vous pouvez continuer à commander chez les autres.
+              </div>
+            )}
             <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
               {items.map((it) => {
                 // Quantité absente = une unité, même convention qu'ailleurs :
@@ -260,10 +332,12 @@ export function CartPanel({
                   it.unitType,
                 );
                 const lineTotal = it.price * it.quantity;
+                const clos = estClos(it.catalogId);
                 return (
                   <li
                     key={it.productId}
                     style={{
+                      opacity: clos ? 0.6 : 1,
                       backgroundColor: COLORS.creme,
                       border: `1px solid ${COLORS.trait}`,
                       borderRadius: RADIUS.bouton,
@@ -317,22 +391,24 @@ export function CartPanel({
                         >
                           {it.name}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => remove(it.productId)}
-                          aria-label={`Retirer ${it.name}`}
-                          style={{
-                            border: "none",
-                            background: "transparent",
-                            color: COLORS.gris,
-                            cursor: "pointer",
-                            fontSize: 14,
-                            padding: 4,
-                            flexShrink: 0,
-                          }}
-                        >
-                          <i className="icon-delete" aria-hidden="true" />
-                        </button>
+                        {!clos && (
+                          <button
+                            type="button"
+                            onClick={() => remove(it.productId)}
+                            aria-label={`Retirer ${it.name}`}
+                            style={{
+                              border: "none",
+                              background: "transparent",
+                              color: COLORS.gris,
+                              cursor: "pointer",
+                              fontSize: 14,
+                              padding: 4,
+                              flexShrink: 0,
+                            }}
+                          >
+                            <i className="icon-delete" aria-hidden="true" />
+                          </button>
+                        )}
                       </div>
 
                       <div
@@ -346,16 +422,31 @@ export function CartPanel({
                             {formatPrice(lineTotal)}
                           </span>
                         </div>
-                        <QuantityInput
-                          value={it.quantity}
-                          onChange={(v) => setQuantity(it.productId, v)}
-                        />
+                        {clos ? (
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              color: COLORS.gris,
+                              fontStyle: "italic",
+                              flexShrink: 0,
+                              textAlign: "right",
+                            }}
+                          >
+                            commandes closes
+                          </span>
+                        ) : (
+                          <QuantityInput
+                            value={it.quantity}
+                            onChange={(v) => setQuantity(it.productId, v)}
+                          />
+                        )}
                       </div>
                     </div>
                   </li>
                 );
               })}
             </ul>
+            </>
           )}
         </div>
 

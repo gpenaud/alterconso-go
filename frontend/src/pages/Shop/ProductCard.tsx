@@ -2,6 +2,7 @@ import type { ProductInfo, VendorInfo } from "../../types/shop";
 import { ProductLabels } from "./ProductLabels";
 import { ProductActions } from "./ProductActions";
 import { COLORS, FONTS, RADIUS } from "./theme";
+import { useIsCatalogClosed } from "./closedCatalogs";
 
 interface Props {
   product: ProductInfo;
@@ -16,6 +17,10 @@ interface Props {
 export function ProductCard({ product, vendor, onClick }: Props) {
   const lowStock =
     product.stock != null && product.stock > 0 && product.stock <= 10;
+  // Catalogue clos : la carte s'efface sans disparaitre. La retirer de la
+  // grille priverait l'adherent de la raison pour laquelle son producteur
+  // habituel n'est plus la ; l'estomper le dit sans le faire chercher.
+  const closed = useIsCatalogClosed(product.catalogId);
   // Avatar producteur (legacy farmerAvatar) : portrait dédié sinon image générique.
   const farmerAvatar = vendor?.images?.portrait ?? vendor?.image ?? null;
 
@@ -33,6 +38,9 @@ export function ProductCard({ product, vendor, onClick }: Props) {
         // plus haute ; height:100% le rend explicite, et permet au bandeau bas
         // de descendre au fond plutôt que de suivre le texte.
         height: "100%",
+        // Assez pale pour se distinguer au premier coup d'oeil, assez lisible
+        // pour que le prix et la quantite deja commandee restent consultables.
+        opacity: closed ? 0.55 : 1,
       }}
     >
       <button

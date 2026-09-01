@@ -306,3 +306,65 @@ func TestDerogations(t *testing.T) {
 		})
 	}
 }
+
+func TestShowsInShop(t *testing.T) {
+	const jour = 24 * time.Hour
+	now := time.Now()
+
+	cases := []struct {
+		nom  string
+		d    Distribution
+		want bool
+	}{
+		{
+			"catalogue fermé aux commandes en ligne : jamais en rayon",
+			Distribution{Catalog: Catalog{}, MultiDistrib: MultiDistrib{
+				OrderStartDate: at(-2 * jour), OrderEndDate: at(jour)}},
+			false,
+		},
+		{
+			"commandes ouvertes",
+			Distribution{Catalog: orderable(), MultiDistrib: MultiDistrib{
+				OrderStartDate: at(-2 * jour), OrderEndDate: at(jour)}},
+			true,
+		},
+		{
+			// Le cas qui motive cette méthode : ce catalogue disparaissait du
+			// rayon, et l'adhérent cherchait en vain un producteur qui avait
+			// seulement fermé. Il y reste, estompé.
+			"commandes closes : reste en rayon, estompé",
+			Distribution{Catalog: orderable(), MultiDistrib: MultiDistrib{
+				OrderStartDate: at(-3 * jour), OrderEndDate: at(-jour)}},
+			true,
+		},
+		{
+			"ouverture pas encore venue : rien à annoncer",
+			Distribution{Catalog: orderable(), MultiDistrib: MultiDistrib{
+				OrderStartDate: at(jour), OrderEndDate: at(2 * jour)}},
+			false,
+		},
+		{
+			// Une distribution qui ne surcharge que sa clôture garde
+			// l'ouverture du jour ; sans date d'ouverture nulle part, la
+			// fenêtre est réputée commencée.
+			"aucune date d'ouverture : la fenêtre a commencé",
+			Distribution{Catalog: orderable()},
+			true,
+		},
+		{
+			"clôture propre à la distribution, déjà passée : reste en rayon",
+			Distribution{Catalog: orderable(), OrderEndDate: at(-jour),
+				MultiDistrib: MultiDistrib{
+					OrderStartDate: at(-3 * jour), OrderEndDate: at(jour)}},
+			true,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.nom, func(t *testing.T) {
+			if got := c.d.ShowsInShop(now); got != c.want {
+				t.Errorf("ShowsInShop() = %v, attendu %v", got, c.want)
+			}
+		})
+	}
+}

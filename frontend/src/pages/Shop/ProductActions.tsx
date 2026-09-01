@@ -4,6 +4,7 @@ import { formatPrice, smartQty, pricePerUnit, formatNum } from "../../utils/form
 import { COLORS, FONTS, RADIUS } from "./theme";
 import { useEcranEtroit } from "../../utils/useEcranEtroit";
 import { QuantityInput } from "./QuantityInput";
+import { useIsCatalogClosed } from "./closedCatalogs";
 
 interface Props {
   product: ProductInfo;
@@ -23,6 +24,10 @@ export function ProductActions({ product, displayVAT = false }: Props) {
   const add = useCartStore((s) => s.add);
   const setQuantity = useCartStore((s) => s.setQuantity);
   const qty = useCartStore((s) => s.quantityOf(product.id));
+  // Producteur dont la commande est close : le produit reste visible et son
+  // prix lisible, mais rien ne permet plus d'y toucher. Le laisser commandable
+  // ne faisait qu'amener l'adhérent jusqu'au refus du serveur.
+  const closed = useIsCatalogClosed(product.catalogId);
 
   const qtyLabel = smartQty(product.qt, product.unitType);
   const unitPriceLabel = pricePerUnit(product.price, product.qt, product.unitType);
@@ -82,7 +87,22 @@ export function ProductActions({ product, displayVAT = false }: Props) {
             stock <= 0       → "Rupture de stock"
             qty dans panier  → stepper -/qty/+
             sinon            → bouton sac */}
-      {product.stock != null && product.stock <= 0 ? (
+      {closed ? (
+        <span
+          style={{
+            color: COLORS.gris,
+            fontSize: 14,
+            fontWeight: 700,
+            textAlign: "right",
+            lineHeight: 1.15,
+            flexShrink: 0,
+          }}
+        >
+          Commandes
+          <br />
+          closes
+        </span>
+      ) : product.stock != null && product.stock <= 0 ? (
         <span
           style={{
             color: COLORS.danger,
