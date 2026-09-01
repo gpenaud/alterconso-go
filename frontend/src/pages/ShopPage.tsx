@@ -12,6 +12,7 @@ import { CategorySection } from "./Shop/CategorySection";
 import { ProductModal } from "./Shop/ProductModal";
 import { CartPanel } from "./Shop/CartPanel";
 import { ProductFilters, type TagFilter } from "./Shop/ProductFilters";
+import { ClosedCatalogsContext } from "./Shop/closedCatalogs";
 
 export function ShopPage() {
   const params = useParams<{ multiDistribId: string }>();
@@ -52,9 +53,26 @@ export function ShopPage() {
     isLoading: existingOrdersLoading,
     error: existingOrdersError,
   } = useExistingOrders(ordersOwnerId, multiDistribId);
+  // Catalogues dont la commande est close, tels que le serveur les declare.
+  const closedCatalogIds = useMemo(
+    () =>
+      new Set(
+        (init?.catalogs ?? []).filter((c) => !c.canOrder).map((c) => c.id),
+      ),
+    [init],
+  );
+  // Les catalogues sur lesquels une commande existe deja sont renvoyes au
+  // serveur meme vides, pour qu'il efface ce qui a ete retire du panier. Ceux
+  // qui sont clos en sont ecartes, et pour deux raisons : le serveur refuse
+  // d'y toucher — c'est le 403 qui faisait echouer toute la validation — et
+  // s'il l'acceptait, ce panier vide EFFACERAIT une commande que l'adherent
+  // n'a plus le droit de modifier.
   const existingCatalogIds = useMemo(
-    () => Array.from(new Set((existingOrders ?? []).map((o) => o.catalogId))),
-    [existingOrders],
+    () =>
+      Array.from(
+        new Set((existingOrders ?? []).map((o) => o.catalogId)),
+      ).filter((id) => !closedCatalogIds.has(id)),
+    [existingOrders, closedCatalogIds],
   );
   const setMd = useCartStore((s) => s.setMultiDistrib);
   const replaceCart = useCartStore((s) => s.replace);
@@ -198,6 +216,7 @@ export function ShopPage() {
   if (!init || !catalog) return null;
 
   return (
+    <ClosedCatalogsContext.Provider value={closedCatalogIds}>
     <div
       className="min-h-screen"
       style={{
@@ -297,6 +316,7 @@ export function ShopPage() {
         <CartPanel
           targetUserId={targetUserId}
           existingCatalogIds={existingCatalogIds}
+          closedCatalogIds={closedCatalogIds}
           returnTo={returnTo}
           blockReason={
             targetUserId && existingOrdersError
@@ -338,5 +358,6 @@ export function ShopPage() {
         </button>
       )}
     </div>
+    </ClosedCatalogsContext.Provider>
   );
 }
