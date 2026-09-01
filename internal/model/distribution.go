@@ -144,6 +144,22 @@ func (d *Distribution) OrderWindowStarted(now time.Time) bool {
 	return start == nil || !now.Before(*start)
 }
 
+// ShowsInShop : ce catalogue a-t-il sa place dans le rayon du shop ?
+//
+// Plus large que CanOrderNow, et c'est le point : un catalogue CLOS reste en
+// rayon. L'en retirer le faisait disparaître sans un mot, et l'adhérent
+// cherchait un producteur qui avait simplement fermé. Le shop l'affiche
+// estompé, et refuse d'y toucher.
+//
+// Deux cas n'y figurent pas :
+//   - le catalogue qui n'accepte pas la commande en ligne, qui n'a rien à y
+//     faire à aucun moment ;
+//   - celui dont l'ouverture n'est pas venue : l'annoncer d'avance égarerait,
+//     et le dire « clos » serait faux.
+func (d *Distribution) ShowsInShop(now time.Time) bool {
+	return d.Catalog.UsersCanOrder() && d.OrderWindowStarted(now)
+}
+
 // CanOrderNow retourne true si les commandes sont ouvertes pour cette distribution.
 func (d *Distribution) CanOrderNow() bool {
 	if !d.Catalog.UsersCanOrder() {
