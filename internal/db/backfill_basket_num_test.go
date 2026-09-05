@@ -226,3 +226,50 @@ func TestBackfillMergesDuplicateBaskets(t *testing.T) {
 		t.Errorf("%d commandes pointent encore le panier supprimé", perdues)
 	}
 }
+
+// Les commandes reprises de l'ancienne base portent un identifiant de panier
+// qui ne désigne plus rien — les paniers, eux, n'ont pas été repris. Ces
+// identifiants occupent la même plage que ceux des paniers que la migration
+// recrée : chacun finit donc par désigner le panier d'un autre adhérent.
+//
+// Le cas est passé inaperçu jusqu'à une exécution sur des données réelles, où
+// il touchait 15 887 des 16 444 commandes. Le test le fige.
+func TestBackfillRepairsOrdersPointingAtAnotherMemberBasket(t *testing.T) {
+	gdb := testDB(t)
+	dropBasketIndexes(t, gdb)
+
+	const (
+		lui  = 98031
+		elle = 98032
+	)
+	mdID := seedDistributionWithOrders(t, gdb, []uint{lui, elle})
+	if err := BackfillBasketNumbers(gdb); err != nil {
+		t.Fatalf("première passe : %v", err)
+	}
+
+	var panierDeElle model.Basket
+	gdb.Where("multi_distrib_id = ? AND user_id = ?", mdID, elle).First(&panierDeElle)
+
+	// On fait pointer les commandes de l'un vers le panier de l'autre : c'est
+	// l'état exact que produisait la reprise des anciens identifiants.
+	var distribs []uint
+	gdb.Model(&model.Distribution{}).Where("multi_distrib_id = ?", mdID).Pluck("id", &distribs)
+	gdb.Model(&model.UserOrder{}).
+		Where("distribution_id IN ? AND user_id = ?", distribs, lui).
+		Update("basket_id", panierDeElle.ID)
+
+	if err := BackfillBasketNumbers(gdb); err != nil {
+		t.Fatalf("seconde passe : %v", err)
+	}
+
+	var panierDeLui model.Basket
+	gdb.Where("multi_distrib_id = ? AND user_id = ?", mdID, lui).First(&panierDeLui)
+
+	var egarees int64
+	gdb.Model(&model.UserOrder{}).
+		Where("distribution_id IN ? AND user_id = ? AND basket_id <> ?", distribs, lui, panierDeLui.ID).
+		Count(&egarees)
+	if egarees != 0 {
+		t.Errorf("%d commandes pointent encore le panier d'un autre adhérent", egarees)
+	}
+}
