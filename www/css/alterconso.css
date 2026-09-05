@@ -341,11 +341,19 @@ label { font-weight:600; color:#4a4a4a; }
    Le dégradé est déclaré sous l'image : si le fichier manque, il reste un
    fond digne au lieu d'un rectangle blanc. */
 .ac-banniere { position:relative; border-radius:16px; overflow:hidden;
-  margin-bottom:26px; min-height:250px; display:flex; align-items:flex-end;
-  background-color:#3d4a25;
+  margin-bottom:26px; min-height:215px; display:flex; align-items:flex-end;
+  background-color:#3d4a25; }
+/* L'image sur un pseudo-element, et non sur la boite elle-meme : « opacity »
+   posee sur la boite aurait emporte le titre et le texte avec elle. Elle se
+   fond ainsi dans le vert de la charte — moins presente, et le blanc du titre
+   y gagne meme un peu de contraste. */
+.ac-banniere::before { content:""; position:absolute; inset:0;
   background-image:url("/img/default-banner.jpg");
-  background-size:cover; background-position:center 62%; }
-.ac-banniere-voile { width:100%; padding:60px 32px 28px;
+  background-size:cover; background-position:center 62%;
+  opacity:.8; filter:saturate(.88); }
+/* Au-dessus de l'image, sans quoi le degrade passerait dessous et le titre
+   se lirait sur la photo nue. */
+.ac-banniere-voile { position:relative; z-index:1; width:100%; padding:60px 32px 28px;
   background:linear-gradient(to top,
     rgba(28,34,16,.86) 0%, rgba(28,34,16,.62) 45%, rgba(28,34,16,0) 100%); }
 .ac-banniere-titre { font-family:var(--ac-police-titre); font-size:2.05em;
@@ -355,7 +363,7 @@ label { font-weight:600; color:#4a4a4a; }
   line-height:1.5; text-shadow:0 1px 10px rgba(0,0,0,.35); }
 
 @media (max-width:768px) {
-  .ac-banniere { min-height:190px; margin-bottom:20px; }
+  .ac-banniere { min-height:165px; margin-bottom:20px; }
   .ac-banniere-voile { padding:44px 18px 20px; }
   .ac-banniere-titre { font-size:1.5em; }
   .ac-banniere-texte { font-size:.95em; }
@@ -681,6 +689,30 @@ label { font-weight:600; color:#4a4a4a; }
   border-radius:12px; }
 @media (prefers-reduced-motion:reduce) {
   .ac-revenu { animation:none; box-shadow:0 0 0 3px rgba(122,158,70,.35); }
+}
+
+/* La bande qui separe la prochaine distribution du reste de la page. Elle
+   reprend le rayon et l'ombre des cartes : posee entre elles, un rectangle a
+   angles vifs se serait lu comme un element etranger tombe la.
+
+   « center 58% » et non « center » : le cadrage est deja serre sur les
+   cagettes, et sur un ecran large ou « cover » agrandit l'image, c'est le
+   bois du bas qu'on veut voir partir plutot que les betteraves du haut. */
+.ac-separation { position:relative; height:118px; border-radius:16px;
+  margin:0 0 26px; overflow:hidden; background-color:var(--ac-creme);
+  box-shadow:0 1px 2px rgba(0,0,0,.04); }
+/* Meme facon de faire que la banniere, pour la meme raison : l'image
+   s'attenue sur le creme de la page. Elle separe, elle n'annonce rien — a
+   pleine opacite, elle pesait autant que les cartes qu'elle departage. */
+.ac-separation::before { content:""; position:absolute; inset:0;
+  background-image:url("/img/separation-cagettes.jpg");
+  background-size:cover; background-position:center 50%;
+  opacity:.84; filter:saturate(.92); }
+
+@media (max-width:768px) {
+  /* Plus basse : sur un telephone, la meme hauteur repousserait les
+     distributions suivantes hors de l'ecran a elle seule. */
+  .ac-separation { height:86px; border-radius:14px; margin-bottom:20px; }
 }
 
 .ac-chargement { text-align:center; color:var(--ac-gris-clair); font-size:.88em;

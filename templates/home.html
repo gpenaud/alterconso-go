@@ -234,6 +234,16 @@
     </section>
     {{end}}
 
+    {{/* Une bande d'image entre la prochaine distribution et ce qui suit.
+         Elle ne dit rien — d'ou « aria-hidden » : ce qu'elle porte, la carte
+         du dessus l'a deja ecrit. Elle marque la fin de ce qu'on vient
+         chercher, et l'entree dans ce qu'on ne fait que consulter : les
+         liens, puis les distributions suivantes, qui se suivaient jusqu'ici
+         sans qu'on voie ou l'une s'arretait. */}}
+    {{if .HeroDistrib}}
+    <div class="ac-separation" role="presentation" aria-hidden="true"></div>
+    {{end}}
+
     {{/* Le producteur qui tient son catalogue ne vient pas ici pour commander,
          mais pour tenir ses produits à jour. Ce geste-là mérite un bouton, pas
          une ligne perdue parmi les liens : c'est sa raison d'ouvrir le site. */}}
