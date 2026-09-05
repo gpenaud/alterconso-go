@@ -297,6 +297,39 @@ label { font-weight:600; color:#4a4a4a; }
   .ac-pastille { width:38px; height:38px; }
 }
 
+/* Sur téléphone, le menu du compte cesse d'être une bulle accrochée à la
+   pastille. Ses 268 px posés dans le coin d'un écran qui en fait 360 le
+   laissaient déborder d'un bord, entrées serrées et courriel coupé. Il devient
+   une feuille ancrée en bas, sur toute la largeur : c'est là que le pouce
+   arrive, et la place ainsi gagnée rend aux entrées leur taille. */
+@media (max-width:768px) {
+  /* Bootstrap pose ce menu en absolu sous son déclencheur : les quatre côtés
+     sont à reprendre, pas seulement la largeur. */
+  .ac-compte .ac-menu-compte {
+    position:fixed; top:auto; right:0; bottom:0; left:0;
+    width:100%; min-width:0; max-width:none; margin:0;
+    max-height:82vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    border:0; border-radius:16px 16px 0 0;
+    /* Repli d'abord : un navigateur qui ignore env() laisserait sinon la
+       feuille avec les 6 px de la bulle. */
+    padding:10px;
+    padding:10px 10px calc(10px + env(safe-area-inset-bottom));
+    box-shadow:0 -10px 40px rgba(0,0,0,.24); }
+  /* Une feuille pleine largeur recouvre la page : le voile dit que le reste
+     attend son tour. Bootstrap le pose déjà sur les écrans tactiles — c'est
+     lui qui referme au clic — mais transparent, sans rien montrer. */
+  .dropdown-backdrop { background:rgba(38,37,31,.38); }
+  /* Les cibles passent au doigt, et le texte cesse de rétrécir : la place
+     manquait, elle ne manque plus. */
+  .ac-menu-compte > li > a { min-height:46px; padding:11px 14px; font-size:1em; }
+  .ac-menu-compte > li > a > .icon { width:20px; font-size:1.1em; }
+  .ac-menu-entete { padding:12px 14px 14px; }
+  .ac-menu-groupe { min-height:46px; margin:0 8px 8px; padding:10px 13px;
+    font-size:.92em; }
+  .ac-menu-groupe > a { padding:6px 4px; }
+  .ac-menu-titre { padding:12px 14px 5px; }
+}
+
 /* ─── Distributions à venir (accueil) ────────────────────────────────────── */
 /* La prochaine occupe la place, les suivantes se résument à une ligne : on
    vient commander maintenant, pas comparer six jeudis. */
@@ -718,14 +751,33 @@ label { font-weight:600; color:#4a4a4a; }
   .ac-prochaine-action { align-items:stretch; margin:20px 0 8px; padding:20px 0 0; }
   .ac-btn-commander { justify-content:center; min-height:52px; }
   .ac-echeance { text-align:center; }
-  .ac-suivante { flex-wrap:wrap; gap:8px 14px; padding:18px 16px; }
-  /* Sur un écran étroit, la pastille passe à la ligne plutôt que d'écraser
-     le lieu ou l'état. */
-  .ac-mise-en-avant.petite { max-width:100%; }
-  .ac-suivante .jour { min-width:0; width:100%; }
-  .ac-suivante .lieu { flex:1 1 100%; white-space:normal; }
-  /* Écran étroit : l'état revient dans le flux, la ligne s'empile. */
-  .ac-suivante .etat { margin-left:0; }
+  /* Sur téléphone, la ligne se lit en deux temps : la date avec son état,
+     puis le lieu dessous. Chaque item occupait auparavant sa propre rangée —
+     date, lieu, état — et l'état se retrouvait collé au chevron, au milieu de
+     la largeur ; d'une ligne à l'autre rien ne tombait à la même hauteur.
+     « order » remonte l'état d'un cran sans toucher au balisage, où le lieu
+     le précède : l'ordre de lecture d'un lecteur d'écran reste celui-là. */
+  /* « align-content » parce que la ligne garde ses 74 px de haut : sans lui,
+     les rangées s'étirent pour remplir ce qui reste et la date s'éloigne du
+     lieu d'un bloc à l'autre, selon ce que chacun contient. Groupées et
+     centrées, elles tombent partout à la même hauteur. */
+  .ac-suivante { flex-wrap:wrap; align-content:center; gap:6px 12px;
+    padding:18px 16px; }
+  /* Ni grandir ni rétrécir : la date qui s'étire avalerait l'espace libre, et
+     le « margin-left:auto » de l'état n'aurait plus rien à repousser — les
+     deux resteraient collés au bord gauche. Elle ne se coupe pas non plus. */
+  .ac-suivante .jour { order:1; flex:0 0 auto; min-width:0; width:auto;
+    white-space:nowrap; }
+  /* L'état file au bord droit et le chevron le suit : la première rangée de
+     chaque bloc porte donc les mêmes repères, aux mêmes hauteurs. Un libellé
+     long — « Ouvre Lundi 31 Août à 09:00 » — passe alors à la ligne suivante
+     plutôt que de rogner la date, qu'on ne tronque jamais. */
+  .ac-suivante .etat { order:2; margin-left:auto; }
+  .ac-suivante .chevron { order:3; }
+  .ac-suivante .lieu { order:4; flex:1 1 100%; white-space:normal; }
+  /* La mise en avant ferme la ligne. Entre la date et l'état, elle se lisait
+     comme un second état ; en pied, elle qualifie la distribution entière. */
+  .ac-suivante .ac-mise-en-avant.petite { order:5; flex:1 1 100%; max-width:100%; }
   .ac-appel-benevoles a { margin-left:0; }
 }
 
