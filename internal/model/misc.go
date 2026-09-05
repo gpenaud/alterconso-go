@@ -18,7 +18,9 @@ type Place struct {
 
 func (p *Place) TableName() string { return "places" }
 
-// Basket : panier en mode boutique.
+// Basket : ce qu'un adhérent emporte d'une distribution, tous producteurs
+// confondus. Sa portée est le MultiDistrib entier, et c'est ce qui permet à son
+// numéro d'être le même sur la liste de chaque producteur.
 type Basket struct {
 	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
 	CreatedAt time.Time `json:"cdate"`
@@ -28,6 +30,12 @@ type Basket struct {
 
 	MultiDistribID uint         `json:"-"`
 	MultiDistrib   MultiDistrib `gorm:"foreignKey:MultiDistribID" json:"-"`
+
+	// Num : le numéro du panier, affiché à l'adhérent et aux producteurs
+	// pendant la distribution. Attribué à la création du panier et jamais
+	// réattribué ensuite. Vaut 0 sur les paniers antérieurs à
+	// BackfillBasketNumbers, que rien n'avait numérotés.
+	Num int `gorm:"not null;default:0" json:"num"`
 
 	Orders []UserOrder `gorm:"foreignKey:BasketID" json:"-"`
 }

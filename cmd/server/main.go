@@ -99,6 +99,12 @@ func main() {
 	if err := db.RevertOverreachingMembersAndCatalogs(database); err != nil {
 		log.Printf("warning: RevertOverreachingMembersAndCatalogs: %v", err)
 	}
+	// Numerote les paniers qui ne l'etaient pas : sans cela les ecrans de
+	// distribution retombent sur un rang calcule, qui donne a un meme adherent
+	// un numero different chez chaque producteur.
+	if err := db.BackfillBasketNumbers(database); err != nil {
+		log.Printf("warning: BackfillBasketNumbers: %v", err)
+	}
 	if err := db.EnsureTechnicalManager(database, cfg); err != nil {
 		log.Printf("warning: EnsureTechnicalManager: %v", err)
 	}

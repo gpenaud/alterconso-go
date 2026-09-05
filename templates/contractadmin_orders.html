@@ -13,6 +13,7 @@
   {{range .Orders}}
   <tr class="darkhead">
     <td colspan="7">
+      {{if .BasketNum}}<span style="background:#333;color:#fff;padding:2px 8px;border-radius:3px;margin-right:8px;font-size:0.9em;font-weight:bold;">N°{{.BasketNum}}</span>{{end}}
       <a href="/member/view/{{.UserID}}" target="_blank">{{.UserName}}</a>
     </td>
   </tr>
