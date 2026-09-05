@@ -32,8 +32,12 @@ func (h *PagesHandler) HomeJSON(c *gin.Context) {
 		return
 	}
 
-	// Le groupe courant est celui des claims si présent, sinon celui du dernier
-	// groupe de l'utilisateur.
+	// Le groupe courant est celui du jeton, et rien d'autre : pas de repli sur
+	// « un » groupe de l'utilisateur. Toute l'application lit claims.GroupID —
+	// deviner ici ferait marcher l'accueil pendant que les écrans de gestion
+	// continueraient d'échouer, et montrerait le mauvais groupe à qui en a
+	// plusieurs. Le jeton se garnit en passant par /user/choose, ce que le 400
+	// ci-dessous demande explicitement.
 	var group *model.Group
 	if claims.GroupID != 0 {
 		var g model.Group

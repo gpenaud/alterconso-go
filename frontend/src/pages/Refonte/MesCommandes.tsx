@@ -8,21 +8,16 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { fetchMyOrders, type MyOrder } from '../../api/myOrders'
+import { EcranErreur, lireErreur } from './erreurApi'
 
 export function MesCommandes() {
   const navigate = useNavigate()
-  const { data, isLoading, isError } = useQuery({ queryKey: ['my-orders'], queryFn: fetchMyOrders })
+  const { data, isLoading, isError, error } = useQuery({ queryKey: ['my-orders'], queryFn: fetchMyOrders })
 
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-canvas text-ink-muted">Chargement…</div>
   }
-  if (isError || !data) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-canvas px-8 text-center text-ink-muted">
-        Vos commandes n'ont pas pu être chargées.
-      </div>
-    )
-  }
+  if (isError || !data) return <EcranErreur erreur={lireErreur(error, 'vos commandes')} />
 
   const aVenir = data.orders.filter((o) => !o.past)
   const passees = data.orders.filter((o) => o.past)

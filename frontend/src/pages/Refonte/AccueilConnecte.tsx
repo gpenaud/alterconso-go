@@ -11,17 +11,18 @@ import { fetchHome, type MultiDistribView } from '../../api/home'
 import { AccueilRefonte } from './AccueilRefonte'
 import { tempsRestant } from './tempsRestant'
 import { useAuthStore } from '../../store/auth'
+import { EcranErreur, lireErreur } from './erreurApi'
 
 export function AccueilConnecte() {
   const navigate = useNavigate()
   const utilisateur = useAuthStore((s) => s.user)
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['home', 0],
     queryFn: () => fetchHome(0),
   })
 
   if (isLoading) return <Message>Chargement…</Message>
-  if (isError || !data) return <Message>Les distributions n'ont pas pu être chargées.</Message>
+  if (isError || !data) return <EcranErreur erreur={lireErreur(error, 'les distributions')} />
 
   const distribution = distributionAMettreEnAvant(data.multiDistribs)
   if (!distribution) {

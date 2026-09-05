@@ -3,21 +3,16 @@ import { useNavigate } from 'react-router-dom'
 import { fetchHome } from '../../api/home'
 import { DistributionsRefonte, type DistributionListee } from './DistributionsRefonte'
 import { tempsRestant } from './tempsRestant'
+import { EcranErreur, lireErreur } from './erreurApi'
 
 export function DistributionsConnecte() {
   const navigate = useNavigate()
-  const { data, isLoading, isError } = useQuery({ queryKey: ['home', 0], queryFn: () => fetchHome(0) })
+  const { data, isLoading, isError, error } = useQuery({ queryKey: ['home', 0], queryFn: () => fetchHome(0) })
 
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-canvas text-ink-muted">Chargement…</div>
   }
-  if (isError || !data) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-canvas px-8 text-center text-ink-muted">
-        Les distributions n'ont pas pu être chargées.
-      </div>
-    )
-  }
+  if (isError || !data) return <EcranErreur erreur={lireErreur(error, 'les distributions')} />
 
   const distributions: DistributionListee[] = data.multiDistribs.map((d) => ({
     id: d.id,
