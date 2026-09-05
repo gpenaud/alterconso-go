@@ -1087,8 +1087,13 @@ func (h *PagesHandler) CatalogAdminOrdersPage(c *gin.Context) {
 		userMap[o.UserID].Total += o.TotalPrice()
 	}
 
+	// L'écran ne montre qu'un catalogue, mais le numéro reste celui de la
+	// distribution entière — il était jusqu'ici laissé à zéro.
+	nums := basketNumbers(h.db, distrib.MultiDistribID)
 	for _, uid := range userOrder {
-		data.Orders = append(data.Orders, *userMap[uid])
+		entry := *userMap[uid]
+		entry.BasketNum = nums[uid]
+		data.Orders = append(data.Orders, entry)
 	}
 
 	// Store distrib info in catalog for template access
@@ -1391,10 +1396,14 @@ func (h *PagesHandler) DistributionListByDatePrintPage(c *gin.Context) {
 		return userMap[userOrder[i]].sortKey < userMap[userOrder[j]].sortKey
 	})
 
-	for i, uid := range userOrder {
+	// Le numéro vient du panier, jamais du rang dans cette liste : filtrée par
+	// producteur, elle renumérote à partir de 1 le sous-ensemble affiché.
+	nums := basketNumbers(h.db, md.ID)
+
+	for _, uid := range userOrder {
 		u := userMap[uid]
 		data.Members = append(data.Members, EmargementMember{
-			BasketNum:   i + 1,
+			BasketNum:   nums[uid],
 			UserName:    u.name,
 			Phone:       u.phone,
 			Lines:       u.lines,
@@ -1795,10 +1804,15 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 	data.Category = "distribution"
 	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}}
 
-	for i, uid := range userOrder {
+	// Même numéro que sur la liste d'émargement et que chez les autres
+	// producteurs : il est lu sur le panier, que le filtre catalogue ne touche
+	// pas.
+	nums := basketNumbers(h.db, md.ID)
+
+	for _, uid := range userOrder {
 		u := userMap[uid]
 		data.Members = append(data.Members, OrdersByDateMember{
-			BasketNum:   i + 1,
+			BasketNum:   nums[uid],
 			UserID:      uid,
 			UserName:    u.name,
 			Lines:       u.lines,
