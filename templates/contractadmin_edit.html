@@ -137,6 +137,38 @@
 
 </form>
 
+{{/* La suppression hors du formulaire des reglages : dans le meme pied, son
+     bouton aurait voisine « Enregistrer » et se serait clique a sa place.
+     Elle ne s'offre qu'a qui repond du groupe, et sur un catalogue que
+     personne n'a encore commande. */}}
+{{if .IsGroupManager}}
+<div class="cyc-section">
+  <h4>Supprimer ce catalogue</h4>
+  {{if .Commandes}}
+  <p class="cyc-aide">
+    {{.Commandes}} commande{{if gt .Commandes 1}}s ont{{else}} a{{end}} été
+    passée{{if gt .Commandes 1}}s{{end}} sur ce catalogue&nbsp;: il ne peut plus
+    être supprimé. Ce sont des écritures comptables — ce qu'un adhérent a pris,
+    ce qu'il doit — et les effacer laisserait des soldes que plus rien
+    n'explique. Une période de fin passée le retire des commandes sans rien
+    perdre.
+  </p>
+  {{else}}
+  <p class="cyc-aide">
+    Aucune commande n'a été passée sur ce catalogue&nbsp;: il peut partir, avec
+    ses produits et ses dates de livraison. Les postes de bénévoles qu'il
+    précisait restent au groupe. La suppression est définitive.
+  </p>
+  <form method="POST" action="/contractAdmin/delete/{{.Catalog.ID}}"
+        onsubmit="return confirm('Supprimer définitivement le catalogue {{.Catalog.Name}}, ses produits et ses dates de livraison ?');">
+    <button type="submit" class="cyc-btn cyc-btn-danger">
+      <i class="icon icon-delete"></i> Supprimer {{.Catalog.Name}}
+    </button>
+  </form>
+  {{end}}
+</div>
+{{end}}
+
 <script>
 (function () {
   var caseFrais = document.getElementById('case-frais');

@@ -156,6 +156,10 @@ type CatalogEditData struct {
 	CatalogAdminData
 	Vendors []model.Vendor
 	Members []model.User
+	// Commandes : ce qui interdit la suppression. Zero, l'ecran l'offre ;
+	// sinon il dit combien de commandes tiennent a ce catalogue, ce qui
+	// vaut mieux qu'un bouton absent sans explication.
+	Commandes int64
 	// PeutMettreEnAvant : le gabarit ne devine pas les droits, on les lui
 	// donne. Le champ disparaît pour qui ne peut pas s'en servir plutôt que
 	// de s'afficher grisé — un réglage qu'on ne peut pas toucher n'a rien à
@@ -295,6 +299,7 @@ func (h *PagesHandler) CatalogAdminEditPage(c *gin.Context) {
 
 	editData := CatalogEditData{CatalogAdminData: data, Vendors: vendors, Members: members,
 		PeutMettreEnAvant: peutMettreEnAvant(data.PageData)}
+	editData.Commandes = h.catalogCommandes(data.Catalog.ID)
 	// Le fil nomme cet écran.
 	editData.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"}, {Name: "Réglages", Link: ""}}
 	// La rubrique place l'écran dans l'espace d'administration : elle
@@ -427,6 +432,77 @@ func (h *PagesHandler) catalogNouveauRefus(pd PageData, cat model.Catalog) strin
 		}
 	}
 	return ""
+}
+
+// catalogCommandes compte les commandes passees sur les produits de ce
+// catalogue. Par les produits : une commande ne designe pas le catalogue, elle
+// designe le produit, qui lui appartient.
+func (h *PagesHandler) catalogCommandes(catalogID uint) int64 {
+	var n int64
+	h.db.Model(&model.UserOrder{}).
+		Joins("JOIN products ON products.id = user_orders.product_id").
+		Where("products.catalog_id = ?", catalogID).
+		Count(&n)
+	return n
+}
+
+// ---- POST /contractAdmin/delete/:id ----
+//
+// En POST, et pour la meme raison qu'ailleurs : un lien preleve par un
+// antivirus de messagerie ou prepare par le navigateur emporterait le
+// catalogue sans que personne ait clique.
+func (h *PagesHandler) CatalogAdminDeletePage(c *gin.Context) {
+	data, ok := h.loadCatalogAdmin(c, "view")
+	if !ok {
+		return
+	}
+	// Ouvrir un catalogue est deja reserve au responsable de groupe ; le
+	// fermer pour de bon ne saurait etre plus ouvert. « loadCatalogAdmin »
+	// laisse passer le responsable de catalogue, qui tient les produits.
+	if !data.IsGroupManager {
+		c.Redirect(http.StatusFound, "/contractAdmin")
+		return
+	}
+
+	// Une seule commande suffit a retenir le catalogue. Ce sont des ecritures
+	// comptables — ce qu'un adherent a pris, ce qu'il doit — et les effacer
+	// laisserait des soldes que plus rien n'explique. La page des reglages
+	// n'offre donc pas le bouton dans ce cas ; ceci ferme l'adresse.
+	if n := h.catalogCommandes(data.Catalog.ID); n > 0 {
+		c.String(http.StatusConflict,
+			"Ce catalogue porte %d commande(s) : il ne peut pas être supprimé.", n)
+		return
+	}
+
+	// Tout ou rien. A mi-chemin, le catalogue aurait perdu ses produits sans
+	// disparaitre, et les ecrans montreraient un contrat vide qu'on ne
+	// pourrait plus ni remplir ni fermer.
+	id := data.Catalog.ID
+	err := h.db.Transaction(func(tx *gorm.DB) error {
+		// Les roles de benevoles se detachent au lieu de partir : « mise en
+		// place », « rangement » sont des postes du groupe, que le catalogue
+		// precisait sans les posseder.
+		if err := tx.Model(&model.VolunteerRole{}).Where("catalog_id = ?", id).
+			Update("catalog_id", nil).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("catalog_id = ?", id).Delete(&model.Subscription{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("catalog_id = ?", id).Delete(&model.Distribution{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("catalog_id = ?", id).Delete(&model.Product{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&model.Catalog{}, id).Error
+	})
+	if err != nil {
+		c.String(http.StatusInternalServerError, "suppression impossible : %v", err)
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/contractAdmin")
 }
 
 func (h *PagesHandler) CatalogAdminProductsPage(c *gin.Context) {

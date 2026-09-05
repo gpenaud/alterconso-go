@@ -188,6 +188,10 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/contractAdmin/view/:id", pageAuth, reqCatalog, pagesH.CatalogAdminViewPage)
 	r.GET("/contractAdmin/edit/:id", pageAuth, reqCatalog, pagesH.CatalogAdminEditPage)
 	r.POST("/contractAdmin/edit/:id", pageAuth, reqCatalog, pagesH.CatalogAdminEditPage)
+	// En POST seulement : la suppression emporte les produits et les dates du
+	// catalogue, et un lien preleve par un antivirus de messagerie suffirait a
+	// la declencher.
+	r.POST("/contractAdmin/delete/:id", pageAuth, reqCatalog, pagesH.CatalogAdminDeletePage)
 	r.GET("/contractAdmin/duplicate/:id", pageAuth, reqCatalog, pagesH.CatalogAdminDuplicatePage)
 	r.POST("/contractAdmin/duplicate/:id", pageAuth, reqCatalog, pagesH.CatalogAdminDuplicatePage)
 	r.GET("/contractAdmin/products/:id", pageAuth, reqCatalog, pagesH.CatalogAdminProductsPage)
