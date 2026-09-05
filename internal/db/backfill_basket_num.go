@@ -113,9 +113,14 @@ func createMissingBaskets(gdb *gorm.DB) error {
 	return nil
 }
 
-// attachOrdersToBaskets rattache les commandes laissées sans panier, ainsi que
-// celles dont le panier a disparu — la migration depuis l'ancienne base a
-// repris les identifiants de panier sans reprendre les paniers eux-mêmes.
+// attachOrdersToBaskets rattache chaque commande au panier de son adhérent.
+//
+// Le rattachement se juge sur l'identité du panier, jamais sur sa seule
+// existence. La migration depuis l'ancienne base a repris les identifiants de
+// panier sans reprendre les paniers : ces identifiants ne désignaient plus rien,
+// mais ils occupent la même plage que ceux des paniers recréés juste au-dessus.
+// Vérifier qu'un panier porte ce numéro d'identifiant les déclarerait donc
+// valides, alors qu'ils désignent maintenant le panier d'un autre adhérent.
 func attachOrdersToBaskets(gdb *gorm.DB) error {
 	res := gdb.Exec(`
 		UPDATE user_orders uo
@@ -123,8 +128,7 @@ func attachOrdersToBaskets(gdb *gorm.DB) error {
 		JOIN baskets b
 			ON b.user_id = uo.user_id AND b.multi_distrib_id = d.multi_distrib_id
 		SET uo.basket_id = b.id
-		WHERE uo.basket_id IS NULL
-		   OR NOT EXISTS (SELECT 1 FROM baskets b2 WHERE b2.id = uo.basket_id)`)
+		WHERE uo.basket_id IS NULL OR uo.basket_id <> b.id`)
 	if res.Error != nil {
 		return res.Error
 	}
