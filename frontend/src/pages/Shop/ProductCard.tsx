@@ -1,7 +1,7 @@
 import type { ProductInfo, VendorInfo } from "../../types/shop";
 import { ProductLabels } from "./ProductLabels";
 import { ProductActions } from "./ProductActions";
-import { COLORS } from "./theme";
+import { COLORS, FONTS, RADIUS } from "./theme";
 
 interface Props {
   product: ProductInfo;
@@ -22,8 +22,9 @@ export function ProductCard({ product, vendor, onClick }: Props) {
   return (
     <div
       style={{
-        backgroundColor: COLORS.bg2,
-        borderRadius: 4,
+        backgroundColor: COLORS.blanc,
+        border: `1px solid ${COLORS.trait}`,
+        borderRadius: RADIUS.carte,
         overflow: "hidden",
         boxShadow: "none",
         display: "flex",
@@ -67,7 +68,7 @@ export function ProductCard({ product, vendor, onClick }: Props) {
           ) : (
             <div
               className="block w-full h-[120px] md:h-[240px]"
-              style={{ backgroundColor: "#f0eadb" }}
+              style={{ backgroundColor: COLORS.vide }}
             />
           )}
           {farmerAvatar && (
@@ -86,8 +87,8 @@ export function ProductCard({ product, vendor, onClick }: Props) {
                 bottom: -20,
                 right: 12,
                 borderRadius: "50%",
-                border: `3px solid ${COLORS.white}`,
-                backgroundColor: "#ededed",
+                border: `3px solid ${COLORS.blanc}`,
+                backgroundColor: COLORS.vide,
                 boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
               }}
             />
@@ -101,17 +102,18 @@ export function ProductCard({ product, vendor, onClick }: Props) {
           className={farmerAvatar ? "sm:!pr-20" : undefined}
         >
           {/* Nom (h3 uppercase) */}
+          {/* Le nom en capitales et en maigre se lisait mal sur deux lignes,
+              et rien d'autre sur le site n'est écrit ainsi. */}
           <h3
             style={{
-              fontSize: "1.08rem",
-              lineHeight: "normal",
+              fontFamily: FONTS.titre,
+              fontSize: "1.05rem",
+              lineHeight: 1.25,
               fontStyle: "normal",
-              textTransform: "uppercase",
-              marginBottom: 3,
-              fontWeight: 400,
-              maxHeight: 40,
+              fontWeight: 700,
+              maxHeight: 42,
               overflow: "hidden",
-              color: COLORS.darkGrey,
+              color: COLORS.titre,
               margin: "0 0 3px 0",
             }}
           >
@@ -122,7 +124,7 @@ export function ProductCard({ product, vendor, onClick }: Props) {
           <p
             style={{
               fontSize: "0.9rem",
-              color: COLORS.mediumGrey,
+              color: COLORS.gris,
               marginBottom: 0,
               maxHeight: 65,
               overflow: "hidden",
@@ -145,7 +147,7 @@ export function ProductCard({ product, vendor, onClick }: Props) {
               <span
                 style={{
                   display: "block",
-                  color: COLORS.third,
+                  color: COLORS.alerte,
                   marginTop: 2,
                 }}
               >

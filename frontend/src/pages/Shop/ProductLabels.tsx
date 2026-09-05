@@ -35,7 +35,7 @@ export function ProductLabels({ product }: Props) {
           className={l.icon}
           title={l.title}
           aria-label={l.title}
-          style={{ fontSize: 20, color: COLORS.mediumGrey }}
+          style={{ fontSize: 20, color: COLORS.gris }}
         />
       ))}
     </span>

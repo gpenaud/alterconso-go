@@ -1,32 +1,54 @@
 {{define "content"}}
-<div class="col-md-8 col-md-offset-2">
-  <div class="article">
-    <h3 style="font-style:italic;">Sélectionnez un(e) bénévole pour chaque rôle pour cette distribution</h3>
-    <form method="POST" class="form-horizontal" style="margin-top:16px;">
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <form method="POST">
+    <div class="cyc-panneau" style="max-width:760px;">
+
+      <div class="cyc-entete">
+        <div>
+          <h3>Bénévoles inscrits</h3>
+          <p class="cyc-chapeau">
+            Qui tient quel poste sur cette distribution. À remplir ici quand
+            l'inscription se fait de vive voix plutôt que par le calendrier.
+          </p>
+        </div>
+        <a href="/distribution" class="cyc-btn">
+          <i class="icon icon-chevron-left"></i> Retour au calendrier
+        </a>
+      </div>
+
       {{if .RoleRows}}
-      {{range $row := .RoleRows}}
-      <div class="form-group">
-        <label class="col-sm-4 control-label">{{.RoleName}}</label>
-        <div class="col-sm-8">
-          <select name="role_{{.RoleID}}" class="form-control">
-            <option value="0">Pas de bénévole défini</option>
+      <div class="cyc-champs">
+        {{range $row := .RoleRows}}
+        <div class="cyc-champ">
+          <label for="role_{{.RoleID}}">{{.RoleName}}</label>
+          <select id="role_{{.RoleID}}" name="role_{{.RoleID}}">
+            <option value="0">Personne pour l'instant</option>
             {{range .Members}}
             <option value="{{.ID}}" {{if eq $row.AssignedUID .ID}}selected{{end}}>{{.Name}}</option>
             {{end}}
           </select>
         </div>
+        {{end}}
       </div>
-      {{end}}
-      <div class="form-group">
-        <div class="col-sm-offset-4 col-sm-8">
-          <button type="submit" class="btn btn-success">OK</button>
-          <a href="/distribution" class="btn btn-default" style="margin-left:8px;">Annuler</a>
-        </div>
+
+      <div class="cyc-pied">
+        <a href="/distribution" class="cyc-btn">Annuler</a>
+        <button type="submit" class="cyc-btn cyc-btn-primaire">
+          <i class="icon icon-check"></i> Enregistrer
+        </button>
       </div>
       {{else}}
-      <p class="text-muted">Aucun rôle défini pour cette distribution. <a href="/distribution/roles/{{.MultiDistrib.ID}}">Configurer les rôles</a></p>
+      <div class="cyc-aucun">
+        <i class="icon icon-users icone"></i>
+        <p>Aucun poste n'est défini pour cette distribution.</p>
+        <a href="/distribution/roles/{{.MultiDistrib.ID}}" class="cyc-btn">
+          <i class="icon icon-plus"></i> Définir les postes
+        </a>
+      </div>
       {{end}}
-    </form>
-  </div>
+
+    </div>
+  </form>
 </div>
 {{end}}

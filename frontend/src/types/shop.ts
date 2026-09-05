@@ -91,7 +91,8 @@ export interface ProductInfo {
 export interface ShopInitResponse {
   success: boolean;
   place: PlaceInfo;
-  group: { id: number; name: string };
+  /** logo : adresse signée du logo du groupe, vide s'il n'en a pas. */
+  group: { id: number; name: string; logo?: string };
   distributionStartDate: string; // "YYYY-MM-DD HH:MM:SS"
   distributionEndDate: string;
   orderEndDates: Array<{ date: string; contracts: string[] }>;

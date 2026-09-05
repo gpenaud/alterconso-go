@@ -1,79 +1,143 @@
 {{define "content"}}
-<style>
-  @media (min-width:992px) { .amap-side-offset { padding-top:48px; } }
-</style>
-<div class="col-md-9">
-  <h2 style="margin:0 0 12px;padding:0 4px;">Producteurs</h2>
-  {{if .AmapVendors}}
-  {{range .AmapVendors}}
-  <div class="article" style="margin-bottom:12px;padding:16px;">
-    <div style="display:flex;gap:20px;align-items:flex-start;">
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <div class="cyc-panneau">
 
-      <!-- Colonne gauche : avatar + nom + ville -->
-      <div style="width:120px;flex-shrink:0;text-align:center;">
-        <div style="width:100px;height:100px;background:#e8e0cc;border:1px solid #d0c8b0;border-radius:4px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;">
-          <i class="icon icon-farmer" style="font-size:3em;color:#b5913a;"></i>
-        </div>
-        <div style="font-weight:bold;font-size:0.95em;">{{.Name}}</div>
-        {{if .City}}<div style="color:#888;font-size:0.85em;">{{.City}}{{if .ZipCode}} ({{.ZipCode}}){{end}}</div>{{end}}
+    <div class="cyc-entete">
+      <div>
+        <h3>Producteurs</h3>
+        <p class="cyc-chapeau">
+          Les fermes et artisans qui fournissent {{.Group.Name}}, leurs
+          catalogues et les adhérents qui font le lien avec eux.
+        </p>
       </div>
+      {{if .Contact}}
+      {{/* Le contact du groupe à portée : c'est vers lui qu'on se tourne quand
+           un catalogue n'a pas de coordinateur. */}}
+      <div class="cyc-contact">
+        <span class="intitule">Contact du groupe</span>
+        <span class="nom">{{.Contact.FirstName}} {{.Contact.LastName}}</span>
+        {{if .Contact.Email}}
+        <a href="mailto:{{.Contact.Email}}"><i class="icon icon-mail"></i> {{.Contact.Email}}</a>
+        {{end}}
+        {{if .Contact.Phone}}
+        <span><i class="icon icon-phone"></i> {{deref .Contact.Phone}}</span>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
 
-      <!-- Colonne centrale : catalogues + vignettes produits -->
-      <div style="flex:1;min-width:0;">
-        {{range .Catalogs}}
-        <div style="margin-bottom:16px;">
-          <a href="/contract/view/{{.ID}}" style="color:#5a8a00;font-style:italic;font-weight:bold;font-size:1.05em;">{{.Name}}</a>
-          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-            {{range .ProductImages}}
-            <div title="{{.Name}}" style="width:64px;height:64px;border:1px solid #ddd;border-radius:4px;overflow:hidden;background:#f5f0e8;flex-shrink:0;">
-              <img src="{{.URL}}" loading="lazy" decoding="async" width="64" height="64" style="width:100%;height:100%;object-fit:cover;" />
+    {{if .AmapVendors}}
+    {{/* Une liste dépliable : la ligne dit qui c'est et d'où il vient, le
+         panneau ouvre ses catalogues, ses produits et son coordinateur. Trois
+         colonnes de front — avatar, vignettes, coordinateur — laissaient au
+         milieu ce que l'œil cherche en premier. */}}
+    <div class="cyc-liste" id="prd-liste">
+      {{range .AmapVendors}}
+      <div class="cyc-bloc">
+        <button type="button" class="cyc-sommaire" aria-expanded="false">
+          {{if .ImageURL}}
+          <img src="{{.ImageURL}}" alt="" class="cyc-vignette ronde" />
+          {{else}}
+          <span class="cyc-initiales">{{initialesDe .Name}}</span>
+          {{end}}
+          <span class="ident">
+            <span class="nom">{{.Name}}</span>
+            <span class="second">
+              {{if .City}}{{.City}}{{if .ZipCode}} ({{.ZipCode}}){{end}}{{else}}Commune non renseignée{{end}}
+            </span>
+          </span>
+          <span class="cyc-badge">
+            {{len .Catalogs}} catalogue{{if gt (len .Catalogs) 1}}s{{end}}
+          </span>
+          <i class="icon icon-chevron-down chevron"></i>
+        </button>
+
+        <div class="cyc-repli"><div>
+          {{if .Catalogs}}
+          {{range .Catalogs}}
+          <div class="cyc-section" style="padding:0 8px;">
+            <h4>
+              <a href="/contract/view/{{.ID}}">{{.Name}}</a>
+            </h4>
+
+            {{if .Coordinator}}
+            <p class="cyc-note">
+              <i class="icon icon-user"></i>
+              Coordinateur : <b>{{.Coordinator.FirstName}} {{.Coordinator.LastName}}</b>
+              {{if .Coordinator.Email}}
+              · <a href="mailto:{{.Coordinator.Email}}">{{.Coordinator.Email}}</a>
+              {{end}}
+              {{if .Coordinator.Phone}} · {{deref .Coordinator.Phone}}{{end}}
+            </p>
+            {{else}}
+            <p class="cyc-note">Aucun coordinateur désigné pour ce catalogue.</p>
+            {{end}}
+
+            {{if .ProductImages}}
+            <div class="cyc-vignettes">
+              {{range .ProductImages}}
+              <figure title="{{.Name}}">
+                <img src="{{.URL}}" alt="{{.Name}}" loading="lazy" decoding="async" />
+                <figcaption>{{.Name}}</figcaption>
+              </figure>
+              {{end}}
             </div>
             {{end}}
           </div>
-        </div>
-        {{end}}
-      </div>
+          {{end}}
+          {{else}}
+          <p class="cyc-note" style="padding:0 8px 16px;">
+            Ce producteur n'a aucun catalogue dans le groupe.
+          </p>
+          {{end}}
 
-      <!-- Colonne droite : coordinateur par catalogue -->
-      <div style="width:200px;flex-shrink:0;font-size:0.9em;">
-        {{range .Catalogs}}
-        {{if .Coordinator}}
-        <div style="margin-bottom:12px;">
-          <b>Coordinateur :</b><br/>
-          <p style="margin:4px 0 2px;"><i class="icon icon-user"></i> {{.Coordinator.FirstName}} {{.Coordinator.LastName}}</p>
-          {{if .Coordinator.Email}}<p style="margin:0 0 2px;"><i class="icon icon-mail"></i> <a href="mailto:{{.Coordinator.Email}}" style="color:#5a8a00;">{{.Coordinator.Email}}</a></p>{{end}}
-          {{if .Coordinator.Phone}}<p style="margin:0;"><i class="icon icon-phone"></i> {{deref .Coordinator.Phone}}</p>{{end}}
-        </div>
-        {{end}}
-        {{end}}
+          <div class="cyc-actions-nommees">
+            <a href="/vendor/view/{{.ID}}" class="cyc-btn">
+              <i class="icon icon-eye"></i> Fiche du producteur
+            </a>
+          </div>
+        </div></div>
       </div>
-
+      {{end}}
     </div>
+
+    {{else}}
+    <div class="cyc-aucun">
+      <i class="icon icon-farmer icone"></i>
+      <p>Aucun producteur n'est associé à ce groupe.</p>
+      <a href="/contractAdmin" class="cyc-btn">
+        <i class="icon icon-products"></i> Voir les catalogues
+      </a>
+    </div>
+    {{end}}
+
   </div>
-  {{end}}
-  {{else}}
-  <p class="text-muted">Aucun producteur associé à ce groupe.</p>
-  {{end}}
 </div>
 
-<div class="col-md-3 amap-side-offset">
-  {{if .Group}}
-  <div class="article">
-    <h3 style="font-style:italic;margin-top:0;">{{.Group.Name}}</h3>
-    {{if .IsGroupManager}}
-    <a href="/amapadmin" class="btn btn-default btn-sm"><i class="icon icon-edit"></i> Modifier</a>
-    {{end}}
-  </div>
-  {{end}}
-  {{if .Contact}}
-  <div class="article" style="margin-top:12px;font-size:0.9em;">
-    <b>Contact principal :</b>
-    <p style="margin-top:8px;margin-bottom:0;">
-      <i class="icon icon-user"></i> <b>{{.Contact.FirstName}} {{.Contact.LastName}}</b><br/>
-      {{if .Contact.Email}}<i class="icon icon-mail"></i> <a href="mailto:{{.Contact.Email}}" style="color:#5a8a00;">{{.Contact.Email}}</a><br/>{{end}}
-      {{if .Contact.Phone}}<i class="icon icon-phone"></i> {{deref .Contact.Phone}}{{end}}
-    </p>
-  </div>
-  {{end}}
-</div>
+<script>
+// Dépliage, délégué au conteneur. Un seul producteur ouvert à la fois : leurs
+// bandes de vignettes s'empilent vite.
+(function () {
+  var liste = document.getElementById('prd-liste');
+  if (!liste) return;
+  liste.addEventListener('click', function (e) {
+    var tete = e.target.closest ? e.target.closest('.cyc-sommaire') : null;
+    if (!tete) return;
+    var bloc = tete.parentNode;
+    var ouvert = !bloc.classList.contains('deplie');
+    var autres = liste.querySelectorAll('.cyc-bloc.deplie');
+    for (var i = 0; i < autres.length; i++) {
+      if (autres[i] === bloc) continue;
+      autres[i].classList.remove('deplie');
+      autres[i].querySelector('.cyc-repli').classList.remove('ouvert');
+      var precedent = autres[i].querySelector('.cyc-sommaire');
+      if (precedent) precedent.setAttribute('aria-expanded', 'false');
+    }
+    bloc.classList.toggle('deplie', ouvert);
+    bloc.querySelector('.cyc-repli').classList.toggle('ouvert', ouvert);
+    tete.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+  });
+})();
+</script>
 {{end}}

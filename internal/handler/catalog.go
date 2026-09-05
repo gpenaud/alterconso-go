@@ -152,11 +152,11 @@ func (h *CatalogHandler) Update(c *gin.Context) {
 	}
 
 	var payload struct {
-		Name           string     `json:"name"`
-		StartDate      *string    `json:"startDate"`
-		EndDate        *string    `json:"endDate"`
-		PercentageFees *float64   `json:"percentageFees"`
-		PercentageName *string    `json:"percentageName"`
+		Name           string   `json:"name"`
+		StartDate      *string  `json:"startDate"`
+		EndDate        *string  `json:"endDate"`
+		PercentageFees *float64 `json:"percentageFees"`
+		PercentageName *string  `json:"percentageName"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

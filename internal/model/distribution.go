@@ -20,6 +20,12 @@ type MultiDistrib struct {
 
 	Validated bool `gorm:"default:false" json:"validated"`
 
+	// CycleID : la série dont cette journée est issue, si elle en vient d'une.
+	// Nullable, et il le restera : les distributions créées une par une n'ont
+	// pas de cycle, et celles d'avant l'introduction des cycles non plus.
+	CycleID *uint              `gorm:"index" json:"-"`
+	Cycle   *DistributionCycle `gorm:"foreignKey:CycleID" json:"-"`
+
 	Distributions []Distribution `gorm:"foreignKey:MultiDistribID" json:"-"`
 }
 

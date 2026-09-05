@@ -119,14 +119,14 @@ func (h *UserHandler) Update(c *gin.Context) {
 
 	// Champs modifiables par l'utilisateur lui-même
 	var payload struct {
-		FirstName  string  `json:"firstName"`
-		LastName   string  `json:"lastName"`
-		Phone      *string `json:"phone"`
-		Address1   *string `json:"address1"`
-		Address2   *string `json:"address2"`
-		ZipCode    *string `json:"zipCode"`
-		City       *string `json:"city"`
-		Lang       string  `json:"lang"`
+		FirstName string  `json:"firstName"`
+		LastName  string  `json:"lastName"`
+		Phone     *string `json:"phone"`
+		Address1  *string `json:"address1"`
+		Address2  *string `json:"address2"`
+		ZipCode   *string `json:"zipCode"`
+		City      *string `json:"city"`
+		Lang      string  `json:"lang"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

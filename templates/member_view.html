@@ -1,133 +1,211 @@
 {{define "content"}}
-<div class="row">
-  <div class="col-md-3">
-    <h2>Coordonnées</h2>
-    <div class="article">
-      <div style="font-weight:bold;font-size:120%;">{{.Member.FirstName}} {{.Member.LastName}}</div>
-      <p>
-        {{if .Member.Address1}}{{deref .Member.Address1}}{{end}}{{if and .Member.Address1 (or .Member.ZipCode .Member.City)}}, {{end}}{{if .Member.ZipCode}}{{deref .Member.ZipCode}}{{end}} {{if .Member.City}}{{deref .Member.City}}{{end}}
-      </p>
-      <p style="margin-bottom:8px;line-height:1.7;">
-        {{if .Member.Phone}}<i class="icon icon-phone" style="width:16px;display:inline-block;margin-right:6px;"></i> {{deref .Member.Phone}}<br/>{{end}}
-        <i class="icon icon-mail" style="width:16px;display:inline-block;margin-right:6px;"></i> <a href="mailto:{{.Member.Email}}">{{.Member.Email}}</a>
-      </p>
-      <hr/>
-      <p style="font-size:11px;">
-        Dernière connexion :
-        {{if .Member.LastLogin}}{{.Member.LastLogin.Format "02/01/2006 15:04"}}{{else}}<b>Jamais connecté</b>{{end}}<br/>
-        Inscrit le : {{.Member.CreatedAt.Format "02/01/2006"}}
-      </p>
-      <p style="display:flex;flex-direction:column;gap:6px;align-items:stretch;">
-        <a href="/member/edit/{{.Member.ID}}" class="btn btn-default btn-xs" style="padding:5px 10px;width:100%;"><i class="icon icon-edit"></i> Modifier</a>
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+
+  {{/* La fiche s'ouvre sur qui c'est, en grand, avec ses actions à droite.
+       L'ancienne colonne de gauche empilait coordonnées, boutons et adhésion
+       dans 25 % de la largeur, en corps 11px. */}}
+  <div class="cyc-panneau">
+    <div class="cyc-fiche-tete">
+      <span class="cyc-initiales grande">{{initials .Member.FirstName .Member.LastName}}</span>
+      <div class="ident">
+        <h3>{{.Member.FirstName}} {{.Member.LastName}}</h3>
+        <p class="cyc-chapeau">
+          <a href="mailto:{{.Member.Email}}">{{.Member.Email}}</a>
+          {{if .Member.Phone}} · {{deref .Member.Phone}}{{end}}
+        </p>
+      </div>
+      <div class="cyc-actions-nommees serrees">
+        <a href="/member/edit/{{.Member.ID}}" class="cyc-btn">
+          <i class="icon icon-edit"></i> Modifier
+        </a>
+        <a href="/member/payments/{{.Member.ID}}" class="cyc-btn">
+          <i class="icon icon-euro"></i> Paiements
+        </a>
         {{if and .HasMembership (ne .Member.ID .User.ID)}}
-        <a href="/member/loginAs/{{.Member.ID}}" class="btn btn-default btn-xs" style="padding:5px 10px;width:100%;"
-          onclick="return confirm('Se connecter en tant que {{.Member.FirstName}} {{.Member.LastName}} ?');">
-          <i class="icon icon-user"></i> Se connecter en tant que
+        <a href="/member/loginAs/{{.Member.ID}}" class="cyc-btn"
+           onclick="return confirm('Se connecter en tant que {{.Member.FirstName}} {{.Member.LastName}} ?');">
+          <i class="icon icon-user"></i> Se connecter à sa place
         </a>
         {{end}}
-        <a href="/member/delete/{{.Member.ID}}" class="btn btn-default btn-xs" style="padding:5px 10px;width:100%;"
-          onclick="return confirm('Retirer ce membre du groupe ?')">
+        <a href="/member/delete/{{.Member.ID}}" class="cyc-btn cyc-btn-danger"
+           onclick="return confirm('Retirer ce membre du groupe ?')">
           <i class="icon icon-delete"></i> Retirer du groupe
         </a>
-        {{if .IsGroupManager}}
-        <form method="POST" action="/member/fullDelete/{{.Member.ID}}" style="margin:0;padding:0;"
-              onsubmit="return confirm('SUPPRIMER DÉFINITIVEMENT le compte de {{.Member.FirstName}} {{.Member.LastName}} ?\n\nLe compte sera retiré de tous les groupes et toutes les données associées (commandes, adhésions, bénévolat) seront perdues. Cette action est irréversible.');">
-          <button type="submit" class="btn btn-danger btn-xs" style="padding:5px 10px;width:100%;">
-            <i class="icon icon-delete"></i> Supprimer
-          </button>
-        </form>
-        {{end}}
-      </p>
-      {{if .Group.HasMembership}}
-      <hr/>
-      <p style="margin-bottom:6px;">
-        <b>Adhésion {{.CurrentYear}}</b>
-        {{if .CurrentMembership}}
-        <span style="color:#080;margin-left:6px;">
-          <i class="icon icon-check"></i> payée — {{price .CurrentMembership.Fee}} €
-        </span>
-        {{else}}
-        <span style="color:#c0392b;margin-left:6px;">
-          <i class="icon icon-alert"></i> non payée
-        </span>
-        {{end}}
-      </p>
-      <form method="POST" action="/member/membership/{{.Member.ID}}" class="form-inline" style="margin-bottom:0;">
-        <div class="input-group input-group-sm" style="max-width:240px;">
-          <input type="text" inputmode="decimal" name="fee" class="form-control"
-            placeholder="Montant payé" value="{{if .CurrentMembership}}{{price .CurrentMembership.Fee}}{{end}}" />
-          <span class="input-group-addon">€</span>
-          <span class="input-group-btn">
-            <button type="submit" class="btn btn-default">
-              <i class="icon icon-check"></i> Enregistrer
-            </button>
-          </span>
-        </div>
-        {{if .CurrentMembership}}
-        <p class="help-block" style="margin-top:4px;">
-          Vider le champ et enregistrer pour annuler l'adhésion.
+      </div>
+    </div>
+
+    <dl class="cyc-detail bordee">
+      <div>
+        <dt>Adresse</dt>
+        <dd {{if not .Member.Address1}}class="muet"{{end}}>
+          {{if .Member.Address1}}{{deref .Member.Address1}}<br />{{end}}
+          {{if .Member.ZipCode}}{{deref .Member.ZipCode}} {{end}}{{if .Member.City}}{{deref .Member.City}}{{end}}
+          {{if not (or .Member.Address1 .Member.ZipCode .Member.City)}}Non renseignée{{end}}
+        </dd>
+      </div>
+      <div>
+        <dt>Téléphone</dt>
+        <dd {{if not .Member.Phone}}class="muet"{{end}}>{{if .Member.Phone}}{{deref .Member.Phone}}{{else}}Non renseigné{{end}}</dd>
+      </div>
+      <div>
+        <dt>Dernière connexion</dt>
+        <dd {{if not .Member.LastLogin}}class="muet"{{end}}>
+          {{if .Member.LastLogin}}{{.Member.LastLogin.Format "02/01/2006 à 15:04"}}{{else}}Jamais connecté{{end}}
+        </dd>
+      </div>
+      <div>
+        <dt>Inscrit le</dt>
+        <dd>{{.Member.CreatedAt.Format "02/01/2006"}}</dd>
+      </div>
+    </dl>
+  </div>
+
+  {{if .Group.HasMembership}}
+  {{/* L'adhésion a son propre bloc : c'est le seul endroit de la fiche où l'on
+       écrit quelque chose, et il ne doit pas se confondre avec ce qui se lit. */}}
+  <div class="cyc-panneau">
+    <div class="cyc-entete">
+      <div>
+        <h3>Adhésion {{.CurrentYear}}</h3>
+        <p class="cyc-chapeau">
+          {{if .CurrentMembership}}Réglée pour cette année.
+          {{else}}Aucun règlement enregistré pour cette année.{{end}}
         </p>
-        {{end}}
-      </form>
-      {{end}}
-    </div>
-  </div>
-
-  <div class="col-md-9">
-    <h2>Commandes</h2>
-    <div class="article">
-
-      {{if .CatalogSubs}}
-      <h4><i class="icon icon-refresh"></i> Contrats AMAP</h4>
-      {{range .CatalogSubs}}
-      <h5>{{.CatalogName}}</h5>
-      <table class="table table-condensed table-bordered">
-        <tr class="greyhead">
-          <th>Période</th>
-          <th>Total</th>
-        </tr>
-        {{range .Subs}}
-        <tr>
-          <td>Du {{.StartDate}} au {{.EndDate}}</td>
-          <td>{{price .Total}} €</td>
-        </tr>
-        {{end}}
-      </table>
-      {{end}}
-      <hr/>
-      {{end}}
-
-      {{if .DistribOrderSets}}
-      <h4><i class="icon icon-basket"></i> Commandes variables</h4>
-      {{range .DistribOrderSets}}
-      <h5>Distribution du {{.Date}}</h5>
-      <table class="table table-bordered table-condensed">
-        <tr class="greyhead">
-          <th>Qté</th><th>Produit</th><th>P.U.</th><th>Sous-total</th><th>Frais</th><th>Total</th><th>Catalogue</th>
-        </tr>
-        {{range .Orders}}
-        <tr>
-          <td>{{.SmartQty}}</td>
-          <td>{{.ProductName}}</td>
-          <td>{{price .ProductPrice}} €</td>
-          <td>{{price .SubTotal}} €</td>
-          <td>{{price .Fees}} €</td>
-          <td>{{price .Total}} €</td>
-          <td><a href="/contract/view/{{.CatalogID}}">{{.CatalogName}}</a></td>
-        </tr>
-        {{end}}
-        <tr>
-          <td colspan="5"></td>
-          <td><b>{{price .Total}} €</b></td>
-          <td></td>
-        </tr>
-      </table>
-      {{end}}
+      </div>
+      {{if .CurrentMembership}}
+      <span class="cyc-badge ok"><i class="icon icon-check"></i> {{price .CurrentMembership.Fee}} €</span>
       {{else}}
-      <p class="text-muted">Aucune commande variable.</p>
+      <span class="cyc-badge attention">À renouveler</span>
       {{end}}
+    </div>
 
+    <form method="POST" action="/member/membership/{{.Member.ID}}" class="cyc-barre">
+      <div class="cyc-champ" style="flex:0 1 200px;">
+        <label for="fee">Montant réglé</label>
+        <input type="text" inputmode="decimal" id="fee" name="fee"
+               value="{{if .CurrentMembership}}{{price .CurrentMembership.Fee}}{{end}}"
+               placeholder="0,00" />
+      </div>
+      <button type="submit" class="cyc-btn" style="align-self:flex-end;">
+        <i class="icon icon-check"></i> Enregistrer
+      </button>
+      {{if .CurrentMembership}}
+      <p class="cyc-note" style="align-self:flex-end;margin:0 0 9px;">
+        Vider le champ et enregistrer annule l'adhésion.
+      </p>
+      {{end}}
+    </form>
+  </div>
+  {{end}}
+
+  {{if .CatalogSubs}}
+  <div class="cyc-panneau">
+    <div class="cyc-entete">
+      <div>
+        <h3>Contrats</h3>
+        <p class="cyc-chapeau">Les engagements en cours et passés de ce membre.</p>
+      </div>
+    </div>
+    {{range .CatalogSubs}}
+    <div class="cyc-section">
+      <h4>{{.CatalogName}}</h4>
+      <div class="cyc-deborde">
+        <table class="cyc-table">
+          <thead><tr><th>Période</th><th class="serre num">Total</th></tr></thead>
+          <tbody>
+            {{range .Subs}}
+            <tr>
+              <td>Du {{.StartDate}} au {{.EndDate}}</td>
+              <td class="serre num">{{price .Total}} €</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+
+  <div class="cyc-panneau">
+    <div class="cyc-entete">
+      <div>
+        <h3>Commandes</h3>
+        <p class="cyc-chapeau">Ce qu'il a commandé, distribution par distribution.</p>
+      </div>
+    </div>
+
+    {{if .DistribOrderSets}}
+    {{range .DistribOrderSets}}
+    <div class="cyc-section">
+      <h4>Distribution du {{.Date}}</h4>
+      <div class="cyc-deborde">
+        <table class="cyc-table">
+          <thead>
+            <tr>
+              <th class="serre num">Qté</th>
+              <th>Produit</th>
+              <th>Producteur</th>
+              <th class="serre num">P.U.</th>
+              <th class="serre num">Frais</th>
+              <th class="serre num">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Orders}}
+            <tr>
+              <td class="serre num">{{.SmartQty}}</td>
+              <td>{{.ProductName}}</td>
+              <td><a href="/contract/view/{{.CatalogID}}">{{.CatalogName}}</a></td>
+              <td class="serre num">{{price .ProductPrice}} €</td>
+              <td class="serre num">{{price .Fees}} €</td>
+              <td class="serre num">{{price .Total}} €</td>
+            </tr>
+            {{end}}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="5" class="total-intitule">Total de la distribution</td>
+              <td class="serre num total">{{price .Total}} €</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    {{end}}
+    {{else}}
+    <div class="cyc-aucun">
+      <i class="icon icon-basket icone"></i>
+      <p>Aucune commande enregistrée.</p>
+    </div>
+    {{end}}
+  </div>
+
+  {{if .IsGroupManager}}
+  {{/* La suppression définitive vit à part, en bas, sous son propre
+       avertissement : c'est le seul geste de cet écran qu'on ne peut pas
+       défaire, et il ne doit pas voisiner ceux qu'on fait tous les jours. */}}
+  <div class="cyc-panneau cyc-zone-danger">
+    <div class="cyc-entete">
+      <div>
+        <h3>Supprimer le compte</h3>
+        <p class="cyc-chapeau">
+          Le compte quitte tous les groupes et ses données — commandes,
+          adhésions, permanences — sont perdues. Cette action ne se défait pas.
+          Pour retirer ce membre de ce groupe seulement, employez
+          «&nbsp;Retirer du groupe&nbsp;».
+        </p>
+      </div>
+      <form method="POST" action="/member/fullDelete/{{.Member.ID}}"
+            onsubmit="return confirm('SUPPRIMER DÉFINITIVEMENT le compte de {{.Member.FirstName}} {{.Member.LastName}} ?\n\nLe compte sera retiré de tous les groupes et toutes les données associées (commandes, adhésions, bénévolat) seront perdues. Cette action est irréversible.');">
+        <button type="submit" class="cyc-btn cyc-btn-danger">
+          <i class="icon icon-delete"></i> Supprimer définitivement
+        </button>
+      </form>
     </div>
   </div>
+  {{end}}
+
 </div>
 {{end}}

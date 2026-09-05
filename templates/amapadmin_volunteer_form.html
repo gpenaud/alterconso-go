@@ -1,0 +1,57 @@
+{{define "content"}}
+{{template "amapadmin_nav" .}}
+
+<form method="POST" action="{{.Action}}">
+
+  {{if .Error}}<div class="cyc-danger"><i class="icon icon-alert"></i> {{.Error}}</div>{{end}}
+
+  <div class="cyc-section">
+    <h4>Le poste</h4>
+    <p class="cyc-aide">
+      Un poste, c'est ce qu'il y a à tenir pendant une distribution :
+      « Accueil », « Pesée », « Rangement ». Les adhérents s'y inscrivent depuis
+      le calendrier des permanences.
+    </p>
+    <div class="cyc-champs">
+      <div class="cyc-champ large">
+        <label for="name">Nom du poste *</label>
+        <input type="text" id="name" name="name" value="{{.Name}}"
+               maxlength="128" required autofocus
+               placeholder="Accueil, Pesée, Rangement…" />
+      </div>
+    </div>
+  </div>
+
+  {{/* Un poste rattaché à un catalogue n'est proposé que les jours où ce
+       producteur livre ; sans rattachement, il l'est à chaque distribution. */}}
+  <div class="cyc-section">
+    <h4>Quand le proposer</h4>
+    <div class="cyc-champs">
+      <div class="cyc-champ large">
+        <label for="catalog_id">Catalogue concerné</label>
+        <select id="catalog_id" name="catalog_id">
+          <option value="">À chaque distribution</option>
+          {{range .Catalogs}}
+          <option value="{{.ID}}" {{if eq .ID $.CatalogID}}selected{{end}}>{{.Name}}</option>
+          {{end}}
+        </select>
+        <p class="cyc-note">
+          Choisissez un catalogue pour n'ouvrir ce poste que les jours où ce
+          producteur livre.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="cyc-pied">
+    <a href="/amapadmin/volunteers" class="cyc-btn">Annuler</a>
+    <span class="cyc-espace"></span>
+    <button type="submit" class="cyc-btn cyc-btn-primaire">
+      <i class="icon icon-check"></i> {{if .IsNew}}Créer le poste{{else}}Enregistrer{{end}}
+    </button>
+  </div>
+
+</form>
+
+{{template "amapadmin_close" .}}
+{{end}}

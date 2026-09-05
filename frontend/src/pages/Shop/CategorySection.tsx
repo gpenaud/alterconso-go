@@ -4,7 +4,8 @@ import type {
   VendorInfo,
 } from "../../types/shop";
 import { ProductCard } from "./ProductCard";
-import { COLORS } from "./theme";
+import { COLORS, FONTS, RADIUS } from "./theme";
+import { useEcranEtroit } from "../../utils/useEcranEtroit";
 
 interface Props {
   category: CatalogCategory;
@@ -18,19 +19,25 @@ interface Props {
  * (sans le titre "Tous" de sous-catégorie qu'on cache).
  */
 export function CategorySection({ category, vendors, onProductClick }: Props) {
+  const etroit = useEcranEtroit();
   const products: ProductInfo[] = category.subcategories.flatMap(
     (sc) => sc.products,
   );
 
   return (
     <section style={{ marginBottom: 24 }}>
+      {/* Le titre de rubrique, dans la police et le brun des titres du site :
+          il était en gris encre, du même poids que le nom des produits. */}
       <h2
         className="italic"
         style={{
-          fontSize: "2rem",
-          fontWeight: 400,
-          color: COLORS.darkGrey,
+          fontFamily: FONTS.titre,
+          fontSize: etroit ? "1.3rem" : "1.75rem",
+          fontWeight: 700,
+          color: COLORS.titre,
           margin: 0,
+          paddingBottom: 10,
+          borderBottom: `1px solid ${COLORS.trait}`,
         }}
       >
         {category.info.name}
@@ -39,14 +46,14 @@ export function CategorySection({ category, vendors, onProductClick }: Props) {
       {products.length === 0 ? (
         <div
           style={{
-            backgroundColor: COLORS.bg2,
-            border: "1px solid #E8DFC6",
-            borderRadius: 8,
-            padding: "32px 24px",
-            margin: "56px auto 48px",
+            backgroundColor: COLORS.creme,
+            border: `1px solid ${COLORS.trait}`,
+            borderRadius: RADIUS.carte,
+            padding: etroit ? "22px 18px" : "32px 24px",
+            margin: etroit ? "24px auto" : "56px auto 48px",
             textAlign: "center",
             maxWidth: 720,
-            color: COLORS.mediumGrey,
+            color: COLORS.gris,
           }}
         >
           <p style={{ fontSize: "1.25rem", margin: 0 }}>

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useCartStore } from "../../store/cart";
 import { formatPrice } from "../../utils/format";
-import { COLORS } from "./theme";
+import { COLORS, FONTS } from "./theme";
+import { useEcranEtroit } from "../../utils/useEcranEtroit";
 
 interface Props {
   onClick?: () => void;
@@ -14,6 +15,10 @@ interface Props {
 export function CartButton({ onClick }: Props) {
   const total = useCartStore((s) => s.total());
   const count = useCartStore((s) => s.count());
+  // La largeur minimale de 200 px tenait la barre de recherche immobile quand
+  // le total grandissait. Sur un téléphone, elle prenait la moitié de la
+  // ligne : le bouton s'y réduit à sa pastille et à son montant.
+  const etroit = useEcranEtroit();
 
   // Animation "bounce" sur l'icône quand le total augmente (legacy
   // Cart.hx::getDerivedStateFromProps + componentDidUpdate, classe `bounce`).
@@ -36,15 +41,16 @@ export function CartButton({ onClick }: Props) {
       style={{
         // Largeur min stable même quand le total grandit (0 € → 1234.56 €)
         // pour que la barre de recherche du Header ne se décale pas.
-        minWidth: 200,
+        minWidth: etroit ? 0 : 200,
+        flex: "none",
         justifyContent: "space-between",
-        backgroundColor: COLORS.white,
-        border: "1px solid " + COLORS.lightGrey,
+        backgroundColor: COLORS.blanc,
+        border: `1px solid ${COLORS.trait}`,
         borderRadius: 999,
         padding: "4px 8px 4px 4px",
         gap: 8,
         cursor: "pointer",
-        color: COLORS.darkGrey,
+        color: COLORS.encre,
       }}
     >
       <span
@@ -53,8 +59,8 @@ export function CartButton({ onClick }: Props) {
           width: 36,
           height: 36,
           borderRadius: "50%",
-          background: COLORS.primary,
-          color: COLORS.white,
+          background: COLORS.vert,
+          color: COLORS.blanc,
           animation: flash ? "cartBounce 0.6s ease" : undefined,
         }}
       >
@@ -69,14 +75,14 @@ export function CartButton({ onClick }: Props) {
               height: 18,
               padding: "0 5px",
               borderRadius: 9,
-              background: COLORS.secondary,
-              color: COLORS.white,
+              background: COLORS.titre,
+              color: COLORS.blanc,
               fontSize: 11,
               fontWeight: 700,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              border: `2px solid ${COLORS.white}`,
+              border: `2px solid ${COLORS.blanc}`,
             }}
           >
             {count}
@@ -85,18 +91,22 @@ export function CartButton({ onClick }: Props) {
       </span>
       <span
         style={{
+          fontFamily: FONTS.titre,
           fontWeight: 700,
           fontSize: "1.2rem",
+          color: COLORS.titre,
           fontVariantNumeric: "tabular-nums",
         }}
       >
         {formatPrice(total)}
       </span>
-      <i
-        className="icon-chevron-down"
-        style={{ color: COLORS.mediumGrey, fontSize: 14 }}
-        aria-hidden="true"
-      />
+      {!etroit && (
+        <i
+          className="icon-chevron-down"
+          style={{ color: COLORS.gris, fontSize: 14 }}
+          aria-hidden="true"
+        />
+      )}
       <style>{`
         @keyframes cartBounce {
           0%   { transform: scale(1); }

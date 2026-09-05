@@ -3,7 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCartStore } from "../../store/cart";
 import { submitOrder } from "../../api/shop";
 import { formatPrice, smartQty } from "../../utils/format";
-import { COLORS } from "./theme";
+import { COLORS, FONTS, RADIUS } from "./theme";
+import { useEcranEtroit } from "../../utils/useEcranEtroit";
 import { QuantityInput } from "./QuantityInput";
 
 interface Props {
@@ -11,6 +12,8 @@ interface Props {
   /** Si défini, la commande est passée pour le compte de cet utilisateur (admin
    *  pour membre — cf. ?userId=N dans l'URL du shop). */
   targetUserId?: number;
+  /** Son nom, pour l'annoncer autrement que par un numéro de compte. */
+  targetUserName?: string;
   /** Catalogues sur lesquels l'utilisateur avait déjà commandé : utilisé pour
    *  envoyer des payloads vides à ceux dont tous les items ont été retirés
    *  (sans ça, le serveur garde l'ancienne commande pour ces catalogues). */
@@ -33,6 +36,7 @@ interface Props {
 export function CartPanel({
   onClose,
   targetUserId,
+  targetUserName,
   existingCatalogIds = [],
   returnTo,
   blockReason,
@@ -45,6 +49,9 @@ export function CartPanel({
   const remove = useCartStore((s) => s.remove);
   const clear = useCartStore((s) => s.clear);
   const multiDistribId = useCartStore((s) => s.multiDistribId);
+  // C'est le dernier écran avant de valider : il doit tenir sans que rien ne
+  // se chevauche sur la largeur d'un téléphone.
+  const etroit = useEcranEtroit();
 
   const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
@@ -141,7 +148,7 @@ export function CartPanel({
           width: "100%",
           maxWidth: 420,
           height: "100%",
-          backgroundColor: COLORS.white,
+          backgroundColor: COLORS.blanc,
           boxShadow: "-8px 0 32px rgba(0,0,0,0.20)",
           animation: "slideInRight 0.22s ease-out",
         }}
@@ -150,31 +157,34 @@ export function CartPanel({
         <div
           className="flex items-center justify-between"
           style={{
-            padding: "16px 20px",
-            borderBottom: `1px solid ${COLORS.lightGrey}`,
+            padding: etroit ? "12px 14px" : "16px 20px",
+            borderBottom: `1px solid ${COLORS.trait}`,
           }}
         >
           <div style={{ minWidth: 0 }}>
             <h2
               className="italic"
               style={{
+                fontFamily: FONTS.titre,
                 fontSize: "1.4rem",
                 margin: 0,
-                fontWeight: 400,
-                color: COLORS.darkGrey,
+                fontWeight: 700,
+                color: COLORS.titre,
               }}
             >
               {targetUserId ? "Panier" : "Mon panier"}
             </h2>
+            {/* Le nom plutôt que « pour l'utilisateur #238 » : personne ne
+                commande au nom d'un numéro de compte. */}
             {targetUserId && (
               <div
                 style={{
-                  fontSize: "0.75rem",
-                  color: COLORS.mediumGrey,
+                  fontSize: "0.8rem",
+                  color: COLORS.alerte,
                   marginTop: 2,
                 }}
               >
-                pour l'utilisateur #{targetUserId}
+                pour {targetUserName ?? "un autre membre"}
               </div>
             )}
           </div>
@@ -187,8 +197,8 @@ export function CartPanel({
               height: 36,
               borderRadius: "50%",
               border: "none",
-              background: COLORS.bg2,
-              color: COLORS.darkGrey,
+              background: COLORS.creme,
+              color: COLORS.encre,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
@@ -201,29 +211,29 @@ export function CartPanel({
         </div>
 
         {/* Corps : liste */}
-        <div style={{ flex: 1, overflowY: "auto", padding: 12 }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: etroit ? 10 : 12 }}>
           {submitted ? (
             <div
               className="flex flex-col items-center justify-center text-center"
-              style={{ height: "100%", padding: 24, color: COLORS.mediumGrey }}
+              style={{ height: "100%", padding: 24, color: COLORS.gris }}
             >
               <i
                 className="icon-check"
                 style={{
                   fontSize: 56,
-                  color: COLORS.secondary,
+                  color: COLORS.vert,
                   marginBottom: 12,
                 }}
                 aria-hidden="true"
               />
-              <p style={{ margin: 0, fontSize: "1.1rem", color: COLORS.darkGrey }}>
+              <p style={{ margin: 0, fontSize: "1.1rem", color: COLORS.encre }}>
                 Commande enregistrée !
               </p>
             </div>
           ) : items.length === 0 ? (
             <div
               className="flex flex-col items-center justify-center text-center"
-              style={{ height: "100%", padding: 24, color: COLORS.mediumGrey }}
+              style={{ height: "100%", padding: 24, color: COLORS.gris }}
             >
               <i
                 className="icon-basket"
@@ -234,8 +244,9 @@ export function CartPanel({
                 Votre panier est vide
               </p>
               {existingCatalogIds.length > 0 && (
-                <p style={{ margin: "12px 0 0", fontSize: "0.85rem", color: COLORS.mediumGrey, maxWidth: 280 }}>
-                  Tu peux confirmer pour annuler ta commande sur cette distribution.
+                <p style={{ margin: "12px 0 0", fontSize: "0.85rem", color: COLORS.gris, maxWidth: 280 }}>
+                  Vous aviez une commande sur cette distribution : la valider
+                  vide revient à l'annuler.
                 </p>
               )}
             </div>
@@ -253,8 +264,9 @@ export function CartPanel({
                   <li
                     key={it.productId}
                     style={{
-                      backgroundColor: COLORS.bg2,
-                      borderRadius: 6,
+                      backgroundColor: COLORS.creme,
+                      border: `1px solid ${COLORS.trait}`,
+                      borderRadius: RADIUS.bouton,
                       padding: 10,
                       marginBottom: 8,
                       display: "grid",
@@ -280,7 +292,7 @@ export function CartPanel({
                         style={{
                           width: 56,
                           height: 56,
-                          backgroundColor: "#f0eadb",
+                          backgroundColor: COLORS.vide,
                           borderRadius: 4,
                         }}
                       />
@@ -290,9 +302,10 @@ export function CartPanel({
                       <div className="flex items-start justify-between" style={{ gap: 8 }}>
                         <div
                           style={{
-                            fontSize: "0.9rem",
-                            textTransform: "uppercase",
-                            color: COLORS.darkGrey,
+                            fontSize: "0.92rem",
+                            fontFamily: FONTS.titre,
+                            fontWeight: 700,
+                            color: COLORS.titre,
                             lineHeight: 1.2,
                             flex: 1,
                             overflow: "hidden",
@@ -311,7 +324,7 @@ export function CartPanel({
                           style={{
                             border: "none",
                             background: "transparent",
-                            color: COLORS.mediumGrey,
+                            color: COLORS.gris,
                             cursor: "pointer",
                             fontSize: 14,
                             padding: 4,
@@ -324,12 +337,12 @@ export function CartPanel({
 
                       <div
                         className="flex items-center justify-between"
-                        style={{ marginTop: 6, gap: 8 }}
+                        style={{ marginTop: 6, gap: 8, flexWrap: "wrap" }}
                       >
-                        <div style={{ fontSize: "0.85rem", color: COLORS.mediumGrey, minWidth: 0 }}>
+                        <div style={{ fontSize: "0.85rem", color: COLORS.gris, minWidth: 0 }}>
                           {qtyTotalLabel && <span>{qtyTotalLabel}</span>}
                           {qtyTotalLabel && " · "}
-                          <span style={{ color: COLORS.third, fontWeight: 700 }}>
+                          <span style={{ color: COLORS.titre, fontWeight: 700 }}>
                             {formatPrice(lineTotal)}
                           </span>
                         </div>
@@ -353,9 +366,9 @@ export function CartPanel({
         {!submitted && canSubmit && (
           <div
             style={{
-              borderTop: `1px solid ${COLORS.lightGrey}`,
-              padding: "16px 20px",
-              backgroundColor: COLORS.white,
+              borderTop: `1px solid ${COLORS.trait}`,
+              padding: etroit ? "12px 14px 16px" : "16px 20px",
+              backgroundColor: COLORS.blanc,
             }}
           >
             {items.length > 0 && (
@@ -364,14 +377,14 @@ export function CartPanel({
                   <>
                     <div
                       className="flex items-center justify-between"
-                      style={{ fontSize: "0.85rem", color: COLORS.mediumGrey }}
+                      style={{ fontSize: "0.85rem", color: COLORS.gris }}
                     >
                       <span>Sous-total</span>
                       <span>{formatPrice(subtotal)}</span>
                     </div>
                     <div
                       className="flex items-center justify-between"
-                      style={{ fontSize: "0.85rem", color: COLORS.mediumGrey, marginTop: 2 }}
+                      style={{ fontSize: "0.85rem", color: COLORS.gris, marginTop: 2 }}
                     >
                       <span>Frais</span>
                       <span>{formatPrice(feesTotal)}</span>
@@ -382,14 +395,15 @@ export function CartPanel({
                   className="flex items-center justify-between"
                   style={{ marginTop: feesTotal > 0 ? 6 : 0 }}
                 >
-                  <span style={{ fontSize: "0.95rem", color: COLORS.darkGrey }}>
+                  <span style={{ fontSize: "0.95rem", color: COLORS.encre }}>
                     Total
                   </span>
                   <span
                     style={{
+                      fontFamily: FONTS.titre,
                       fontSize: "1.4rem",
                       fontWeight: 700,
-                      color: COLORS.third,
+                      color: COLORS.titre,
                     }}
                   >
                     {formatPrice(total)}
@@ -400,7 +414,7 @@ export function CartPanel({
             {submitError && (
               <div
                 style={{
-                  color: COLORS.third,
+                  color: COLORS.danger,
                   fontSize: "0.85rem",
                   marginBottom: 8,
                 }}
@@ -411,7 +425,7 @@ export function CartPanel({
             {blockReason && (
               <div
                 style={{
-                  color: COLORS.third,
+                  color: COLORS.danger,
                   fontSize: "0.85rem",
                   marginBottom: 8,
                 }}
@@ -426,15 +440,14 @@ export function CartPanel({
               className="transition-colors"
               style={{
                 width: "100%",
-                padding: "12px 16px",
-                background: items.length === 0 ? COLORS.third : COLORS.primary,
-                color: COLORS.white,
+                padding: etroit ? "15px 16px" : "12px 16px",
+                background: items.length === 0 ? COLORS.danger : COLORS.vert,
+                color: COLORS.blanc,
                 border: "none",
-                borderRadius: 6,
+                borderRadius: RADIUS.bouton,
                 fontSize: "1rem",
                 fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
+                letterSpacing: "0.02em",
                 cursor: submitting || blockReason ? "not-allowed" : "pointer",
                 opacity: submitting || blockReason ? 0.7 : 1,
               }}

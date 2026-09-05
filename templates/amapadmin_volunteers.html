@@ -1,46 +1,53 @@
 {{define "content"}}
 {{template "amapadmin_nav" .}}
-<div class="col-md-9">
-  <h2>Permanences</h2>
-  <div class="article">
-    <h4 style="margin:0 0 4px;">Rôles de bénévoles</h4>
-    <p style="color:#666;margin-bottom:20px;">Ici vous pouvez définir les rôles de bénévoles.</p>
 
-    {{if .VolunteerRoles}}
-    <table class="table table-bordered" style="margin-bottom:20px;">
-      <thead>
-        <tr style="color:#aaa;font-weight:normal;">
-          <th style="font-weight:normal;">Rôle de bénévole</th>
-          <th style="font-weight:normal;">Catalogue correspondant</th>
-          <th style="font-weight:normal;width:220px;text-align:right;"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .VolunteerRoles}}
-        <tr>
-          <td style="vertical-align:middle;padding:12px 14px;">{{.Name}}</td>
-          <td style="vertical-align:middle;padding:12px 14px;">{{if .Catalog}}{{.Catalog.Name}}{{end}}</td>
-          <td style="vertical-align:middle;padding:12px 14px;text-align:right;white-space:nowrap;">
-            <a href="/amapadmin/volunteers/edit/{{.ID}}" class="btn btn-default" style="margin-right:6px;">
-              <i class="icon icon-edit"></i> Modifier
+{{if .VolunteerRoles}}
+<div class="cyc-deborde">
+  <table class="cyc-table">
+    <thead>
+      <tr>
+        <th>Poste</th>
+        <th>Catalogue concerné</th>
+        <th class="actions"><span class="sr-only">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .VolunteerRoles}}
+      <tr>
+        <td><span class="cyc-nom">{{.Name}}</span></td>
+        <td>{{if .Catalog}}{{.Catalog.Name}}{{else}}<span class="cyc-vide">Tous</span>{{end}}</td>
+        <td class="actions">
+          <div class="cyc-actions">
+            <a href="/amapadmin/volunteers/edit/{{.ID}}" class="cyc-icone-btn" title="Modifier">
+              <i class="icon icon-edit"></i><span class="sr-only">Modifier</span>
             </a>
-            <a href="/amapadmin/volunteers/delete/{{.ID}}" class="btn btn-danger"
-               title="Supprimer"
-               onclick="return confirm('Supprimer ce rôle ?')">
-              <i class="icon icon-delete"></i>
-            </a>
-          </td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
-    {{else}}
-    <p class="text-muted">Aucun rôle de bénévole défini.</p>
-    {{end}}
-
-    <a href="/amapadmin/volunteers/new" class="btn btn-success">
-      <i class="icon icon-plus"></i> Nouveau rôle
-    </a>
-  </div>
+            {{/* Un formulaire, et non un lien : supprimer un poste le retire
+                 des distributions qui l'avaient retenu. */}}
+            <form method="POST" action="/amapadmin/volunteers/delete/{{.ID}}"
+                  onsubmit="return confirm('Supprimer le poste « {{.Name}} » ?');">
+              <button type="submit" class="cyc-icone-btn danger" title="Supprimer">
+                <i class="icon icon-delete"></i><span class="sr-only">Supprimer</span>
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
 </div>
+{{else}}
+<div class="cyc-aucun">
+  <i class="icon icon-users icone"></i>
+  <p>Aucun poste de bénévole défini.</p>
+</div>
+{{end}}
+
+<div class="cyc-pied">
+  <a href="/amapadmin/volunteers/new" class="cyc-btn cyc-btn-primaire">
+    <i class="icon icon-plus"></i> Nouveau poste
+  </a>
+</div>
+
+{{template "amapadmin_close" .}}
 {{end}}

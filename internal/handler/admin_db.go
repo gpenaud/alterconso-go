@@ -17,14 +17,14 @@ import (
 
 // adminDBModel describes a GORM model exposed in the DB admin.
 type adminDBModel struct {
-	Slug             string
-	Label            string
-	New              func() any // pointer to a zero value, e.g. &model.User{}
-	NewSlice         func() any // pointer to empty slice, e.g. &[]model.User{}
-	ListFields       []string   // Go struct field names shown in the listing
-	EditFields       []string   // Go struct field names editable via form
-	SearchableCols   []string   // DB column names (snake_case) for LIKE search
-	OrderBy          string     // DB order clause, default "id DESC"
+	Slug           string
+	Label          string
+	New            func() any // pointer to a zero value, e.g. &model.User{}
+	NewSlice       func() any // pointer to empty slice, e.g. &[]model.User{}
+	ListFields     []string   // Go struct field names shown in the listing
+	EditFields     []string   // Go struct field names editable via form
+	SearchableCols []string   // DB column names (snake_case) for LIKE search
+	OrderBy        string     // DB order clause, default "id DESC"
 }
 
 var adminDBRegistry = []adminDBModel{
@@ -66,15 +66,15 @@ var adminDBRegistry = []adminDBModel{
 	{
 		Slug: "multi-distribs", Label: "Multi-distributions",
 		New: func() any { return &model.MultiDistrib{} }, NewSlice: func() any { return &[]model.MultiDistrib{} },
-		ListFields:     []string{"ID", "GroupID", "PlaceID", "DistribStartDate", "Validated"},
-		EditFields:     []string{"GroupID", "PlaceID", "DistribStartDate", "DistribEndDate", "OrderStartDate", "OrderEndDate", "Validated"},
-		OrderBy:        "distrib_start_date DESC",
+		ListFields: []string{"ID", "GroupID", "PlaceID", "DistribStartDate", "Validated"},
+		EditFields: []string{"GroupID", "PlaceID", "DistribStartDate", "DistribEndDate", "OrderStartDate", "OrderEndDate", "Validated"},
+		OrderBy:    "distrib_start_date DESC",
 	},
 	{
 		Slug: "distributions", Label: "Distributions (par catalogue)",
 		New: func() any { return &model.Distribution{} }, NewSlice: func() any { return &[]model.Distribution{} },
-		ListFields:     []string{"ID", "CatalogID", "MultiDistribID", "Date"},
-		EditFields:     []string{"CatalogID", "MultiDistribID", "Date", "End", "OrderStartDate", "OrderEndDate"},
+		ListFields: []string{"ID", "CatalogID", "MultiDistribID", "Date"},
+		EditFields: []string{"CatalogID", "MultiDistribID", "Date", "End", "OrderStartDate", "OrderEndDate"},
 	},
 	{
 		Slug: "places", Label: "Lieux",
@@ -93,20 +93,20 @@ var adminDBRegistry = []adminDBModel{
 	{
 		Slug: "volunteers", Label: "Bénévoles inscrits",
 		New: func() any { return &model.Volunteer{} }, NewSlice: func() any { return &[]model.Volunteer{} },
-		ListFields:     []string{"ID", "UserID", "MultiDistribID", "Role"},
-		EditFields:     []string{"UserID", "MultiDistribID", "Role"},
+		ListFields: []string{"ID", "UserID", "MultiDistribID", "Role"},
+		EditFields: []string{"UserID", "MultiDistribID", "Role"},
 	},
 	{
 		Slug: "user-orders", Label: "Commandes",
 		New: func() any { return &model.UserOrder{} }, NewSlice: func() any { return &[]model.UserOrder{} },
-		ListFields:     []string{"ID", "UserID", "ProductID", "Quantity", "ProductPrice", "Paid", "DistributionID"},
-		EditFields:     []string{"Quantity", "ProductPrice", "FeesRate", "Paid", "DistributionID", "BasketID", "SubscriptionID"},
+		ListFields: []string{"ID", "UserID", "ProductID", "Quantity", "ProductPrice", "Paid", "DistributionID"},
+		EditFields: []string{"Quantity", "ProductPrice", "FeesRate", "Paid", "DistributionID", "BasketID", "SubscriptionID"},
 	},
 	{
 		Slug: "memberships", Label: "Adhésions",
 		New: func() any { return &model.Membership{} }, NewSlice: func() any { return &[]model.Membership{} },
-		ListFields:     []string{"ID", "UserID", "GroupID", "Year", "Fee"},
-		EditFields:     []string{"UserID", "GroupID", "Year", "Fee"},
+		ListFields: []string{"ID", "UserID", "GroupID", "Year", "Fee"},
+		EditFields: []string{"UserID", "GroupID", "Year", "Fee"},
 	},
 	{
 		Slug: "group-docs", Label: "Documents (fichiers PDF)",
@@ -125,14 +125,14 @@ var adminDBRegistry = []adminDBModel{
 	{
 		Slug: "messages", Label: "Messages",
 		New: func() any { return &model.Message{} }, NewSlice: func() any { return &[]model.Message{} },
-		ListFields:     []string{"ID", "SenderID", "GroupID", "Subject"},
-		EditFields:     []string{"SenderID", "GroupID", "Subject", "Body"},
+		ListFields: []string{"ID", "SenderID", "GroupID", "Subject"},
+		EditFields: []string{"SenderID", "GroupID", "Subject", "Body"},
 	},
 	{
 		Slug: "subscriptions", Label: "Souscriptions",
 		New: func() any { return &model.Subscription{} }, NewSlice: func() any { return &[]model.Subscription{} },
-		ListFields:     []string{"ID", "UserID", "CatalogID", "StartDate", "EndDate"},
-		EditFields:     []string{"UserID", "CatalogID", "StartDate", "EndDate", "Quantities"},
+		ListFields: []string{"ID", "UserID", "CatalogID", "StartDate", "EndDate"},
+		EditFields: []string{"UserID", "CatalogID", "StartDate", "EndDate", "Quantities"},
 	},
 }
 
@@ -152,6 +152,24 @@ type adminDBLayoutData struct {
 	Tables     []adminDBModel
 	ActiveSlug string
 	PageTitle  string
+}
+
+// poseCadreDB place l'écran dans la rubrique des paramètres : c'est là qu'il
+// vit désormais, et c'est ce qui lui donne le menu latéral, les onglets, la
+// largeur commune et son fil d'Ariane.
+func poseCadreDB(pd *PageData, cran string) {
+	pd.Category = "amapadmin"
+	pd.Container = "container-fluid ac-accueil"
+	pd.AmapAdminTab = "db"
+	pd.AmapAdminTitre = "Base de données"
+	pd.AmapAdminChapeau = "L'édition directe des tables, sans les contrôles de l'application."
+	pd.Breadcrumb = []BreadcrumbItem{
+		{Name: "Paramètres", Link: "/amapadmin"},
+		{Name: "Base de données", Link: "/admin/db"},
+	}
+	if cran != "" {
+		pd.Breadcrumb = append(pd.Breadcrumb, BreadcrumbItem{Name: cran})
+	}
 }
 
 func (h *PagesHandler) adminDBGuard(c *gin.Context) (PageData, bool) {
@@ -176,7 +194,7 @@ func (h *PagesHandler) AdminDBIndex(c *gin.Context) {
 		return
 	}
 	pd.Title = "Base de données"
-	pd.Breadcrumb = []BreadcrumbItem{{Name: "Base de données", Link: "/admin/db"}}
+	poseCadreDB(&pd, "")
 
 	data := adminDBLayoutData{
 		PageData:  pd,
@@ -196,23 +214,23 @@ func (h *PagesHandler) AdminDBIndex(c *gin.Context) {
 
 // adminDBListData for the list view.
 type adminDBListRow struct {
-	ID     uint
-	Cells  []template.HTML
+	ID    uint
+	Cells []template.HTML
 }
 
 type adminDBListData struct {
 	adminDBLayoutData
-	Model       *adminDBModel
-	Headers     []string
-	Rows        []adminDBListRow
-	Total       int64
-	Page        int
-	PageCount   int
-	Search      string
-	HasPrev     bool
-	HasNext     bool
-	PrevPage    int
-	NextPage    int
+	Model     *adminDBModel
+	Headers   []string
+	Rows      []adminDBListRow
+	Total     int64
+	Page      int
+	PageCount int
+	Search    string
+	HasPrev   bool
+	HasNext   bool
+	PrevPage  int
+	NextPage  int
 }
 
 // GET /admin/db/:slug

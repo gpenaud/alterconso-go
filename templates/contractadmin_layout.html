@@ -1,31 +1,50 @@
+{{/* La coquille commune aux écrans d'un catalogue : son nom, ses onglets, et
+     le bloc blanc qui reçoit le contenu.
+
+     Les onglets passent à l'horizontale. En colonne, ils prenaient un quart de
+     la largeur pour cinq entrées et repoussaient d'autant les tableaux de
+     produits et de commandes, qui en ont l'usage. */}}
 {{define "contractadmin_nav"}}
-<div class="row">
-  <div class="col-md-12"><h2>{{.Catalog.Name}} — {{.Catalog.Vendor.Name}}</h2></div>
-</div>
-<div class="row">
-  <div class="col-md-3">
-    <div class="article">
-      <ul class="nav nav-pills nav-stacked">
-        <li {{if eq .ActiveTab "view"}}class="active"{{end}}>
-          <a href="/contractAdmin/view/{{.Catalog.ID}}"><i class="icon icon-home"></i> Récapitulatif</a>
-        </li>
-        <li {{if eq .ActiveTab "edit"}}class="active"{{end}}>
-          <a href="/contractAdmin/edit/{{.Catalog.ID}}"><i class="icon icon-edit"></i> Modifier le catalogue</a>
-        </li>
-        <li {{if eq .ActiveTab "products"}}class="active"{{end}}>
-          <a href="/contractAdmin/products/{{.Catalog.ID}}"><i class="icon icon-products"></i> Produits</a>
-        </li>
-        <li {{if eq .ActiveTab "distributions"}}class="active"{{end}}>
-          <a href="/contractAdmin/distributions/{{.Catalog.ID}}"><i class="icon icon-calendar"></i> Distributions</a>
-        </li>
-        <li {{if eq .ActiveTab "orders"}}class="active"{{end}}>
-          <a href="/contractAdmin/selectDistrib/{{.Catalog.ID}}"><i class="icon icon-basket"></i> Commandes</a>
-        </li>
-      </ul>
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <div class="cyc-panneau">
+
+    <div class="cyc-entete">
+      <div>
+        <h3>{{.Catalog.Name}}</h3>
+        <p class="cyc-chapeau">
+          <i class="icon icon-farmer"></i> {{.Catalog.Vendor.Name}}
+          {{if .Catalog.Highlight}}
+          <span class="cyc-badge" style="margin-left:8px;">
+            <i class="icon icon-star"></i> {{.Catalog.Highlight}}
+          </span>
+          {{end}}
+        </p>
+      </div>
+      <a href="/contractAdmin" class="cyc-btn">
+        <i class="icon icon-chevron-left"></i> Tous les catalogues
+      </a>
     </div>
-  </div>
-  <div class="col-md-9">
-    <div class="article">
+
+    <nav class="cyc-onglets">
+      <a href="/contractAdmin/view/{{.Catalog.ID}}" {{if eq .ActiveTab "view"}}class="actif"{{end}}>
+        <i class="icon icon-home"></i> Récapitulatif
+      </a>
+      <a href="/contractAdmin/edit/{{.Catalog.ID}}" {{if eq .ActiveTab "edit"}}class="actif"{{end}}>
+        <i class="icon icon-edit"></i> Réglages
+      </a>
+      <a href="/contractAdmin/products/{{.Catalog.ID}}" {{if eq .ActiveTab "products"}}class="actif"{{end}}>
+        <i class="icon icon-products"></i> Produits
+      </a>
+      <a href="/contractAdmin/distributions/{{.Catalog.ID}}" {{if eq .ActiveTab "distributions"}}class="actif"{{end}}>
+        <i class="icon icon-calendar"></i> Distributions
+      </a>
+      <a href="/contractAdmin/selectDistrib/{{.Catalog.ID}}" {{if eq .ActiveTab "orders"}}class="actif"{{end}}>
+        <i class="icon icon-basket"></i> Commandes
+      </a>
+    </nav>
+
+    <div class="cyc-onglet-contenu">
 {{end}}
 
 {{define "contractadmin_close"}}

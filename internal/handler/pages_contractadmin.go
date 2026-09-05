@@ -76,14 +76,14 @@ type CatalogAdminData struct {
 	PageData
 	Catalog   model.Catalog
 	ActiveTab string
-	ShowOld      bool
-	AllJoined    bool
+	ShowOld   bool
+	AllJoined bool
 	// per-tab content
-	Products      []model.Product
-	ProductViews  []ProductView
+	Products        []model.Product
+	ProductViews    []ProductView
 	CatalogDistribs []CatalogDistribEntry
-	Orders        []CatalogOrderEntry
-	Subscriptions []CatalogSubEntry
+	Orders          []CatalogOrderEntry
+	Subscriptions   []CatalogSubEntry
 }
 
 type CatalogDistribEntry struct {
@@ -132,7 +132,7 @@ func (h *PagesHandler) CatalogAdminViewPage(c *gin.Context) {
 	var products []model.Product
 	h.db.Where("catalog_id = ?", data.Catalog.ID).Preload("Image").Find(&products)
 	data.Products = products
-	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_view.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_view.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -148,6 +148,23 @@ type CatalogEditData struct {
 	CatalogAdminData
 	Vendors []model.Vendor
 	Members []model.User
+	// PeutMettreEnAvant : le gabarit ne devine pas les droits, on les lui
+	// donne. Le champ disparaît pour qui ne peut pas s'en servir plutôt que
+	// de s'afficher grisé — un réglage qu'on ne peut pas toucher n'a rien à
+	// faire dans un formulaire.
+	PeutMettreEnAvant bool
+}
+
+// peutMettreEnAvant : qui peut signaler un catalogue sur l'accueil.
+//
+// Le droit « distributions », et lui seul. La mise en avant occupe une place
+// que tout le groupe voit, et sur laquelle les campagnes se font concurrence :
+// c'est un arbitrage de calendrier, pas un réglage de catalogue. Un producteur
+// qui tient le sien a le droit « catalogues » sur ses propres contrats — il
+// pourrait donc se mettre en avant lui-même, ce qui viderait le dispositif de
+// son sens.
+func peutMettreEnAvant(pd PageData) bool {
+	return pd.HasDistributions
 }
 
 func (h *PagesHandler) CatalogAdminEditPage(c *gin.Context) {
@@ -195,6 +212,21 @@ func (h *PagesHandler) CatalogAdminEditPage(c *gin.Context) {
 			cat.PercentageFees = nil
 			cat.PercentageName = nil
 		}
+		// Mise en avant : un champ vide l'efface, c'est le seul geste dont on
+		// dispose pour l'annuler. Sans le droit « distributions », le champ
+		// n'est ni lu ni écrit — un formulaire forgé ne doit pas suffire là où
+		// l'écran n'affiche rien.
+		miseEnAvant := peutMettreEnAvant(data.PageData)
+		if miseEnAvant {
+			if hl := strings.TrimSpace(c.PostForm("highlight_label")); hl != "" {
+				if len([]rune(hl)) > 48 {
+					hl = string([]rune(hl)[:48])
+				}
+				cat.HighlightLabel = &hl
+			} else {
+				cat.HighlightLabel = nil
+			}
+		}
 		if vid, err := strconv.ParseUint(c.PostForm("vendor_id"), 10, 64); err == nil {
 			cat.VendorID = uint(vid)
 		}
@@ -216,6 +248,12 @@ func (h *PagesHandler) CatalogAdminEditPage(c *gin.Context) {
 			"percentage_fees": cat.PercentageFees,
 			"percentage_name": cat.PercentageName,
 		}
+		// Absente de la mise à jour plutôt qu'écrite à l'identique : la valeur
+		// existante reste hors de portée, même si quelque chose l'avait
+		// altérée en mémoire.
+		if miseEnAvant {
+			updates["highlight_label"] = cat.HighlightLabel
+		}
 		if err := h.db.Model(&model.Catalog{}).Where("id = ?", cat.ID).Updates(updates).Error; err != nil {
 			c.String(http.StatusInternalServerError, "erreur sauvegarde: %v", err)
 			return
@@ -231,8 +269,9 @@ func (h *PagesHandler) CatalogAdminEditPage(c *gin.Context) {
 		Where("user_groups.group_id = ? AND user_groups.rights LIKE ?", data.Group.ID, "%GroupAdmin%").
 		Order("users.last_name").Find(&members)
 
-	editData := CatalogEditData{CatalogAdminData: data, Vendors: vendors, Members: members}
-	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_edit.html")
+	editData := CatalogEditData{CatalogAdminData: data, Vendors: vendors, Members: members,
+		PeutMettreEnAvant: peutMettreEnAvant(data.PageData)}
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_edit.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -304,7 +343,7 @@ func (h *PagesHandler) CatalogAdminProductsPage(c *gin.Context) {
 		})
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_products.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_products.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -508,7 +547,7 @@ func (h *PagesHandler) CatalogAdminProductNewPage(c *gin.Context) {
 	// GET : formulaire vierge. Pas d'ImageURL — la photo s'ajoute depuis la
 	// liste une fois le produit créé, comme pour les produits existants.
 	newData := ProductEditData{CatalogAdminData: data, Product: product, Categories: cats}
-	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_product_edit.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_product_edit.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -568,7 +607,7 @@ func (h *PagesHandler) CatalogAdminProductEditPage(c *gin.Context) {
 		Categories:         cats,
 		SelectedCategoryID: categoryOfProduct(h.db, &product),
 	}
-	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_product_edit.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_product_edit.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -637,7 +676,7 @@ func (h *PagesHandler) CatalogAdminProductPhotoPage(c *gin.Context) {
 	}
 
 	editData := ProductEditData{CatalogAdminData: data, Product: product, ImageURL: imgURL}
-	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_product_photo.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_product_photo.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -820,7 +859,7 @@ func (h *PagesHandler) CatalogAdminDistributionsPage(c *gin.Context) {
 	}
 	data.AllJoined = allJoined
 
-	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_distributions.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_distributions.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -977,10 +1016,10 @@ func (h *PagesHandler) CatalogAdminDistributionDatesPage(c *gin.Context) {
 	}
 
 	page := CatalogDistribDatesData{
-		CatalogAdminData:    data,
-		BackURL:             backTo,
-		DistribID:           d.ID,
-		CommonDistribLabel:  d.MultiDistrib.DistribStartDate.Format("02/01/2006 à 15:04"),
+		CatalogAdminData:   data,
+		BackURL:            backTo,
+		DistribID:          d.ID,
+		CommonDistribLabel: d.MultiDistrib.DistribStartDate.Format("02/01/2006 à 15:04"),
 		// « Hérité » au sens où la date ne déroge pas au jour, et non au sens
 		// où elle serait absente : presque toutes les distributions portent une
 		// copie des dates du jour, et tester leur seule présence marquait tout
@@ -1018,7 +1057,7 @@ func (h *PagesHandler) CatalogAdminDistributionDatesPage(c *gin.Context) {
 	page.MinOrderStartLabel = floor.Format("02/01/2006")
 	page.Title = "Dates — " + data.Catalog.Name
 
-	t, err2 := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_distribution_dates.html")
+	t, err2 := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_distribution_dates.html")
 	if err2 != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err2)
 		return
@@ -1093,8 +1132,8 @@ func (h *PagesHandler) CatalogAdminOrdersPage(c *gin.Context) {
 	// Store distrib info in catalog for template access
 	type OrdersData struct {
 		CatalogAdminData
-		Distrib    model.Distribution
-		DistribDate string
+		Distrib      model.Distribution
+		DistribDate  string
 		DistribPlace string
 	}
 	od := OrdersData{
@@ -1104,7 +1143,7 @@ func (h *PagesHandler) CatalogAdminOrdersPage(c *gin.Context) {
 		DistribPlace:     distrib.MultiDistrib.Place.Name,
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_orders.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_orders.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1141,7 +1180,7 @@ func (h *PagesHandler) CatalogAdminSubscriptionsPage(c *gin.Context) {
 		data.Subscriptions = append(data.Subscriptions, entry)
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_subscriptions.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_subscriptions.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1194,9 +1233,9 @@ func (h *PagesHandler) loadCatalogAdmin(c *gin.Context, tab string) (CatalogAdmi
 
 type EmargementConfigData struct {
 	PageData
-	DateISO    string
-	DayLabel   string
-	CatalogID  uint
+	DateISO   string
+	DayLabel  string
+	CatalogID uint
 }
 
 type EmargementMember struct {
@@ -1255,7 +1294,9 @@ func (h *PagesHandler) DistributionListByDateConfigPage(c *gin.Context) {
 	}
 	data.Title = "Liste d'émargement — " + data.DayLabel
 
-	t, err2 := loadTemplates("base.html", "design.html", "emargement_config.html")
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
+	t, err2 := loadTemplates("base.html", "design.html", "cycles_style.html", "emargement_config.html")
 	if err2 != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err2)
 		return
@@ -1369,13 +1410,13 @@ func (h *PagesHandler) DistributionListByDatePrintPage(c *gin.Context) {
 	}
 
 	data := EmargementPrintData{
-		PageData:   pd,
-		GroupName:  pd.Group.Name,
-		DayLabel:   frDayLabel(date),
-		DateISO:    dateStr,
-		FontSize:   fontSize,
-		Mode:       mode,
-		Benevoles:  volunteers,
+		PageData:  pd,
+		GroupName: pd.Group.Name,
+		DayLabel:  frDayLabel(date),
+		DateISO:   dateStr,
+		FontSize:  fontSize,
+		Mode:      mode,
+		Benevoles: volunteers,
 	}
 	if md.Place.ID != 0 {
 		data.Place = md.Place.Name
@@ -1424,11 +1465,11 @@ type VendorByDateEntry struct {
 }
 
 type VendorByDateLine struct {
-	Qty      string
-	Ref      string
-	Product  string
+	Qty       string
+	Ref       string
+	Product   string
 	UnitPrice float64
-	Total    float64
+	Total     float64
 }
 
 func (h *PagesHandler) ContractAdminVendorsByDatePage(c *gin.Context) {
@@ -1588,39 +1629,39 @@ type MemberSelectItem struct {
 }
 
 type OrdersByDateMember struct {
-	BasketNum  int
-	UserID     uint
-	UserName   string
-	Lines      []OrdersByDateLine
+	BasketNum   int
+	UserID      uint
+	UserName    string
+	Lines       []OrdersByDateLine
 	MemberTotal float64
 }
 
 type OrdersByDateLine struct {
-	OrderID     uint
-	CatalogName string
-	CatalogID   uint
-	DistribID   uint
-	ProductID   uint
-	Qty         string
-	Quantity    float64
-	Ref         string
-	ProductName string
-	UnitLabel   string
-	UnitPrice   float64
-	SubTotal    float64
-	Fees        float64
-	Total       float64
-	Paid        bool
-	ImageURL    string
-	VariablePrice    bool    // true si Product.VariablePrice — autorise l'input prix forcé
-	HasForcedPrice   bool    // true si un prix forcé est saisi
-	ForcedPriceValue float64 // valeur du prix forcé (significatif si HasForcedPrice)
-	EstimatedTotal   float64 // Quantity × UnitPrice (toujours, indépendant du prix forcé)
-	FeesRate         float64 // o.FeesRate snapshoté — pour recompute live côté JS
-	OverStock        bool    // total commandé pour ce produit > Product.Stock
-	StockAvailable   float64 // Product.Stock (info de référence) — significatif si StockTracked
+	OrderID           uint
+	CatalogName       string
+	CatalogID         uint
+	DistribID         uint
+	ProductID         uint
+	Qty               string
+	Quantity          float64
+	Ref               string
+	ProductName       string
+	UnitLabel         string
+	UnitPrice         float64
+	SubTotal          float64
+	Fees              float64
+	Total             float64
+	Paid              bool
+	ImageURL          string
+	VariablePrice     bool    // true si Product.VariablePrice — autorise l'input prix forcé
+	HasForcedPrice    bool    // true si un prix forcé est saisi
+	ForcedPriceValue  float64 // valeur du prix forcé (significatif si HasForcedPrice)
+	EstimatedTotal    float64 // Quantity × UnitPrice (toujours, indépendant du prix forcé)
+	FeesRate          float64 // o.FeesRate snapshoté — pour recompute live côté JS
+	OverStock         bool    // total commandé pour ce produit > Product.Stock
+	StockAvailable    float64 // Product.Stock (info de référence) — significatif si StockTracked
 	StockTotalOrdered float64 // somme des quantités commandées pour ce produit (sur la distrib)
-	StockTracked     bool    // produit avec gestion de stock
+	StockTracked      bool    // produit avec gestion de stock
 }
 
 var frDays = [7]string{"Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"}
@@ -1838,7 +1879,7 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 		})
 	}
 
-	t, err2 := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_orders_by_date.html")
+	t, err2 := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_orders_by_date.html")
 	if err2 != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err2)
 		return
@@ -2000,9 +2041,18 @@ func (h *PagesHandler) CatalogAdminDuplicatePage(c *gin.Context) {
 					Organic:   p.Organic,
 					Active:    p.Active,
 				}
-				if p.Ref != nil         { s := *p.Ref;         np.Ref = &s }
-				if p.Description != nil { s := *p.Description; np.Description = &s }
-				if p.Qt != nil          { f := *p.Qt;          np.Qt = &f }
+				if p.Ref != nil {
+					s := *p.Ref
+					np.Ref = &s
+				}
+				if p.Description != nil {
+					s := *p.Description
+					np.Description = &s
+				}
+				if p.Qt != nil {
+					f := *p.Qt
+					np.Qt = &f
+				}
 				h.db.Create(&np)
 			}
 		}
@@ -2014,14 +2064,24 @@ func (h *PagesHandler) CatalogAdminDuplicatePage(c *gin.Context) {
 			now := time.Now()
 			for _, d := range distribs {
 				var md model.MultiDistrib
-				if h.db.First(&md, d.MultiDistribID).Error != nil { continue }
-				if md.DistribStartDate.Before(now) { continue }
+				if h.db.First(&md, d.MultiDistribID).Error != nil {
+					continue
+				}
+				if md.DistribStartDate.Before(now) {
+					continue
+				}
 				nd := model.Distribution{
 					CatalogID:      newCatalog.ID,
 					MultiDistribID: d.MultiDistribID,
 				}
-				if d.OrderStartDate != nil { t2 := *d.OrderStartDate; nd.OrderStartDate = &t2 }
-				if d.OrderEndDate != nil   { t2 := *d.OrderEndDate;   nd.OrderEndDate = &t2 }
+				if d.OrderStartDate != nil {
+					t2 := *d.OrderStartDate
+					nd.OrderStartDate = &t2
+				}
+				if d.OrderEndDate != nil {
+					t2 := *d.OrderEndDate
+					nd.OrderEndDate = &t2
+				}
 				h.db.Create(&nd)
 			}
 		}
@@ -2051,7 +2111,7 @@ func (h *PagesHandler) CatalogAdminDuplicatePage(c *gin.Context) {
 
 type ImportCSVData struct {
 	CatalogAdminData
-	Errors  []string
+	Errors   []string
 	Imported int
 }
 
@@ -2221,7 +2281,7 @@ func (h *PagesHandler) CatalogAdminSelectDistribPage(c *gin.Context) {
 		})
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_select_distrib.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_select_distrib.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -2251,17 +2311,17 @@ func unitLabelFor(u model.UnitType) string {
 // ---- /contractAdmin/memberOrder/:multiDistribId/:userId ----
 
 type MemberOrderProduct struct {
-	DistribID   uint
-	ProductID   uint
-	Name        string
-	Ref         string
-	UnitLabel   string
-	QtLabel     string
-	Price       float64
-	OrderID     uint
-	Quantity    float64
-	ImageURL    string
-	HasOrder    bool
+	DistribID uint
+	ProductID uint
+	Name      string
+	Ref       string
+	UnitLabel string
+	QtLabel   string
+	Price     float64
+	OrderID   uint
+	Quantity  float64
+	ImageURL  string
+	HasOrder  bool
 }
 
 type MemberOrderCatalog struct {
@@ -2353,9 +2413,9 @@ func (h *PagesHandler) MemberOrderPage(c *gin.Context) {
 					}
 					if found {
 						h.db.Model(&existing).Updates(map[string]interface{}{
-							"quantity":     qty,
+							"quantity":      qty,
 							"product_price": p.Price,
-							"fees_rate":    feesRate,
+							"fees_rate":     feesRate,
 						})
 					} else {
 						h.db.Create(&model.UserOrder{
@@ -2712,7 +2772,7 @@ func (h *PagesHandler) DeleteMemberOrder(c *gin.Context) {
 }
 
 func renderImportCSV(c *gin.Context, data ImportCSVData) {
-	t, err := loadTemplates("base.html", "design.html", "contractadmin_layout.html", "contractadmin_products_importcsv.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_products_importcsv.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return

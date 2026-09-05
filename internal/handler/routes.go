@@ -20,7 +20,6 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	// contrôle d'accès qui n'en ont aucun autre usage.
 	SetTechnicalManager(cfg.TechnicalManager.Email)
 
-
 	auth := middleware.Auth(cfg)
 	pageAuth := middleware.PageAuth(cfg)
 
@@ -62,11 +61,11 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	// Les routes membre/publiques ne portent PAS ces middlewares.
 	// Les contrôles fins par objet (catalogue/propriété) restent dans les
 	// handlers en défense en profondeur.
-	reqManager := pagesH.RequireGroupRight()                          // GroupAdmin requis
+	reqManager := pagesH.RequireGroupRight() // GroupAdmin requis
 	// Pas de reqMessages : /messages est désormais ouverte à tout membre, le
 	// droit Messages n'élargit plus l'accès mais le périmètre des
 	// destinataires (cf. buildScopedRecipients).
-	reqCatalog := pagesH.RequireGroupRight(model.RightCatalogAdmin)   // gestionnaire ou CatalogAdmin
+	reqCatalog := pagesH.RequireGroupRight(model.RightCatalogAdmin) // gestionnaire ou CatalogAdmin
 	// L'édition directe des tables n'appartient qu'au responsable de groupe et
 	// au responsable technique : aucune délégation ne l'ouvre.
 	reqDBAdmin := pagesH.RequireGroupRight()
@@ -74,7 +73,7 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	// le calendrier d'un côté, les réglages du groupe de l'autre.
 	reqDistributions := pagesH.RequireGroupRight(model.RightDistributions)
 	reqParameters := pagesH.RequireGroupRight(model.RightParameters)
-	reqMembership := pagesH.RequireGroupRight(model.RightMembership)  // gestionnaire ou Membership
+	reqMembership := pagesH.RequireGroupRight(model.RightMembership) // gestionnaire ou Membership
 	// Plus étroit que reqManager : l'attribution des droits reste au
 	// responsable de groupe et au responsable technique.
 	reqRights := pagesH.RequireRightsManagement()
@@ -90,7 +89,11 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/account/edit", pageAuth, pagesH.AccountEditPage)
 	r.POST("/account/update", pageAuth, pagesH.AccountUpdate)
 	r.GET("/account/quit", pageAuth, pagesH.AccountQuitPage)
+	// Le départ effectif : en POST, pour qu'un simple chargement d'adresse ne
+	// puisse pas retirer un adhérent de son groupe.
+	r.POST("/account/quit", pageAuth, pagesH.AccountQuitPage)
 	r.GET("/member", pageAuth, pagesH.MemberPage)
+	r.GET("/member/more", pageAuth, pagesH.MemberMoreFragment)
 	r.GET("/distribution", pageAuth, pagesH.DistributionPage)
 	r.GET("/amap", pageAuth, pagesH.AmapPage)
 	r.GET("/amapadmin", pageAuth, reqParameters, pagesH.AmapAdminPage)
@@ -106,6 +109,15 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/amapadmin/vatRates", pageAuth, reqParameters, pagesH.AmapAdminVatRatesPage)
 	r.POST("/amapadmin/vatRates", pageAuth, reqParameters, pagesH.AmapAdminVatRatesUpdate)
 	r.GET("/amapadmin/volunteers", pageAuth, reqParameters, pagesH.AmapAdminVolunteersPage)
+	// Les postes de bénévole : l'écran les listait et proposait ces trois
+	// liens, qu'aucune route ne servait.
+	r.GET("/amapadmin/volunteers/new", pageAuth, reqParameters, pagesH.AmapAdminVolunteerNewPage)
+	r.POST("/amapadmin/volunteers/new", pageAuth, reqParameters, pagesH.AmapAdminVolunteerNewPage)
+	r.GET("/amapadmin/volunteers/edit/:id", pageAuth, reqParameters, pagesH.AmapAdminVolunteerEditPage)
+	r.POST("/amapadmin/volunteers/edit/:id", pageAuth, reqParameters, pagesH.AmapAdminVolunteerEditPage)
+	// En POST : supprimer un poste le retire des distributions qui l'avaient
+	// retenu, et cela ne doit pas tenir au chargement d'une adresse.
+	r.POST("/amapadmin/volunteers/delete/:id", pageAuth, reqParameters, pagesH.AmapAdminVolunteerDelete)
 	r.GET("/amapadmin/membership", pageAuth, reqParameters, pagesH.AmapAdminMembershipPage)
 	r.POST("/amapadmin/membership", pageAuth, reqParameters, pagesH.AmapAdminMembershipUpdate)
 	r.GET("/amapadmin/currency", pageAuth, reqParameters, pagesH.AmapAdminCurrencyPage)

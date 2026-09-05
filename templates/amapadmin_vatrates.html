@@ -1,60 +1,68 @@
 {{define "content"}}
 {{template "amapadmin_nav" .}}
-<div class="col-md-9">
-  <h2>Taux de TVA</h2>
-  <div class="article">
 
-    {{if .Vats}}
-    <table class="table" style="margin-bottom:16px;">
-      <thead>
-        <tr style="color:#aaa;font-weight:normal;border-bottom:1px solid #eee;">
-          <th style="font-weight:normal;">Nom</th>
-          <th style="font-weight:normal;width:180px;">Taux (%)</th>
-          <th style="font-weight:normal;width:60px;"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .Vats}}
-        <tr>
-          <td style="vertical-align:middle;">{{.Name}}</td>
-          <td style="vertical-align:middle;">{{printf "%g" .Rate}}</td>
-          <td style="vertical-align:middle;text-align:right;">
-            <form method="POST" action="/amapadmin/vatRates" style="margin:0;">
+{{if .Vats}}
+<div class="cyc-deborde">
+  <table class="cyc-table">
+    <thead>
+      <tr>
+        <th>Nom</th>
+        <th class="serre num">Taux</th>
+        <th class="actions"><span class="sr-only">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Vats}}
+      <tr>
+        <td>{{.Name}}</td>
+        <td class="serre num">{{printf "%g" .Rate}} %</td>
+        <td class="actions">
+          <div class="cyc-actions">
+            {{/* Formulaire et non lien : une suppression ne doit pas partir
+                 sur un simple préchargement de la page. */}}
+            <form method="POST" action="/amapadmin/vatRates">
               <input type="hidden" name="action" value="delete" />
               <input type="hidden" name="slot" value="{{.Slot}}" />
-              <button type="submit" title="Supprimer"
-                style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:1.1em;padding:4px 8px;">
-                <i class="icon icon-delete"></i>
+              <button type="submit" class="cyc-icone-btn danger" title="Supprimer ce taux"
+                      onclick="return confirm('Supprimer le taux « {{.Name}} » ?')">
+                <i class="icon icon-delete"></i><span class="sr-only">Supprimer</span>
               </button>
             </form>
-          </td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
-    {{else}}
-    <p class="text-muted" style="margin-bottom:16px;">Aucun taux de TVA défini pour le moment.</p>
-    {{end}}
-
-    {{if gt .FreeSlot 0}}
-    <hr />
-    <h4 style="margin-top:16px;">Ajouter un taux</h4>
-    <form method="POST" action="/amapadmin/vatRates" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
-      <div style="flex:1;min-width:220px;">
-        <label style="display:block;color:#666;font-weight:normal;margin-bottom:4px;">Nom</label>
-        <input type="text" name="name" class="form-control" required />
-      </div>
-      <div style="width:180px;">
-        <label style="display:block;color:#666;font-weight:normal;margin-bottom:4px;">Taux (%)</label>
-        <input type="text" name="rate" class="form-control" placeholder="0.00" />
-      </div>
-      <button type="submit" class="btn btn-success">
-        <i class="icon icon-plus"></i> Ajouter
-      </button>
-    </form>
-    {{else}}
-    <p class="text-muted">Nombre maximum de taux atteint (4).</p>
-    {{end}}
-  </div>
+          </div>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
 </div>
+{{else}}
+<div class="cyc-aucun">
+  <i class="icon icon-balance icone"></i>
+  <p>Aucun taux de TVA défini.</p>
+</div>
+{{end}}
+
+{{if gt .FreeSlot 0}}
+<div class="cyc-section" style="margin-top:24px;">
+  <h4>Ajouter un taux</h4>
+  <p class="cyc-aide">Quatre au maximum. Ils seront proposés à la saisie d'un produit.</p>
+  <form method="POST" action="/amapadmin/vatRates" class="cyc-barre">
+    <div class="cyc-champ" style="flex:1 1 220px;">
+      <label for="name">Nom</label>
+      <input type="text" id="name" name="name" placeholder="Taux réduit" required />
+    </div>
+    <div class="cyc-champ" style="flex:0 0 140px;">
+      <label for="rate">Taux (%)</label>
+      <input type="text" id="rate" name="rate" placeholder="5,5" />
+    </div>
+    <button type="submit" class="cyc-btn cyc-btn-primaire" style="align-self:flex-end;">
+      <i class="icon icon-plus"></i> Ajouter
+    </button>
+  </form>
+</div>
+{{else}}
+<p class="cyc-note">Nombre maximum de taux atteint (4).</p>
+{{end}}
+
+{{template "amapadmin_close" .}}
 {{end}}

@@ -1,29 +1,56 @@
 {{define "content"}}
 {{template "contractadmin_nav" .}}
 
-<h3>Souscriptions AMAP</h3>
+<div class="cyc-section">
+  <h4>Souscriptions</h4>
+  <p class="cyc-aide">Les adhérents engagés sur ce contrat, et l'état de leur engagement.</p>
+</div>
+
 {{if .Subscriptions}}
-<table class="table table-bordered table-hover">
-  <thead>
-    <tr class="greyhead">
-      <th>Membre</th><th>Période</th><th>Validée</th><th></th>
-    </tr>
-  </thead>
-  <tbody>
-    {{range .Subscriptions}}
-    <tr>
-      <td><a href="/member/view/{{.UserID}}">{{.UserName}}</a></td>
-      <td>Du {{.StartDate}} au {{.EndDate}}</td>
-      <td>{{if .Validated}}<i class="icon icon-check text-success"></i>{{else}}<i class="icon icon-alert text-danger"></i>{{end}}</td>
-      <td>
-        <a href="/member/view/{{.UserID}}" class="btn btn-xs btn-default">Voir membre</a>
-      </td>
-    </tr>
-    {{end}}
-  </tbody>
-</table>
+<div class="cyc-deborde">
+  <table class="cyc-table">
+    <thead>
+      <tr>
+        <th>Membre</th>
+        <th>Période</th>
+        <th class="serre num">État</th>
+        <th class="actions"><span class="sr-only">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Subscriptions}}
+      <tr>
+        <td>
+          <div class="cyc-identite">
+            <span class="cyc-initiales">{{initialesDe .UserName}}</span>
+            <span><a href="/member/view/{{.UserID}}" class="nom">{{.UserName}}</a></span>
+          </div>
+        </td>
+        <td>du {{.StartDate}} au {{.EndDate}}</td>
+        <td class="serre num">
+          {{if .Validated}}
+          <span class="cyc-badge ok"><i class="icon icon-check"></i> Validée</span>
+          {{else}}
+          <span class="cyc-badge attention">À valider</span>
+          {{end}}
+        </td>
+        <td class="actions">
+          <div class="cyc-actions">
+            <a href="/member/view/{{.UserID}}" class="cyc-icone-btn" title="Voir la fiche du membre">
+              <i class="icon icon-eye"></i><span class="sr-only">Voir la fiche</span>
+            </a>
+          </div>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
 {{else}}
-<p class="text-muted">Aucune souscription.</p>
+<div class="cyc-aucun">
+  <i class="icon icon-users icone"></i>
+  <p>Aucune souscription sur ce contrat.</p>
+</div>
 {{end}}
 
 {{template "contractadmin_close" .}}

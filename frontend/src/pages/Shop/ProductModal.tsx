@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import type { ProductInfo, VendorInfo } from "../../types/shop";
 import { ProductActions } from "./ProductActions";
 import { ProductLabels } from "./ProductLabels";
-import { COLORS } from "./theme";
+import { COLORS, FONTS, RADIUS } from "./theme";
+import { useEcranEtroit } from "../../utils/useEcranEtroit";
 
 interface Props {
   product: ProductInfo;
@@ -17,6 +18,8 @@ interface Props {
  * crème pour cohérence avec la palette Alterconso.
  */
 export function ProductModal({ product, vendor, onClose }: Props) {
+  const etroit = useEcranEtroit();
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -49,14 +52,14 @@ export function ProductModal({ product, vendor, onClose }: Props) {
         justifyContent: "center",
         zIndex: 50,
         overflowY: "auto",
-        padding: "40px 16px",
+        padding: etroit ? "12px 10px 24px" : "40px 16px",
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          backgroundColor: COLORS.white,
-          borderRadius: 8,
+          backgroundColor: COLORS.blanc,
+          borderRadius: RADIUS.panneau,
           width: "100%",
           maxWidth: 680,
           position: "relative",
@@ -80,7 +83,7 @@ export function ProductModal({ product, vendor, onClose }: Props) {
             borderRadius: "50%",
             border: "none",
             background: "rgba(255, 255, 255, 0.92)",
-            color: COLORS.darkGrey,
+            color: COLORS.encre,
             cursor: "pointer",
             fontSize: 16,
             display: "flex",
@@ -90,12 +93,12 @@ export function ProductModal({ product, vendor, onClose }: Props) {
             zIndex: 1,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = COLORS.white;
-            e.currentTarget.style.color = COLORS.primary;
+            e.currentTarget.style.background = COLORS.blanc;
+            e.currentTarget.style.color = COLORS.vert;
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = "rgba(255, 255, 255, 0.92)";
-            e.currentTarget.style.color = COLORS.darkGrey;
+            e.currentTarget.style.color = COLORS.encre;
           }}
         >
           <i className="icon-delete" aria-hidden="true" />
@@ -103,7 +106,7 @@ export function ProductModal({ product, vendor, onClose }: Props) {
 
         {/* ─── Section produit ─── */}
         <div
-          style={{ backgroundColor: COLORS.bg2, padding: 20 }}
+          style={{ backgroundColor: COLORS.creme, padding: etroit ? 14 : 20 }}
           className="grid gap-5 grid-cols-1 md:grid-cols-12"
         >
           <div className="md:col-span-5">
@@ -116,7 +119,7 @@ export function ProductModal({ product, vendor, onClose }: Props) {
                   aspectRatio: "1 / 1",
                   objectFit: "cover",
                   display: "block",
-                  borderRadius: 6,
+                  borderRadius: RADIUS.bouton,
                   boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
                 }}
               />
@@ -125,8 +128,8 @@ export function ProductModal({ product, vendor, onClose }: Props) {
                 style={{
                   width: "100%",
                   aspectRatio: "1 / 1",
-                  backgroundColor: "#f0eadb",
-                  borderRadius: 6,
+                  backgroundColor: COLORS.vide,
+                  borderRadius: RADIUS.bouton,
                 }}
               />
             )}
@@ -136,7 +139,7 @@ export function ProductModal({ product, vendor, onClose }: Props) {
             <span
               style={{
                 fontSize: "0.8rem",
-                color: COLORS.mediumGrey,
+                color: COLORS.gris,
                 fontStyle: "italic",
               }}
             >
@@ -145,12 +148,12 @@ export function ProductModal({ product, vendor, onClose }: Props) {
 
             <h2
               style={{
-                fontSize: "1.4rem",
-                fontWeight: 400,
-                textTransform: "uppercase",
-                color: COLORS.darkGrey,
+                fontFamily: FONTS.titre,
+                fontSize: "1.5rem",
+                fontWeight: 700,
+                color: COLORS.titre,
                 margin: 0,
-                lineHeight: 1.15,
+                lineHeight: 1.2,
               }}
             >
               {product.name}
@@ -163,12 +166,12 @@ export function ProductModal({ product, vendor, onClose }: Props) {
             {product.resaleFrom && (
               <div
                 style={{
-                  backgroundColor: "#fff8e6",
-                  border: "1px solid #f0d99a",
-                  borderRadius: 6,
+                  backgroundColor: COLORS.alertePale,
+                  border: `1px solid ${COLORS.alerteTrait}`,
+                  borderRadius: RADIUS.bouton,
                   padding: "10px 12px",
                   fontSize: "0.9rem",
-                  color: "#7a5b00",
+                  color: COLORS.alerte,
                 }}
               >
                 <i className="icon-refresh" aria-hidden="true" style={{ marginRight: 6 }} />
@@ -177,22 +180,30 @@ export function ProductModal({ product, vendor, onClose }: Props) {
               </div>
             )}
 
+            {/* La description est saisie dans un simple textarea, côté
+                administration : c'est du texte, et l'injecter comme du HTML
+                laissait n'importe qui disposant des droits sur un catalogue
+                placer un script dans la page de tous les adhérents. Les pages
+                Go l'échappent depuis toujours ; ici, on ne garde que les
+                retours à la ligne. */}
             {product.desc && (
               <div
                 style={{
-                  color: COLORS.darkGrey,
+                  color: COLORS.encre,
                   lineHeight: 1.5,
                   fontSize: "0.9rem",
+                  whiteSpace: "pre-wrap",
                 }}
-                dangerouslySetInnerHTML={{ __html: product.desc }}
-              />
+              >
+                {product.desc}
+              </div>
             )}
 
             <div
               style={{
-                backgroundColor: COLORS.white,
+                backgroundColor: COLORS.blanc,
                 padding: "8px 4px",
-                borderRadius: 6,
+                borderRadius: RADIUS.bouton,
                 marginTop: "auto",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
               }}
@@ -214,7 +225,7 @@ export function ProductModal({ product, vendor, onClose }: Props) {
                   height: 56,
                   objectFit: "cover",
                   borderRadius: "50%",
-                  border: `3px solid ${COLORS.bg2}`,
+                  border: `3px solid ${COLORS.creme}`,
                   flexShrink: 0,
                 }}
               />
@@ -224,7 +235,7 @@ export function ProductModal({ product, vendor, onClose }: Props) {
                   width: 56,
                   height: 56,
                   borderRadius: "50%",
-                  backgroundColor: COLORS.bg2,
+                  backgroundColor: COLORS.creme,
                   flexShrink: 0,
                 }}
               />
@@ -235,7 +246,7 @@ export function ProductModal({ product, vendor, onClose }: Props) {
                   fontSize: "0.65rem",
                   textTransform: "uppercase",
                   letterSpacing: "0.12em",
-                  color: COLORS.mediumGrey,
+                  color: COLORS.gris,
                 }}
               >
                 Producteur
@@ -244,7 +255,7 @@ export function ProductModal({ product, vendor, onClose }: Props) {
                 className="italic"
                 style={{
                   fontSize: "1.15rem",
-                  color: COLORS.darkGrey,
+                  color: COLORS.encre,
                   lineHeight: 1.2,
                 }}
               >
@@ -257,12 +268,12 @@ export function ProductModal({ product, vendor, onClose }: Props) {
             <div
               className="flex flex-wrap items-center"
               style={{
-                backgroundColor: COLORS.bg2,
-                borderRadius: 6,
+                backgroundColor: COLORS.creme,
+                borderRadius: RADIUS.bouton,
                 padding: "8px 12px",
                 gap: "4px 16px",
                 fontSize: "0.85rem",
-                color: COLORS.darkGrey,
+                color: COLORS.encre,
                 marginBottom: 12,
               }}
             >
@@ -270,7 +281,7 @@ export function ProductModal({ product, vendor, onClose }: Props) {
                 <div className="flex items-center" style={{ gap: 6 }}>
                   <i
                     className="icon-map-marker"
-                    style={{ color: COLORS.primary, fontSize: 14 }}
+                    style={{ color: COLORS.vert, fontSize: 14 }}
                     aria-hidden="true"
                   />
                   <span>
@@ -283,7 +294,7 @@ export function ProductModal({ product, vendor, onClose }: Props) {
                 <div className="flex items-center" style={{ gap: 6 }}>
                   <i
                     className="icon-link"
-                    style={{ color: COLORS.primary, fontSize: 14 }}
+                    style={{ color: COLORS.vert, fontSize: 14 }}
                     aria-hidden="true"
                   />
                   <a
@@ -291,7 +302,7 @@ export function ProductModal({ product, vendor, onClose }: Props) {
                     target="_blank"
                     rel="noreferrer"
                     style={{
-                      color: COLORS.primary,
+                      color: COLORS.vert,
                       textDecoration: "none",
                       fontWeight: 600,
                     }}
@@ -306,12 +317,14 @@ export function ProductModal({ product, vendor, onClose }: Props) {
           {vendor.desc && (
             <div
               style={{
-                color: COLORS.darkGrey,
+                color: COLORS.encre,
                 lineHeight: 1.5,
                 fontSize: "0.85rem",
+                whiteSpace: "pre-wrap",
               }}
-              dangerouslySetInnerHTML={{ __html: vendor.desc }}
-            />
+            >
+              {vendor.desc}
+            </div>
           )}
         </div>
       </div>

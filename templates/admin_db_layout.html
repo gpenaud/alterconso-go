@@ -1,28 +1,29 @@
+{{/* La base de données est un onglet des paramètres : elle s'ouvre dans la
+     même coquille, avec les mêmes onglets. Sa colonne latérale de tables
+     passe en pastilles, sous un avertissement qui ne se contourne pas du
+     regard. */}}
 {{define "admin_db_nav"}}
-<style>
-  .admin-db-section ~ .col-md-9 .article { padding: 20px 24px; }
-  .admin-db-section ~ .col-md-9 .article h3 { margin-top: 0; font-style: italic; }
-  .admin-db-table td, .admin-db-table th { font-size: 0.92em; vertical-align: middle; }
-  .admin-db-table td.id, .admin-db-table th.id { font-family: monospace; color: #888; width: 70px; }
-  .admin-db-actions { display: flex; gap: 6px; justify-content: flex-end; }
-  .admin-db-pager { display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 16px; color: #666; }
-  .admin-db-search { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
-  .admin-db-search input[type=text] { flex: 1 1 auto; max-width: 380px; }
-  .admin-db-form .form-group { margin-bottom: 16px; }
-  .admin-db-form label { font-weight: 600; color: #555; display: block; margin-bottom: 4px; }
-  .admin-db-form textarea { min-height: 100px; font-family: monospace; font-size: 0.92em; }
-  .admin-db-warn { background: #fcf8e3; color: #8a6d3b; padding: 10px 14px; border-radius: 4px; margin-bottom: 16px; font-size: 0.92em; }
-  .admin-db-ok { background: #dff0d8; color: #3c763d; padding: 10px 14px; border-radius: 4px; margin-bottom: 16px; font-size: 0.92em; }
-</style>
-<div class="col-md-3 admin-db-section">
-  <div class="article" style="padding:0;">
-    <ul class="nav nav-pills nav-stacked" style="margin:0;">
-      {{range .Tables}}
-      <li {{if eq $.ActiveSlug .Slug}}class="active"{{end}}>
-        <a href="/admin/db/{{.Slug}}" style="font-size:0.92em;">{{.Label}}</a>
-      </li>
-      {{end}}
-    </ul>
-  </div>
+{{template "amapadmin_nav" .}}
+
+<div class="cyc-danger">
+  <i class="icon icon-alert"></i>
+  <b>Ce que vous modifiez ici ne passe par aucun contrôle.</b>
+  L'application vérifie d'ordinaire ce qu'on lui donne — cet écran, non. Une
+  ligne effacée l'est définitivement, et supprimer une commande, une adhésion
+  ou un compte peut en emporter d'autres au passage. Servez-vous-en pour
+  réparer ce qu'aucun autre écran ne permet, et rien d'autre.
 </div>
+
+<div class="cyc-filtres" style="margin-bottom:20px;">
+  <a href="/admin/db" class="cyc-filtre {{if not .ActiveSlug}}actif{{end}}">
+    <i class="icon icon-list"></i> Toutes les tables
+  </a>
+  {{range .Tables}}
+  <a href="/admin/db/{{.Slug}}" class="cyc-filtre {{if eq $.ActiveSlug .Slug}}actif{{end}}">{{.Label}}</a>
+  {{end}}
+</div>
+{{end}}
+
+{{define "admin_db_close"}}
+{{template "amapadmin_close" .}}
 {{end}}

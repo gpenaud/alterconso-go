@@ -99,7 +99,9 @@ func (h *PagesHandler) DistributionValidatePage(c *gin.Context) {
 		})
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "distribution_validate.html")
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_validate.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -122,14 +124,43 @@ func frDateLabelFull(t time.Time) string {
 	return volCalFrDays[t.Weekday()] + " " + strconv.Itoa(t.Day()) + " " + volCalFrMonths[t.Month()-1] + " " + strconv.Itoa(t.Year())
 }
 
+// volCalRetour ne laisse passer qu'un identifiant numérique : la valeur
+// ressort dans une URL de redirection et dans un href, et tout le reste n'y a
+// rien à faire.
+func volCalRetour(v string) string {
+	if v == "" || len(v) > 12 {
+		return ""
+	}
+	for _, r := range v {
+		if r < '0' || r > '9' {
+			return ""
+		}
+	}
+	return v
+}
+
+// volCalURL reconstruit l'adresse du calendrier en gardant la période et, le
+// cas échéant, la distribution d'origine.
+func volCalURL(fromStr, toStr, retour string) string {
+	u := "/distribution/volunteersCalendar?from=" + fromStr + "&to=" + toStr
+	if r := volCalRetour(retour); r != "" {
+		u += "&retour=" + r
+	}
+	return u
+}
+
 type VolunteersCalendarData struct {
 	PageData
-	From        string
-	To          string
-	FromLabel   string
-	ToLabel     string
-	Done        int
-	ToBeDone    int
+	From      string
+	To        string
+	FromLabel string
+	ToLabel   string
+	Done      int
+	ToBeDone  int
+	// Identifiant de la distribution d'où l'on vient, pour y ramener le
+	// visiteur une fois son poste choisi. Vide quand on est arrivé par le
+	// menu : il n'y a alors rien de particulier où retourner.
+	Retour      string
 	PeriodStart string
 	PeriodEnd   string
 	Columns     []VolCalColumn
@@ -323,7 +354,7 @@ func (h *PagesHandler) VolunteersCalendarJoin(c *gin.Context) {
 		// s'être inscrit.
 		log.Printf("[volunteers] inscription ignorée: multiDistribId=%q invalide (user=%d, rôle=%q)",
 			mdIDStr, pd.User.ID, roleName)
-		c.Redirect(http.StatusFound, "/distribution/volunteersCalendar?from="+fromStr+"&to="+toStr)
+		c.Redirect(http.StatusFound, volCalURL(fromStr, toStr, c.PostForm("retour")))
 		return
 	}
 
@@ -342,7 +373,7 @@ func (h *PagesHandler) VolunteersCalendarJoin(c *gin.Context) {
 			vol.ID, pd.User.ID, mdID, roleName)
 	}
 
-	c.Redirect(http.StatusFound, "/distribution/volunteersCalendar?from="+fromStr+"&to="+toStr)
+	c.Redirect(http.StatusFound, volCalURL(fromStr, toStr, c.PostForm("retour")))
 }
 
 // ---- POST /distribution/volunteersCalendar/leave ----
@@ -360,14 +391,14 @@ func (h *PagesHandler) VolunteersCalendarLeave(c *gin.Context) {
 
 	volID, err := strconv.ParseUint(volIDStr, 10, 64)
 	if err != nil {
-		c.Redirect(http.StatusFound, "/distribution/volunteersCalendar?from="+fromStr+"&to="+toStr)
+		c.Redirect(http.StatusFound, volCalURL(fromStr, toStr, c.PostForm("retour")))
 		return
 	}
 
 	// Only delete if it belongs to the current user
 	h.db.Where("id = ? AND user_id = ?", uint(volID), pd.User.ID).Delete(&model.Volunteer{})
 
-	c.Redirect(http.StatusFound, "/distribution/volunteersCalendar?from="+fromStr+"&to="+toStr)
+	c.Redirect(http.StatusFound, volCalURL(fromStr, toStr, c.PostForm("retour")))
 }
 
 // ---- /distribution/list/:distribId  (printable) ----
@@ -390,10 +421,10 @@ type DistribListData struct {
 }
 
 type DistribListUserBlock struct {
-	UserName   string
-	UserPhone  string
-	Lines      []PrintOrderLine
-	UserTotal  float64
+	UserName  string
+	UserPhone string
+	Lines     []PrintOrderLine
+	UserTotal float64
 }
 
 type PrintOrderLine struct {
@@ -672,7 +703,9 @@ func (h *PagesHandler) DistributionInviteFarmersPage(c *gin.Context) {
 	data.Title = "Producteurs participants"
 	data.Category = "distribution"
 
-	t, err2 := loadTemplates("base.html", "design.html", "distribution_invite_farmers.html")
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
+	t, err2 := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_invite_farmers.html")
 	if err2 != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err2)
 		return
@@ -775,7 +808,9 @@ func (h *PagesHandler) DistributionShiftPage(c *gin.Context) {
 		return
 	}
 
-	t, err2 := loadTemplates("base.html", "design.html", "distribution_shift.html")
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
+	t, err2 := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_shift.html")
 	if err2 != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err2)
 		return
@@ -851,7 +886,9 @@ func (h *PagesHandler) DistributionEditDatesPage(c *gin.Context) {
 		return
 	}
 
-	t2, err2 := loadTemplates("base.html", "design.html", "distribution_edit_dates.html")
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
+	t2, err2 := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_edit_dates.html")
 	if err2 != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err2)
 		return
@@ -876,6 +913,19 @@ type EditMdData struct {
 	Error           string
 	ExistingID      uint
 	ExistingDate    string
+	// Divergents : les producteurs qui portent leur propre fenêtre de
+	// commande. Ce sont eux qui décident — la fenêtre saisie ici ne leur sert
+	// que de repli — et rien à l'écran ne le disait. On modifiait l'ouverture
+	// des commandes, on enregistrait, et l'accueil ne bougeait pas.
+	Divergents []ProducteurDivergent
+}
+
+// ProducteurDivergent : un catalogue dont la fenêtre de commande ne suit pas
+// celle de la distribution.
+type ProducteurDivergent struct {
+	Catalogue string
+	Fenetre   string
+	Close     bool
 }
 
 func (h *PagesHandler) DistributionEditMdPage(c *gin.Context) {
@@ -910,7 +960,7 @@ func (h *PagesHandler) DistributionEditMdPage(c *gin.Context) {
 		ordOpen := c.PostForm("orderStartDate")
 		ordClose := c.PostForm("orderEndDate")
 		placeIDStr := c.PostForm("placeId")
-		syncAll := c.PostForm("syncAll") == "on"
+		syncAll := caseCochee(c.PostForm("syncAll"))
 
 		// La date est modifiable : c'est ainsi qu'on reporte une distribution.
 		// Le champ absent ou illisible laisse le jour en place plutôt que de
@@ -1011,11 +1061,56 @@ func (h *PagesHandler) editMdData(pd PageData, md model.MultiDistrib, places []m
 	}
 	data.Title = "Modifier une distribution"
 	data.Category = "distribution"
+	data.Divergents = h.producteursDivergents(md)
 	return data
 }
 
+// producteursDivergents relève les catalogues dont la fenêtre de commande
+// s'écarte de celle du jour. Un producteur qui porte ses propres dates ignore
+// celles de la distribution : les afficher ici est le seul moyen de comprendre
+// pourquoi les commandes restent fermées après qu'on a repoussé l'ouverture.
+func (h *PagesHandler) producteursDivergents(md model.MultiDistrib) []ProducteurDivergent {
+	var distribs []model.Distribution
+	h.db.Where("multi_distrib_id = ?", md.ID).Preload("Catalog").Find(&distribs)
+
+	memeInstant := func(a, b *time.Time) bool {
+		if a == nil || b == nil {
+			return a == b
+		}
+		return a.Equal(*b)
+	}
+
+	now := time.Now()
+	var out []ProducteurDivergent
+	for _, d := range distribs {
+		if memeInstant(d.OrderStartDate, md.OrderStartDate) &&
+			memeInstant(d.OrderEndDate, md.OrderEndDate) {
+			continue
+		}
+		d.MultiDistrib = md
+		debut, fin := d.EffectiveOrderStart(), d.EffectiveOrderEnd()
+		fenetre := "sans fenêtre"
+		switch {
+		case debut != nil && fin != nil:
+			fenetre = "du " + frDateTimeLabel(*debut) + " au " + frDateTimeLabel(*fin)
+		case debut != nil:
+			fenetre = "à partir du " + frDateTimeLabel(*debut)
+		case fin != nil:
+			fenetre = "jusqu'au " + frDateTimeLabel(*fin)
+		}
+		out = append(out, ProducteurDivergent{
+			Catalogue: d.Catalog.Name,
+			Fenetre:   fenetre,
+			Close:     (fin != nil && !now.Before(*fin)) || (debut != nil && now.Before(*debut)),
+		})
+	}
+	return out
+}
+
 func (h *PagesHandler) renderEditMd(c *gin.Context, data EditMdData) {
-	tmpl, err := loadTemplates("base.html", "design.html", "distribution_edit_md.html")
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
+	tmpl, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_edit_md.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1057,11 +1152,11 @@ func (h *PagesHandler) DistributionDeleteMdPage(c *gin.Context) {
 
 type InsertMdData struct {
 	PageData
-	Places         []model.Place
-	DefaultDate    string
-	DefaultStart   string
-	DefaultEnd     string
-	DefaultOrdOpen string
+	Places          []model.Place
+	DefaultDate     string
+	DefaultStart    string
+	DefaultEnd      string
+	DefaultOrdOpen  string
 	DefaultOrdClose string
 	// Erreur affichée au-dessus du formulaire, avec la distribution en cause.
 	Error        string
@@ -1184,7 +1279,9 @@ func placeSuffix(md *model.MultiDistrib) string {
 }
 
 func (h *PagesHandler) renderInsertMd(c *gin.Context, data InsertMdData) {
-	t, err := loadTemplates("base.html", "design.html", "distribution_insert_md.html")
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_insert_md.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1195,117 +1292,6 @@ func (h *PagesHandler) renderInsertMd(c *gin.Context, data InsertMdData) {
 }
 
 // ---- GET/POST /distribution/insertMdCycle ----
-
-type InsertMdCycleData struct {
-	PageData
-	Places       []model.Place
-	DefaultStart string
-	DefaultEnd   string
-}
-
-func (h *PagesHandler) DistributionInsertMdCyclePage(c *gin.Context) {
-	pd := h.buildPageData(c)
-	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
-		c.String(http.StatusForbidden, "accès refusé")
-		return
-	}
-
-	var places []model.Place
-	h.db.Where("group_id = ?", pd.Group.ID).Find(&places)
-
-	if c.Request.Method == "POST" {
-		cycleType := c.PostForm("cycleType")
-		startDateStr := c.PostForm("startDate")
-		endDateStr := c.PostForm("endDate")
-		startHour := c.PostForm("startHour")
-		endHour := c.PostForm("endHour")
-		daysBeforeOpenStr := c.PostForm("daysBeforeOpen")
-		openingHour := c.PostForm("openingHour")
-		daysBeforeCloseStr := c.PostForm("daysBeforeClose")
-		closingHour := c.PostForm("closingHour")
-		placeIDStr := c.PostForm("placeId")
-
-		startDate, err1 := time.ParseInLocation("2006-01-02", startDateStr, time.Local)
-		endDate, err2 := time.ParseInLocation("2006-01-02", endDateStr, time.Local)
-		placeID, err3 := strconv.ParseUint(placeIDStr, 10, 64)
-		daysBeforeOpen, err4 := strconv.Atoi(daysBeforeOpenStr)
-		daysBeforeClose, err5 := strconv.Atoi(daysBeforeCloseStr)
-		if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil {
-			c.String(http.StatusBadRequest, "paramètres invalides")
-			return
-		}
-
-		// Calcul de l'intervalle selon le type de cycle
-		var interval int
-		switch cycleType {
-		case "Weekly":
-			interval = 7
-		case "BiWeekly":
-			interval = 14
-		case "TriWeekly":
-			interval = 21
-		case "Monthly":
-			interval = 30
-		default:
-			interval = 7
-		}
-
-		// Génération des MultiDistribs. Les jours déjà pourvus sont sautés, et
-		// non doublés : un cycle relancé sur une période déjà couverte — pour
-		// la prolonger de quelques semaines — remplissait sinon le calendrier
-		// de distributions jumelles dont une seule serait jamais visible.
-		created, skipped := 0, 0
-		for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, interval) {
-			distribStart, _ := time.ParseInLocation("2006-01-02T15:04", d.Format("2006-01-02")+"T"+startHour, time.Local)
-			distribEnd, _ := time.ParseInLocation("2006-01-02T15:04", d.Format("2006-01-02")+"T"+endHour, time.Local)
-			ordOpenDate := d.AddDate(0, 0, -daysBeforeOpen)
-			ordCloseDate := d.AddDate(0, 0, -daysBeforeClose)
-			ordOpen, _ := time.ParseInLocation("2006-01-02T15:04", ordOpenDate.Format("2006-01-02")+"T"+openingHour, time.Local)
-			ordClose, _ := time.ParseInLocation("2006-01-02T15:04", ordCloseDate.Format("2006-01-02")+"T"+closingHour, time.Local)
-
-			if h.multiDistribOn(pd.Group.ID, distribStart, 0) != nil {
-				skipped++
-				continue
-			}
-
-			md := model.MultiDistrib{
-				GroupID:          pd.Group.ID,
-				PlaceID:          uint(placeID),
-				DistribStartDate: distribStart,
-				DistribEndDate:   distribEnd,
-				OrderStartDate:   &ordOpen,
-				OrderEndDate:     &ordClose,
-			}
-			h.db.Create(&md)
-			created++
-		}
-
-		// Compteurs, et non un message tout fait : la page compose la phrase
-		// elle-même, pour qu'un lien forgé ne puisse pas y faire afficher
-		// n'importe quoi.
-		c.Redirect(http.StatusFound, fmt.Sprintf("/distribution?created=%d&skipped=%d", created, skipped))
-		return
-	}
-
-	now := time.Now()
-	data := InsertMdCycleData{
-		PageData:     pd,
-		Places:       places,
-		DefaultStart: now.Format("2006-01-02"),
-		DefaultEnd:   now.AddDate(0, 1, 0).Format("2006-01-02"),
-	}
-	data.Title = "Programmer un cycle de distribution"
-	data.Category = "distribution"
-
-	t, err := loadTemplates("base.html", "design.html", "distribution_insert_md_cycle.html")
-	if err != nil {
-		c.String(http.StatusInternalServerError, "template error: %v", err)
-		return
-	}
-	if err := t.ExecuteTemplate(c.Writer, "base", data); err != nil {
-		c.String(http.StatusInternalServerError, "render error: %v", err)
-	}
-}
 
 // ---- GET/POST /distribution/roles/:id ----
 
@@ -1404,7 +1390,9 @@ func (h *PagesHandler) DistribRolesPage(c *gin.Context) {
 		data.Roles = append(data.Roles, item)
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "distribution_roles.html")
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_roles.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1412,4 +1400,16 @@ func (h *PagesHandler) DistribRolesPage(c *gin.Context) {
 	if err := t.ExecuteTemplate(c.Writer, "base", data); err != nil {
 		c.String(http.StatusInternalServerError, "render error: %v", err)
 	}
+}
+
+// caseCochee dit si une case à cocher a été soumise.
+//
+// Un navigateur n'envoie rien du tout pour une case décochée, et pour une case
+// cochée il envoie l'attribut `value` — « on » seulement quand le gabarit n'en
+// donne aucun. Comparer à « on » une case écrite `value="1"` revenait donc à
+// l'ignorer toujours : la propagation des horaires aux producteurs ne s'est
+// jamais faite, quoi qu'on coche. On ne regarde plus la valeur, seulement la
+// présence, ce qui vaut pour les deux écritures.
+func caseCochee(v string) bool {
+	return strings.TrimSpace(v) != ""
 }

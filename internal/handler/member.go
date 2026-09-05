@@ -135,10 +135,10 @@ func (h *MemberHandler) Add(c *gin.Context) {
 
 	var payload struct {
 		// Soit un userID existant, soit les infos pour créer un nouvel utilisateur
-		UserID    *uint   `json:"userId"`
-		FirstName string  `json:"firstName"`
-		LastName  string  `json:"lastName"`
-		Email     string  `json:"email"    binding:"required,email"`
+		UserID    *uint  `json:"userId"`
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+		Email     string `json:"email"    binding:"required,email"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

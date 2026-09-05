@@ -1,73 +1,56 @@
 {{define "content"}}
-<div class="col-md-9">
-  <h2 style="margin:0 0 12px;padding:0 4px;">Modifier le membre</h2>
-  <div class="article" style="padding:24px 28px;">
-    <form method="POST" class="form-horizontal">
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <form method="POST">
 
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Prénom *</label>
-          <div class="col-sm-9"><input type="text" name="firstName" class="form-control" value="{{.Member.FirstName}}" required /></div>
+    {{/* Le formulaire en sections plutôt qu'en une colonne de vingt lignes :
+         on voit d'un coup ce qui relève de la personne, du foyer, de
+         l'adresse. Les intitulés passent au-dessus des champs — alignés à
+         droite sur trois colonnes, ils obligeaient l'œil à faire l'aller-
+         retour à chaque ligne. */}}
+    <div class="cyc-panneau">
+      <div class="cyc-entete">
+        <div>
+          <h3>Modifier {{.Member.FirstName}} {{.Member.LastName}}</h3>
+          <p class="cyc-chapeau">
+            Coordonnées, foyer et préférences de notification.
+          </p>
         </div>
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Nom *</label>
-          <div class="col-sm-9"><input type="text" name="lastName" class="form-control" value="{{.Member.LastName}}" required /></div>
-        </div>
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Email</label>
-          <div class="col-sm-9"><input type="email" class="form-control" value="{{.Member.Email}}" readonly /></div>
-        </div>
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Téléphone</label>
-          <div class="col-sm-9"><input type="text" name="phone" class="form-control" value="{{if .Member.Phone}}{{deref .Member.Phone}}{{end}}" /></div>
-        </div>
+        <a href="/member/view/{{.Member.ID}}" class="cyc-btn">
+          <i class="icon icon-chevron-left"></i> Retour à la fiche
+        </a>
+      </div>
 
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Prénom conjoint</label>
-          <div class="col-sm-9"><input type="text" name="firstName2" class="form-control" value="{{if .Member.FirstName2}}{{deref .Member.FirstName2}}{{end}}" /></div>
-        </div>
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Nom conjoint</label>
-          <div class="col-sm-9"><input type="text" name="lastName2" class="form-control" value="{{if .Member.LastName2}}{{deref .Member.LastName2}}{{end}}" /></div>
-        </div>
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Email conjoint</label>
-          <div class="col-sm-9"><input type="email" name="email2" class="form-control" value="{{if .Member.Email2}}{{deref .Member.Email2}}{{end}}" /></div>
-        </div>
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Téléphone conjoint</label>
-          <div class="col-sm-9"><input type="text" name="phone2" class="form-control" value="{{if .Member.Phone2}}{{deref .Member.Phone2}}{{end}}" /></div>
-        </div>
-
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Adresse 1</label>
-          <div class="col-sm-9"><input type="text" name="address1" class="form-control" value="{{if .Member.Address1}}{{deref .Member.Address1}}{{end}}" /></div>
-        </div>
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Adresse 2</label>
-          <div class="col-sm-9"><input type="text" name="address2" class="form-control" value="{{if .Member.Address2}}{{deref .Member.Address2}}{{end}}" /></div>
-        </div>
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Code postal</label>
-          <div class="col-sm-9"><input type="text" name="zipCode" class="form-control" value="{{if .Member.ZipCode}}{{deref .Member.ZipCode}}{{end}}" /></div>
-        </div>
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Ville</label>
-          <div class="col-sm-9"><input type="text" name="city" class="form-control" value="{{if .Member.City}}{{deref .Member.City}}{{end}}" /></div>
-        </div>
-
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Date de naissance</label>
-          <div class="col-sm-9">
-            <input type="date" name="birthDate" class="form-control"
-              value="{{if .Member.BirthDate}}{{.Member.BirthDate.Format "2006-01-02"}}{{end}}" />
+      <div class="cyc-section">
+        <h4>Identité</h4>
+        <div class="cyc-champs">
+          <div class="cyc-champ">
+            <label for="firstName">Prénom *</label>
+            <input type="text" id="firstName" name="firstName" value="{{.Member.FirstName}}" required />
           </div>
-        </div>
-
-
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Nationalité</label>
-          <div class="col-sm-9">
-            <select name="nationality" class="form-control">
+          <div class="cyc-champ">
+            <label for="lastName">Nom *</label>
+            <input type="text" id="lastName" name="lastName" value="{{.Member.LastName}}" required />
+          </div>
+          <div class="cyc-champ">
+            <label for="email">Courriel</label>
+            {{/* Non modifiable : il identifie le compte et sert à s'y
+                 connecter. */}}
+            <input type="email" id="email" value="{{.Member.Email}}" readonly />
+            <p class="cyc-note">Le courriel identifie le compte, il ne se change pas ici.</p>
+          </div>
+          <div class="cyc-champ">
+            <label for="phone">Téléphone</label>
+            <input type="text" id="phone" name="phone" value="{{if .Member.Phone}}{{deref .Member.Phone}}{{end}}" />
+          </div>
+          <div class="cyc-champ">
+            <label for="birthDate">Date de naissance</label>
+            <input type="date" id="birthDate" name="birthDate"
+                   value="{{if .Member.BirthDate}}{{.Member.BirthDate.Format "2006-01-02"}}{{end}}" />
+          </div>
+          <div class="cyc-champ">
+            <label for="nationality">Nationalité</label>
+            <select id="nationality" name="nationality">
               <option value="">—</option>
               {{range .Nationalities}}
               <option value="{{.Code}}" {{if $.Member.Nationality}}{{if eq (deref $.Member.Nationality) .Code}}selected{{end}}{{end}}>{{.Label}}</option>
@@ -75,10 +58,56 @@
             </select>
           </div>
         </div>
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Pays de résidence</label>
-          <div class="col-sm-9">
-            <select name="countryOfResidence" class="form-control">
+      </div>
+
+      <div class="cyc-section">
+        <h4>Deuxième personne du foyer</h4>
+        <p class="cyc-aide">
+          Facultatif. Ces coordonnées servent à joindre le foyer quand la
+          première personne n'est pas disponible.
+        </p>
+        <div class="cyc-champs">
+          <div class="cyc-champ">
+            <label for="firstName2">Prénom</label>
+            <input type="text" id="firstName2" name="firstName2" value="{{if .Member.FirstName2}}{{deref .Member.FirstName2}}{{end}}" />
+          </div>
+          <div class="cyc-champ">
+            <label for="lastName2">Nom</label>
+            <input type="text" id="lastName2" name="lastName2" value="{{if .Member.LastName2}}{{deref .Member.LastName2}}{{end}}" />
+          </div>
+          <div class="cyc-champ">
+            <label for="email2">Courriel</label>
+            <input type="email" id="email2" name="email2" value="{{if .Member.Email2}}{{deref .Member.Email2}}{{end}}" />
+          </div>
+          <div class="cyc-champ">
+            <label for="phone2">Téléphone</label>
+            <input type="text" id="phone2" name="phone2" value="{{if .Member.Phone2}}{{deref .Member.Phone2}}{{end}}" />
+          </div>
+        </div>
+      </div>
+
+      <div class="cyc-section">
+        <h4>Adresse</h4>
+        <div class="cyc-champs">
+          <div class="cyc-champ large">
+            <label for="address1">Adresse</label>
+            <input type="text" id="address1" name="address1" value="{{if .Member.Address1}}{{deref .Member.Address1}}{{end}}" />
+          </div>
+          <div class="cyc-champ large">
+            <label for="address2">Complément</label>
+            <input type="text" id="address2" name="address2" value="{{if .Member.Address2}}{{deref .Member.Address2}}{{end}}" />
+          </div>
+          <div class="cyc-champ">
+            <label for="zipCode">Code postal</label>
+            <input type="text" id="zipCode" name="zipCode" value="{{if .Member.ZipCode}}{{deref .Member.ZipCode}}{{end}}" />
+          </div>
+          <div class="cyc-champ">
+            <label for="city">Ville</label>
+            <input type="text" id="city" name="city" value="{{if .Member.City}}{{deref .Member.City}}{{end}}" />
+          </div>
+          <div class="cyc-champ">
+            <label for="countryOfResidence">Pays de résidence</label>
+            <select id="countryOfResidence" name="countryOfResidence">
               <option value="">—</option>
               {{range .Countries}}
               <option value="{{.Code}}" {{if $.Member.CountryOfResidence}}{{if eq (deref $.Member.CountryOfResidence) .Code}}selected{{end}}{{end}}>{{.Label}}</option>
@@ -86,43 +115,57 @@
             </select>
           </div>
         </div>
+      </div>
 
-        <hr style="margin:20px 0;" />
-        <p style="color:#888;margin:0 0 12px;padding:0 4px;font-style:italic;">Réinitialisation du mot de passe (laisser vide pour ne rien changer)</p>
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Nouveau mot de passe</label>
-          <div class="col-sm-9">
-            <input type="password" name="newPassword" class="form-control" autocomplete="new-password" placeholder="(inchangé si vide)" />
+      <div class="cyc-section">
+        <h4>Notifications par courriel</h4>
+        <p class="cyc-aide">Ce que ce membre reçoit automatiquement.</p>
+        <label class="cyc-bascule {{if .Notif4h}}actif{{end}}">
+          <input type="checkbox" name="notif4h" value="1" {{if .Notif4h}}checked{{end}} />
+          <span>
+            <span class="titre">Rappel 4 heures avant la distribution</span>
+            <p class="cyc-note">Un dernier signal le jour même.</p>
+          </span>
+        </label>
+        <label class="cyc-bascule {{if .Notif24h}}actif{{end}}">
+          <input type="checkbox" name="notif24h" value="1" {{if .Notif24h}}checked{{end}} />
+          <span>
+            <span class="titre">Rappel 24 heures avant la distribution</span>
+            <p class="cyc-note">De quoi s'organiser la veille.</p>
+          </span>
+        </label>
+        <label class="cyc-bascule {{if .NotifOpen}}actif{{end}}">
+          <input type="checkbox" name="notifOpen" value="1" {{if .NotifOpen}}checked{{end}} />
+          <span>
+            <span class="titre">Ouverture des commandes</span>
+            <p class="cyc-note">Le moment où l'on peut commander.</p>
+          </span>
+        </label>
+      </div>
+
+      <div class="cyc-section">
+        <h4>Mot de passe</h4>
+        <p class="cyc-aide">
+          À ne remplir que pour en imposer un nouveau. Laissé vide, le mot de
+          passe actuel reste en place.
+        </p>
+        <div class="cyc-champs">
+          <div class="cyc-champ">
+            <label for="newPassword">Nouveau mot de passe</label>
+            <input type="password" id="newPassword" name="newPassword"
+                   autocomplete="new-password" placeholder="Inchangé si vide" />
           </div>
         </div>
-        <hr style="margin:20px 0;" />
+      </div>
 
-        <div class="form-group">
-          <label class="col-sm-3 control-label">Options</label>
-          <div class="col-sm-9">
-            <label style="font-weight:normal;display:block;">
-              <input type="checkbox" name="notif4h" value="1" {{if .Notif4h}}checked{{end}} />
-              Recevoir des notifications par email 4h avant les distributions
-            </label>
-            <label style="font-weight:normal;display:block;">
-              <input type="checkbox" name="notif24h" value="1" {{if .Notif24h}}checked{{end}} />
-              Recevoir des notifications par email 24h avant les distributions
-            </label>
-            <label style="font-weight:normal;display:block;">
-              <input type="checkbox" name="notifOpen" value="1" {{if .NotifOpen}}checked{{end}} />
-              Recevoir des notifications par email pour l'ouverture des commandes
-            </label>
-          </div>
-        </div>
+      <div class="cyc-pied">
+        <a href="/member/view/{{.Member.ID}}" class="cyc-btn">Annuler</a>
+        <button type="submit" class="cyc-btn cyc-btn-primaire">
+          <i class="icon icon-check"></i> Enregistrer
+        </button>
+      </div>
+    </div>
 
-        <div class="form-group">
-          <div class="col-sm-offset-3 col-sm-9">
-            <a href="/member/view/{{.Member.ID}}" class="btn btn-default">Annuler</a>
-            <button type="submit" class="btn btn-success">OK</button>
-          </div>
-        </div>
-
-    </form>
-  </div>
+  </form>
 </div>
 {{end}}

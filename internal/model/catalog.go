@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // CatalogType : type de contrat / catalogue.
 type CatalogType int
@@ -26,12 +29,21 @@ type Catalog struct {
 	CreatedAt time.Time `json:"cdate"`
 	UpdatedAt time.Time `json:"-"`
 
-	Name      string      `gorm:"size:64;not null" json:"name"`
-	Type      CatalogType `gorm:"default:0"        json:"type"`
-	Flags     uint        `gorm:"default:0"        json:"-"`
+	Name  string      `gorm:"size:64;not null" json:"name"`
+	Type  CatalogType `gorm:"default:0"        json:"type"`
+	Flags uint        `gorm:"default:0"        json:"-"`
 
 	StartDate *time.Time `json:"startDate,omitempty"`
 	EndDate   *time.Time `json:"endDate,omitempty"`
+
+	// Mise en avant. Non vide = ce catalogue est signalé sur l'accueil, et
+	// son contenu est le libellé affiché. Une seule colonne plutôt qu'une
+	// case à cocher doublée d'un texte : l'un ne va jamais sans l'autre.
+	//
+	// Portée par le catalogue et non par le producteur : un catalogue, c'est
+	// déjà « ce producteur, sur cette période ». La mise en avant s'éteint
+	// donc avec la campagne, et le même producteur reste ordinaire ailleurs.
+	HighlightLabel *string `gorm:"size:48" json:"highlightLabel,omitempty"`
 
 	// Frais additionnels
 	PercentageFees *float64 `json:"percentageFees,omitempty"`
@@ -76,4 +88,13 @@ func (c *Catalog) IsActive() bool {
 
 func (c *Catalog) UsersCanOrder() bool {
 	return c.HasFlag(CatalogFlagUsersCanOrder)
+}
+
+// Highlight rend le libellé de mise en avant, débarrassé de ses blancs.
+// Vide quand le catalogue n'est pas mis en avant.
+func (c *Catalog) Highlight() string {
+	if c.HighlightLabel == nil {
+		return ""
+	}
+	return strings.TrimSpace(*c.HighlightLabel)
 }

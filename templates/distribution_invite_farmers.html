@@ -1,58 +1,70 @@
 {{define "content"}}
-<div class="col-md-12">
-  <div class="article">
-    <h3>Producteurs participants — {{.Date}}</h3>
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <form method="POST">
+    <div class="cyc-panneau">
 
-    {{if .Notice}}
-    <div class="alert alert-info">{{.Notice}}</div>
-    {{end}}
+      <div class="cyc-entete">
+        <div>
+          <h3>Producteurs présents</h3>
+          <p class="cyc-chapeau">
+            Distribution du {{.Date}}. Cochez les catalogues qui livrent ce
+            jour-là. Un producteur dont des commandes sont déjà passées ne peut
+            pas être retiré : elles disparaîtraient avec lui.
+          </p>
+        </div>
+        <a href="/distribution?open={{.MultiDistrib.ID}}" class="cyc-btn">
+          <i class="icon icon-chevron-left"></i> Retour au calendrier
+        </a>
+      </div>
 
-    <p class="text-muted">
-      Cochez les catalogues qui participent à cette distribution. Un producteur
-      dont des commandes sont déjà passées ne peut pas être retiré : elles
-      disparaîtraient avec lui.
-    </p>
+      {{if .Notice}}
+      <div class="cyc-danger"><i class="icon icon-info"></i> {{.Notice}}</div>
+      {{end}}
 
-    <form method="POST">
-      <table class="table table-bordered">
-        <thead>
-          <tr>
-            <th style="width:110px;">Participe</th>
-            <th>Catalogue</th>
-            <th>Producteur</th>
-            <th style="width:170px;">Commandes</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{range .Catalogs}}
-          <tr>
-            <td style="text-align:center;vertical-align:middle;">
-              <input type="checkbox" name="catalog_{{.ID}}" value="1" {{if .Active}}checked{{end}}
-                     {{if .NbOrders}}title="Des commandes sont déjà passées : le retrait sera refusé"{{end}} />
-            </td>
-            <td><a href="/contractAdmin/view/{{.ID}}">{{.Name}}</a></td>
-            <td>{{.VendorName}}</td>
-            <td>
-              {{if .NbOrders}}
-              <span class="label label-warning">{{.NbOrders}} commande(s)</span>
-              {{else if .Active}}
-              <span class="label label-success">Participe</span>
-              {{else}}
-              <span style="color:#aaa;">—</span>
-              {{end}}
-            </td>
-          </tr>
-          {{end}}
-        </tbody>
-      </table>
+      {{/* Une bascule par catalogue plutôt qu'un tableau à cases : la ligne
+           entière devient cliquable, et l'état se voit à la couleur du bloc
+           au lieu d'un carré de 13 pixels. */}}
+      {{if .Catalogs}}
+      <div class="cyc-section">
+        {{range .Catalogs}}
+        <label class="cyc-bascule {{if .Active}}actif{{end}}">
+          <input type="checkbox" name="catalog_{{.ID}}" value="1" {{if .Active}}checked{{end}}
+                 {{if .NbOrders}}title="Des commandes sont déjà passées : le retrait sera refusé"{{end}} />
+          <span>
+            <span class="titre">{{.Name}}</span>
+            <p class="cyc-note">
+              {{.VendorName}}
+              {{if .NbOrders}} · <b>{{.NbOrders}} commande{{if gt .NbOrders 1}}s{{end}} déjà passée{{if gt .NbOrders 1}}s{{end}}</b>{{end}}
+            </p>
+          </span>
+        </label>
+        {{end}}
+      </div>
+      {{else}}
+      <div class="cyc-aucun">
+        <i class="icon icon-farmer icone"></i>
+        <p>Aucun catalogue disponible pour cette distribution.</p>
+      </div>
+      {{end}}
 
-      <button type="submit" class="btn btn-success">
-        <i class="icon icon-check"></i> Enregistrer les participations
-      </button>
-      <a href="/distribution?open={{.MultiDistrib.ID}}" class="btn btn-default">
-        <i class="icon icon-chevron-left"></i> Retour
-      </a>
-    </form>
-  </div>
+      <div class="cyc-pied">
+        <a href="/distribution?open={{.MultiDistrib.ID}}" class="cyc-btn">Annuler</a>
+        <button type="submit" class="cyc-btn cyc-btn-primaire">
+          <i class="icon icon-check"></i> Enregistrer les participations
+        </button>
+      </div>
+
+    </div>
+  </form>
 </div>
+
+<script>
+// La bascule se teinte quand elle est cochée : sur une liste de dix
+// catalogues, seule la case qui change ne se voit pas.
+document.addEventListener('change', function (e) {
+  var b = e.target.closest ? e.target.closest('.cyc-bascule') : null;
+  if (b && e.target.type === 'checkbox') b.classList.toggle('actif', e.target.checked);
+});
+</script>
 {{end}}

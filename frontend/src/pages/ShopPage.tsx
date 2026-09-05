@@ -12,6 +12,8 @@ import { CategorySection } from "./Shop/CategorySection";
 import { ProductModal } from "./Shop/ProductModal";
 import { CartPanel } from "./Shop/CartPanel";
 import { ProductFilters, type TagFilter } from "./Shop/ProductFilters";
+import { COLORS, FONTS, RADIUS } from "./Shop/theme";
+import { useEcranEtroit } from "../utils/useEcranEtroit";
 
 export function ShopPage() {
   const params = useParams<{ multiDistribId: string }>();
@@ -65,6 +67,7 @@ export function ShopPage() {
   const [search, setSearch] = useState("");
   const [tagFilters, setTagFilters] = useState<Set<TagFilter>>(new Set());
   const [isSticky, setIsSticky] = useState(false);
+  const etroit = useEcranEtroit();
 
   // Détecte le passage en mode sticky du bandeau d'en-tête. Utilise un seuil
   // simple basé sur scrollY plutôt qu'une lib (legacy : sticky-events).
@@ -180,17 +183,21 @@ export function ShopPage() {
 
   if (!Number.isInteger(multiDistribId) || multiDistribId <= 0) {
     return (
-      <div className="p-8 text-center text-red-600">
+      <div style={{ padding: 32, textAlign: "center", color: COLORS.danger }}>
         Identifiant de distribution invalide.
       </div>
     );
   }
   if (isLoading) {
-    return <div className="p-8 text-center text-gray-500">Chargement…</div>;
+    return (
+      <div style={{ padding: 32, textAlign: "center", color: COLORS.gris }}>
+        Chargement…
+      </div>
+    );
   }
   if (error) {
     return (
-      <div className="p-8 text-center text-red-600">
+      <div style={{ padding: 32, textAlign: "center", color: COLORS.danger }}>
         Erreur : {(error as Error).message}
       </div>
     );
@@ -201,12 +208,12 @@ export function ShopPage() {
     <div
       className="min-h-screen"
       style={{
-        backgroundColor: "#fff",
-        fontFamily: "Cabin, Arial, Helvetica, sans-serif",
-        color: "#333",
+        backgroundColor: COLORS.blanc,
+        fontFamily: FONTS.texte,
+        color: COLORS.encre,
       }}
     >
-      <ShopTopBar groupName={init.group.name} user={me} />
+      <ShopTopBar groupName={init.group.name} logoUrl={init.group.logo} user={me} />
 
       {/* Commande pour le compte d'un membre : le dire franchement, et garder
           le chemin du retour visible. Sans ce bandeau, rien à l'écran ne
@@ -214,23 +221,39 @@ export function ShopPage() {
       {targetUserId && (
         <div
           style={{
-            background: "#fdf3d7",
-            borderBottom: "1px solid #f0e0a8",
-            color: "#7a5c00",
-            padding: "8px 14px",
+            background: COLORS.alertePale,
+            borderBottom: `1px solid ${COLORS.alerteTrait}`,
+            color: COLORS.alerte,
+            padding: "11px 16px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            gap: 12,
+            gap: 14,
             flexWrap: "wrap",
+            fontSize: "0.93rem",
           }}
         >
+          <i className="icon-alert" aria-hidden="true" style={{ fontSize: 18 }} />
           <span>
-            Vous commandez pour le compte
-            {targetUserName ? ` de ${targetUserName}` : " d'un autre membre"}.
+            <b>
+              Vous commandez pour
+              {targetUserName ? ` ${targetUserName}` : " un autre membre"}.
+            </b>{" "}
+            Ce panier remplacera sa commande sur cette distribution.
           </span>
           {returnTo && (
-            <a href={returnTo} style={{ color: "#7a5c00", fontWeight: "bold" }}>
+            <a
+              href={returnTo}
+              style={{
+                color: COLORS.alerte,
+                fontWeight: 700,
+                padding: "6px 13px",
+                borderRadius: RADIUS.bouton,
+                border: `1px solid ${COLORS.alerteTrait}`,
+                background: COLORS.blanc,
+                textDecoration: "none",
+              }}
+            >
               Revenir sans modifier
             </a>
           )}
@@ -242,7 +265,7 @@ export function ShopPage() {
           position: "sticky",
           top: 0,
           zIndex: 30,
-          backgroundColor: "#fff",
+          backgroundColor: COLORS.blanc,
           boxShadow: isSticky ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
           transition: "box-shadow 0.2s",
         }}
@@ -267,10 +290,16 @@ export function ShopPage() {
 
       <ProductFilters active={tagFilters} onToggle={toggleTag} />
 
-      <main style={{ maxWidth: 1240, margin: "auto", padding: "16px 16px 32px" }}>
+      <main
+        style={{
+          maxWidth: 1240,
+          margin: "auto",
+          padding: etroit ? "12px 12px 90px" : "16px 16px 32px",
+        }}
+      >
         {visibleCategories.length === 0 && (
-          <div className="text-center text-gray-500" style={{ padding: 40 }}>
-            Aucun produit trouvé.
+          <div style={{ padding: 40, textAlign: "center", color: COLORS.gris }}>
+            Aucun produit ne correspond à cette recherche.
           </div>
         )}
         {visibleCategories.map((cat) => (
@@ -296,6 +325,7 @@ export function ShopPage() {
       {cartOpen && (
         <CartPanel
           targetUserId={targetUserId}
+          targetUserName={targetUserName}
           existingCatalogIds={existingCatalogIds}
           returnTo={returnTo}
           blockReason={
@@ -320,13 +350,13 @@ export function ShopPage() {
           className="flex items-center justify-center transition-shadow hover:shadow-lg"
           style={{
             position: "fixed",
-            right: 24,
-            bottom: 24,
-            width: 48,
-            height: 48,
+            right: etroit ? 14 : 24,
+            bottom: etroit ? 14 : 24,
+            width: etroit ? 44 : 48,
+            height: etroit ? 44 : 48,
             borderRadius: "50%",
-            background: "#a53fa1",
-            color: "#fff",
+            background: COLORS.vert,
+            color: COLORS.blanc,
             border: "none",
             cursor: "pointer",
             zIndex: 40,

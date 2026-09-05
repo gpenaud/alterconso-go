@@ -1,38 +1,64 @@
 {{define "content"}}
-<div class="col-md-8 col-md-offset-2">
-  <div class="article">
-    <h2 style="font-style:italic;">Dupliquer le contrat '{{.Catalog.Name}}'</h2>
-    <form method="POST" class="form-horizontal" style="margin-top:24px;">
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <form method="POST">
+    <div class="cyc-panneau" style="max-width:680px;">
 
-      <div class="form-group">
-        <label class="col-sm-4 control-label" style="font-weight:bold;">Nom du nouveau catalogue</label>
-        <div class="col-sm-8">
-          <input type="text" name="name" class="form-control" value="{{.Catalog.Name}} - copie" required />
+      <div class="cyc-entete">
+        <div>
+          <h3>Dupliquer « {{.Catalog.Name}} »</h3>
+          <p class="cyc-chapeau">
+            Crée un nouveau catalogue chez le même producteur. Les commandes
+            déjà passées ne sont jamais recopiées.
+          </p>
+        </div>
+        <a href="/contractAdmin" class="cyc-btn">
+          <i class="icon icon-chevron-left"></i> Tous les catalogues
+        </a>
+      </div>
+
+      <div class="cyc-section">
+        <div class="cyc-champs">
+          <div class="cyc-champ large">
+            <label for="name">Nom du nouveau catalogue *</label>
+            <input type="text" id="name" name="name" value="{{.Catalog.Name}} - copie" required />
+          </div>
         </div>
       </div>
 
-      <div class="form-group">
-        <label class="col-sm-4 control-label" style="font-weight:bold;">Copier les produits</label>
-        <div class="col-sm-8" style="padding-top:6px;">
+      <div class="cyc-section">
+        <h4>Ce qu'on recopie</h4>
+        <label class="cyc-bascule actif">
           <input type="checkbox" name="copy_products" value="1" checked />
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="col-sm-4 control-label" style="font-weight:bold;">Copier les distributions</label>
-        <div class="col-sm-8" style="padding-top:6px;">
+          <span>
+            <span class="titre">Les produits</span>
+            <p class="cyc-note">Nom, prix, unités et photos.</p>
+          </span>
+        </label>
+        <label class="cyc-bascule actif">
           <input type="checkbox" name="copy_distribs" value="1" checked />
-        </div>
+          <span>
+            <span class="titre">Les distributions</span>
+            <p class="cyc-note">Les jours où ce producteur livre.</p>
+          </span>
+        </label>
       </div>
 
-      <div class="form-group">
-        <div class="col-sm-offset-4 col-sm-8">
-          <button type="submit" class="btn btn-success">OK</button>
-          <a href="/contractAdmin" class="btn btn-default" style="margin-left:8px;">Annuler</a>
-        </div>
+      <div class="cyc-pied">
+        <a href="/contractAdmin" class="cyc-btn">Annuler</a>
+        <button type="submit" class="cyc-btn cyc-btn-primaire">
+          <i class="icon icon-refresh"></i> Dupliquer
+        </button>
       </div>
 
-    </form>
-  </div>
+    </div>
+  </form>
 </div>
+
+<script>
+document.addEventListener('change', function (e) {
+  var b = e.target.closest ? e.target.closest('.cyc-bascule') : null;
+  if (b && e.target.type === 'checkbox') b.classList.toggle('actif', e.target.checked);
+});
+</script>
 {{end}}

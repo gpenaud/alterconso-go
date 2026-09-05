@@ -1,0 +1,94 @@
+{{define "content"}}
+<div class="col-md-8">
+  <div class="article">
+    <h3>Courrier du cycle « {{.Cycle.Name}} »</h3>
+    <p class="text-muted" style="margin-bottom:18px;">
+      Envoyé automatiquement à l'ouverture des commandes de chaque distribution
+      du cycle — {{.RhythmText | printf "%s"}}, {{.NbUpcoming}} distribution{{if ne .NbUpcoming 1}}s{{end}} encore à venir.
+      Il remplace alors le message d'ouverture par défaut.
+    </p>
+
+    <form method="POST" action="/distribution/cycles/{{.Cycle.ID}}/message" enctype="multipart/form-data">
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label style="font-weight:600;color:#555;display:block;margin-bottom:4px;">Objet</label>
+        <input type="text" name="subject" class="form-control" maxlength="128"
+               value="{{.Message.Subject}}" placeholder="Les commandes sont ouvertes !" />
+      </div>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label style="font-weight:600;color:#555;display:block;margin-bottom:4px;">Texte</label>
+        <textarea name="body" class="form-control" rows="8"
+                  placeholder="Ce que vous voulez dire aux adhérents…">{{.Message.Body}}</textarea>
+        <p style="color:#888;font-size:0.85em;margin:6px 0 0;">
+          Les retours à la ligne sont conservés. Le texte part tel quel : ce
+          qui s'écrit ici s'affiche là.
+        </p>
+      </div>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label style="font-weight:600;color:#555;display:block;margin-bottom:4px;">Image d'en-tête</label>
+        {{if .ImageURL}}
+        <div style="margin-bottom:8px;">
+          <img src="{{.ImageURL}}" alt="" style="max-width:100%;max-height:180px;border:1px solid #ddd;" />
+        </div>
+        <button type="submit" name="removeImage" value="1" class="btn btn-default btn-xs"
+                onclick="return confirm('Retirer cette image ?')">
+          <i class="icon icon-delete"></i> Retirer l'image
+        </button>
+        <p style="color:#888;font-size:0.85em;margin:8px 0 0;">Pour la remplacer, choisissez-en une autre ci-dessous.</p>
+        {{end}}
+        <input type="file" name="image" class="form-control" accept=".png,.jpg,.jpeg,.gif,.webp" style="margin-top:6px;" />
+        <p style="color:#888;font-size:0.85em;margin:6px 0 0;">PNG, JPEG, GIF ou WebP, 5 Mo au plus.</p>
+      </div>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label style="font-weight:600;color:#555;display:block;margin-bottom:4px;">Libellé du bouton</label>
+        <input type="text" name="linkLabel" class="form-control" maxlength="64"
+               value="{{.Message.LinkLabel}}" placeholder="Passer ma commande" />
+        <p style="color:#888;font-size:0.85em;margin:6px 0 0;">
+          Le bouton mène toujours à l'espace de commande du destinataire ;
+          seul son texte se règle ici.
+        </p>
+      </div>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label style="font-weight:600;color:#555;display:block;margin-bottom:4px;">Destinataires</label>
+        <select name="recipientCategory" class="form-control">
+          <option value="">Catégorie par défaut des notifications</option>
+          {{range .Categories}}
+          <option value="{{.}}" {{if eq . $.Message.RecipientCategory}}selected{{end}}>{{.}}</option>
+          {{end}}
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom:18px;padding:12px 14px;background:#f7f7f2;border-radius:4px;">
+        <label style="font-weight:600;color:#555;">
+          <input type="checkbox" name="enabled" value="1" {{if .Message.Enabled}}checked{{end}} />
+          Envoyer ce courrier
+        </label>
+        <p style="color:#888;font-size:0.85em;margin:6px 0 0;">
+          Décoché, le texte est conservé mais rien ne part.
+        </p>
+      </div>
+
+      <button type="submit" class="btn btn-success">
+        <i class="icon icon-check"></i> Enregistrer
+      </button>
+      <a href="/distribution/cycles" class="btn btn-default">Retour</a>
+    </form>
+  </div>
+</div>
+
+<div class="col-md-4">
+  <div class="article" style="padding:14px 16px;">
+    <h4 style="margin-top:0;">Le cycle</h4>
+    <ul style="list-style:none;padding:0;margin:0;color:#555;">
+      <li style="margin-bottom:6px;"><b>Lieu</b> — {{.Cycle.Place.Name}}</li>
+      <li style="margin-bottom:6px;"><b>Rythme</b> — {{.RhythmText}}</li>
+      <li style="margin-bottom:6px;"><b>Du</b> {{.Cycle.StartDate.Format "02/01/2006"}} <b>au</b> {{.Cycle.EndDate.Format "02/01/2006"}}</li>
+      <li><b>À venir</b> — {{.NbUpcoming}} distribution{{if ne .NbUpcoming 1}}s{{end}}</li>
+    </ul>
+  </div>
+</div>
+{{end}}

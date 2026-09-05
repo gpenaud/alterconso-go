@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"crypto/md5"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gpenaud/alterconso/internal/config"
+	"github.com/gpenaud/alterconso/internal/filesign"
 	"github.com/gpenaud/alterconso/internal/model"
 	"gorm.io/gorm"
 )
@@ -22,11 +22,8 @@ func NewFileHandler(db *gorm.DB, cfg *config.Config) *FileHandler {
 	return &FileHandler{db: db, cfg: cfg}
 }
 
-// makeSign reproduit la logique Haxe : id+"_"+md5(id+key)
-func makeSign(id uint, key string) string {
-	raw := fmt.Sprintf("%d%s", id, key)
-	return fmt.Sprintf("%d_%x", id, md5.Sum([]byte(raw)))
-}
+// makeSign délègue à filesign, que le service d'envoi partage avec ce paquet.
+func makeSign(id uint, key string) string { return filesign.Sign(id, key) }
 
 // GET /file/:sign  — ex: /file/42_abcdef1234....png
 func (h *FileHandler) ServeFile(c *gin.Context) {
@@ -90,10 +87,5 @@ func (h *FileHandler) ServeFile(c *gin.Context) {
 
 // FileURL génère l'URL publique d'un File (utilisable dans les templates/handlers)
 func FileURL(id uint, key, name string) string {
-	sign := makeSign(id, key)
-	ext := "png"
-	if dot := strings.LastIndex(name, "."); dot >= 0 {
-		ext = name[dot+1:]
-	}
-	return fmt.Sprintf("/file/%s.%s", sign, ext)
+	return filesign.URL(id, key, name)
 }

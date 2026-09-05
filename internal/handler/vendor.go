@@ -67,15 +67,15 @@ func (h *VendorHandler) Create(c *gin.Context) {
 	}
 
 	var payload struct {
-		Name        string              `json:"name"        binding:"required"`
-		Email       string              `json:"email"       binding:"required,email"`
-		Phone       *string             `json:"phone"`
-		Address1    *string             `json:"address1"`
-		ZipCode     *string             `json:"zipCode"`
-		City        *string             `json:"city"`
-		Description *string             `json:"description"`
-		LegalStatus *model.LegalStatus  `json:"legalStatus"`
-		Organic     bool                `json:"organic"`
+		Name        string             `json:"name"        binding:"required"`
+		Email       string             `json:"email"       binding:"required,email"`
+		Phone       *string            `json:"phone"`
+		Address1    *string            `json:"address1"`
+		ZipCode     *string            `json:"zipCode"`
+		City        *string            `json:"city"`
+		Description *string            `json:"description"`
+		LegalStatus *model.LegalStatus `json:"legalStatus"`
+		Organic     bool               `json:"organic"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

@@ -1,22 +1,35 @@
 {{define "content"}}
 {{template "contractadmin_nav" .}}
 
-<h3 style="font-style:italic;">Photo du produit — {{.Product.Name}}</h3>
+<form method="POST" enctype="multipart/form-data">
+  <div class="cyc-section">
+    <h4>Photo de « {{.Product.Name}} »</h4>
+    <p class="cyc-aide">
+      Elle apparaît sur la boutique et, si c'est une vraie photographie, dans
+      la bande de produits de l'accueil.
+    </p>
 
-{{if .ImageURL}}
-<div style="margin-bottom:16px;">
-  <p class="text-muted">Photo actuelle :</p>
-  <img src="{{.ImageURL}}" style="max-width:200px;max-height:200px;object-fit:cover;border-radius:4px;border:1px solid #ddd;" />
-</div>
-{{end}}
+    {{if .ImageURL}}
+    <div class="cyc-apercu">
+      <img src="{{.ImageURL}}" alt="Photo actuelle de {{.Product.Name}}" />
+      <p class="cyc-note">Photo actuelle. En envoyer une nouvelle la remplace.</p>
+    </div>
+    {{end}}
 
-<form method="POST" enctype="multipart/form-data" style="max-width:400px;">
-  <div class="form-group">
-    <label>Choisir une image</label>
-    <input type="file" name="photo" accept="image/*" class="form-control" required />
+    <div class="cyc-champs">
+      <div class="cyc-champ">
+        <label for="photo">Choisir une image</label>
+        <input type="file" id="photo" name="photo" accept="image/*" required />
+      </div>
+    </div>
   </div>
-  <button type="submit" class="btn btn-primary">Envoyer</button>
-  <a href="/contractAdmin/products/{{.Catalog.ID}}" class="btn btn-default" style="margin-left:8px;">Annuler</a>
+
+  <div class="cyc-pied">
+    <a href="/contractAdmin/products/{{.Catalog.ID}}" class="cyc-btn">Annuler</a>
+    <button type="submit" class="cyc-btn cyc-btn-primaire">
+      <i class="icon icon-upload"></i> Envoyer la photo
+    </button>
+  </div>
 </form>
 
 {{template "contractadmin_close" .}}

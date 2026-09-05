@@ -1,58 +1,84 @@
 {{define "content"}}
-<div class="row">
-  <div class="col-md-3">
-    <h2>Coordonnées</h2>
-    <div class="article">
-      <b>{{.Member.FirstName}} {{.Member.LastName}}</b><br/>
-      {{if .Member.Phone}}<p>Tél : {{deref .Member.Phone}}</p>{{end}}
-      <p>Email : <a href="mailto:{{.Member.Email}}">{{.Member.Email}}</a></p>
-    </div>
-  </div>
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <div class="cyc-panneau">
 
-  <div class="col-md-9">
-    <h2>Paiements</h2>
-    <div class="article">
-      <table class="table table-condensed">
-        <tr style="font-size:1.3em;">
-          <td colspan="3" class="text-right">Solde :</td>
-          <td style="color:{{if lt .Balance 0.0}}#C00{{else}}#0C0{{end}};font-weight:bold;">
-            {{price .Balance}} €
-          </td>
-          <td>
-            <a href="/transaction/insertPayment/{{.Member.ID}}" class="btn btn-primary btn-sm">
-              <i class="icon icon-plus"></i> Saisir un paiement
-            </a>
-          </td>
-        </tr>
-        <tr class="greyhead">
-          <th>Date</th><th>Type</th><th>Description</th><th>Montant</th><th>Mode paiement</th>
-        </tr>
-        {{range .Ops}}
-        <tr>
-          <td>{{.Date}}</td>
-          <td>{{.Type}}</td>
-          <td>{{.Description}}</td>
-          <td>{{price .Amount}} €</td>
-          <td>{{.PaymentType}}</td>
-        </tr>
-        {{else}}
-        <tr><td colspan="5" class="text-muted text-center">Aucune opération.</td></tr>
-        {{end}}
-        {{if gt .Pages 1}}
-        <tr>
-          <td colspan="5" class="text-center">
-            <ul class="pagination" style="margin:0;">
-              {{range paginateInts .Pages .Page 20}}
-              <li {{if eq . $.Page}}class="active"{{end}}>
-                <a href="?page={{.}}">{{.}}</a>
-              </li>
-              {{end}}
-            </ul>
-          </td>
-        </tr>
-        {{end}}
+    <div class="cyc-fiche-tete">
+      <span class="cyc-initiales grande">{{initials .Member.FirstName .Member.LastName}}</span>
+      <div class="ident">
+        <h3>{{.Member.FirstName}} {{.Member.LastName}}</h3>
+        <p class="cyc-chapeau">
+          <a href="mailto:{{.Member.Email}}">{{.Member.Email}}</a>
+          {{if .Member.Phone}} · {{deref .Member.Phone}}{{end}}
+        </p>
+      </div>
+      <div class="cyc-actions-nommees serrees">
+        <a href="/member/view/{{.Member.ID}}" class="cyc-btn">
+          <i class="icon icon-eye"></i> Fiche du membre
+        </a>
+        <a href="/transaction/insertPayment/{{.Member.ID}}" class="cyc-btn cyc-btn-primaire">
+          <i class="icon icon-plus"></i> Saisir un paiement
+        </a>
+      </div>
+    </div>
+
+    {{/* Le solde en grand, avant le détail : c'est le chiffre qu'on vient
+         chercher. Il était noyé dans la première ligne du tableau, en cellule
+         alignée à droite. */}}
+    <div class="cyc-solde {{if lt .Balance 0.0}}debiteur{{else}}crediteur{{end}}">
+      <span class="intitule">Solde du compte</span>
+      <span class="montant">{{price .Balance}} €</span>
+      <span class="cyc-note">
+        {{if lt .Balance 0.0}}Ce membre doit cette somme au groupe.
+        {{else if gt .Balance 0.0}}Le groupe doit cette somme à ce membre.
+        {{else}}Le compte est à l'équilibre.{{end}}
+      </span>
+    </div>
+
+    {{if .Ops}}
+    <div class="cyc-deborde">
+      <table class="cyc-table">
+        <thead>
+          <tr>
+            <th class="serre">Date</th>
+            <th class="serre">Type</th>
+            <th>Description</th>
+            <th class="serre">Règlement</th>
+            <th class="serre num">Montant</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Ops}}
+          <tr>
+            <td class="serre">{{.Date}}</td>
+            <td class="serre">{{.Type}}</td>
+            <td>{{if .Description}}{{.Description}}{{else}}<span class="cyc-vide">—</span>{{end}}</td>
+            <td class="serre">{{if .PaymentType}}{{.PaymentType}}{{else}}<span class="cyc-vide">—</span>{{end}}</td>
+            <td class="serre num {{if lt .Amount 0.0}}negatif{{end}}">{{price .Amount}} €</td>
+          </tr>
+          {{end}}
+        </tbody>
       </table>
     </div>
+
+    {{if gt .Pages 1}}
+    <div class="cyc-pages">
+      {{range paginateInts .Pages .Page 20}}
+      <a href="?page={{.}}" class="{{if eq . $.Page}}actif{{end}}">{{.}}</a>
+      {{end}}
+    </div>
+    {{end}}
+
+    {{else}}
+    <div class="cyc-aucun">
+      <i class="icon icon-euro icone"></i>
+      <p>Aucune opération sur ce compte.</p>
+      <a href="/transaction/insertPayment/{{.Member.ID}}" class="cyc-btn">
+        <i class="icon icon-plus"></i> Saisir un paiement
+      </a>
+    </div>
+    {{end}}
+
   </div>
 </div>
 {{end}}

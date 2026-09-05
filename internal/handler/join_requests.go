@@ -321,7 +321,9 @@ func (h *PagesHandler) MemberRequestsPage(c *gin.Context) {
 		data.Requests = append(data.Requests, entry)
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "member_requests.html")
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "member_requests.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return

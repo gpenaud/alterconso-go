@@ -58,6 +58,7 @@ func (h *FinanceHandler) GetBalance(c *gin.Context) {
 //	@Success      200  {object}  map[string]interface{}
 //	@Failure      403  {object}  map[string]string
 //	@Router       /groups/{id}/finances [get]
+//
 // GetGroupFinances retourne le résumé financier d'un groupe (admin uniquement).
 // Retourne : balance de chaque membre, total dettes, total paiements en attente.
 func (h *FinanceHandler) GetGroupFinances(c *gin.Context) {

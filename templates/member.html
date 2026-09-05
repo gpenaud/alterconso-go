@@ -1,77 +1,230 @@
-{{define "content"}}
-<div class="col-md-9">
-  <h2 style="margin:0 0 12px;padding:0 4px;">Membres</h2>
-  <div class="article" style="padding:8px;">
-    {{if .Members}}
-    <table class="table table-condensed table-hover table-striped table-bordered" style="margin-bottom:0;background:#fff;">
-      <tbody>
-        {{range .Members}}
-        <tr>
-          <td style="padding:10px 16px;">
-            <a href="/member/view/{{.ID}}" style="color:#5a8a00;font-weight:500;">{{.LastName}} {{.FirstName}}</a>
-          </td>
-          <td style="padding:10px 16px;color:#555;">{{.Address}}</td>
-          {{if $.Group.HasMembership}}
-          <td style="padding:10px 16px;text-align:center;width:1%;white-space:nowrap;">
-            {{if .MembershipPaid}}
-            <span title="Adhésion {{price .MembershipFee}} € payée" style="color:#5a8a00;">
-              <i class="icon icon-check"></i>
-            </span>
-            {{else}}
-            <span title="Adhésion non payée" style="color:#c0392b;">
-              <i class="icon icon-alert"></i>
-            </span>
-            {{end}}
-          </td>
-          {{end}}
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
-    {{else}}
-    <p style="padding:16px;color:#999;">Aucun membre.</p>
-    {{end}}
-
-    {{if gt .TotalPages 1}}
-    <div style="padding:12px 16px;text-align:center;">
-      <ul class="pagination" style="margin:0;">
-        {{range seq 1 .TotalPages}}
-        <li {{if eq . $.CurrentPage}}class="active"{{end}}>
-          <a href="/member?page={{.}}{{if $.SearchQuery}}&q={{$.SearchQuery}}{{end}}">{{.}}</a>
-        </li>
-        {{end}}
-      </ul>
-    </div>
-    {{end}}
-
-    <div style="padding:14px 16px;border-top:1px solid #eee;display:flex;gap:8px;flex-wrap:wrap;">
-      <a href="/member/insert" class="btn btn-default btn-sm"><i class="icon icon-plus"></i> Nouveau membre</a>
-    </div>
-  </div>
-</div>
-
-<div class="col-md-3">
-  <h2 style="margin:0 0 12px;padding:0 4px;">Listes</h2>
-  <div class="article" style="padding:14px 16px;margin-bottom:16px;">
-    <ul style="list-style:none;padding:0;margin:0;">
-      <li style="margin-bottom:6px;"><a href="/member" style="color:#5a8a00;">Membres du groupe ({{.TotalMembers}})</a></li>
-      <li style="margin-bottom:6px;"><a href="/member?filter=withOrder" style="color:#5a8a00;">Avec commande</a></li>
-      <li style="margin-bottom:6px;"><a href="/member?filter=noOrder" style="color:#5a8a00;">Sans commande</a></li>
-      <li style="margin-bottom:6px;"><a href="/member?filter=neverConnected" style="color:#5a8a00;">Ne s'est jamais connecté</a></li>
-      <li style="margin-bottom:6px;"><a href="/member?filter=renewMembership" style="color:#5a8a00;">Adhésion à renouveler</a></li>
-      <li style="margin-bottom:6px;"><a href="/member?filter=upToDate" style="color:#5a8a00;">Adhésion à jour (0)</a></li>
-      {{if .HasMembership}}
-      <li><a href="/member/requests" style="color:#5a8a00;{{if gt .JoinRequestCount 0}}font-weight:bold;{{end}}">Demandes d'adhésion ({{.JoinRequestCount}})</a></li>
-      {{end}}
-    </ul>
-  </div>
-  <form method="get" action="/member">
-    <div class="input-group">
-      <input type="text" id="memberSearch" name="q" class="form-control" value="{{.SearchQuery}}" placeholder="" />
-      <span class="input-group-btn">
-        <button type="submit" class="btn btn-default"><i class="icon icon-search"></i> Recherche</button>
+{{/* Les lignes de membres, isolées : l'écran les rend au premier chargement et
+     le fragment du défilement continu rend exactement les mêmes pour les
+     fournées suivantes. Deux balisages auraient divergé au premier
+     ajustement. */}}
+{{define "lignesMembres"}}
+{{range .Members}}
+<tr>
+  <td>
+    {{/* La pastille donne à l'œil un point d'accroche par ligne, ce qu'une
+         colonne de noms nus ne fait pas — et elle ne coûte aucune requête. */}}
+    <div class="cyc-identite">
+      <span class="cyc-initiales">{{initials .FirstName .LastName}}</span>
+      <span>
+        <a href="/member/view/{{.ID}}" class="nom">{{.LastName}} {{.FirstName}}</a>
+        <span class="second">{{.Email}}</span>
       </span>
     </div>
-  </form>
+  </td>
+  <td class="cyc-lieu">{{if .Address}}{{.Address}}{{else}}<span class="cyc-note">Non renseignée</span>{{end}}</td>
+  {{if $.Group.HasMembership}}
+  <td class="serre">
+    {{if .MembershipPaid}}
+    <span class="cyc-badge ok"><i class="icon icon-check"></i> À jour</span>
+    {{else}}
+    <span class="cyc-badge attention">À renouveler</span>
+    {{end}}
+  </td>
+  {{end}}
+  <td class="serre num">{{price .Balance}} €</td>
+  {{/* Les actions à l'icône, chacune sous son infobulle : cinq boutons nommés
+       en bout de ligne repoussaient le nom et l'adresse hors de vue. */}}
+  <td class="actions">
+    <div class="cyc-actions">
+      <a href="/member/view/{{.ID}}" class="cyc-icone-btn" title="Voir la fiche" aria-label="Voir la fiche">
+        <i class="icon icon-eye"></i>
+      </a>
+      <a href="/member/edit/{{.ID}}" class="cyc-icone-btn" title="Modifier" aria-label="Modifier">
+        <i class="icon icon-edit"></i>
+      </a>
+      <a href="/member/payments/{{.ID}}" class="cyc-icone-btn" title="Paiements" aria-label="Paiements">
+        <i class="icon icon-euro"></i>
+      </a>
+      {{if $.IsGroupManager}}
+      <a href="/member/loginAs/{{.ID}}" class="cyc-icone-btn"
+         title="Se connecter à sa place" aria-label="Se connecter à sa place">
+        <i class="icon icon-user"></i>
+      </a>
+      {{end}}
+      <a href="/member/delete/{{.ID}}" class="cyc-icone-btn danger"
+         title="Retirer du groupe" aria-label="Retirer du groupe"
+         onclick="return confirm('Retirer {{.FirstName}} {{.LastName}} du groupe ?');">
+        <i class="icon icon-delete"></i>
+      </a>
+    </div>
+  </td>
+</tr>
+{{end}}
+{{end}}
+
+{{define "content"}}
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+
+  {{/* Tout l'écran dans un bloc : titre, outils et liste. Le titre posé au-
+       dessus flottait entre le fil d'Ariane et la carte, sans qu'on sache
+       s'il appartenait au site ou à l'écran. */}}
+  <div class="cyc-panneau">
+
+    <div class="cyc-entete">
+      <div>
+        <h3>Membres</h3>
+        <p class="cyc-chapeau">
+          Qui fait partie du groupe, où le joindre, et où en est son adhésion.
+        </p>
+      </div>
+      <a href="/member/insert" class="cyc-btn cyc-btn-primaire">
+        <i class="icon icon-plus"></i> Nouveau membre
+      </a>
+    </div>
+
+    {{/* Recherche et filtre dans le même formulaire : ils se combinent, alors
+         que des liens de filtre auraient effacé la recherche en cours. */}}
+    <form method="get" action="/member" class="cyc-barre">
+      <div class="cyc-recherche">
+        <i class="icon icon-search"></i>
+        <input type="search" name="q" value="{{.SearchQuery}}"
+               placeholder="Chercher un nom, un prénom, un courriel" />
+      </div>
+
+      <label class="cyc-choix {{if .MemberFilter}}actif{{end}}">
+        <span class="sr-only">Filtrer les membres</span>
+        <select name="filter" onchange="this.form.submit()">
+          <option value="">Tous les membres ({{.TotalMembers}})</option>
+          <option value="withOrder" {{if eq .MemberFilter "withOrder"}}selected{{end}}>Avec commande</option>
+          <option value="noOrder" {{if eq .MemberFilter "noOrder"}}selected{{end}}>Sans commande</option>
+          <option value="neverConnected" {{if eq .MemberFilter "neverConnected"}}selected{{end}}>Ne s'est jamais connecté</option>
+          {{if .Group.HasMembership}}
+          <option value="upToDate" {{if eq .MemberFilter "upToDate"}}selected{{end}}>Adhésion à jour</option>
+          <option value="renewMembership" {{if eq .MemberFilter "renewMembership"}}selected{{end}}>Adhésion à renouveler</option>
+          {{end}}
+        </select>
+        <i class="icon icon-chevron-down"></i>
+      </label>
+
+      {{/* Sans JavaScript, la liste ne se soumet pas seule : ce bouton reste
+           le seul moyen d'appliquer le choix. */}}
+      <noscript><button type="submit" class="cyc-btn">Filtrer</button></noscript>
+
+      {{if .HasMembership}}
+      <div class="cyc-filtres">
+        <a href="/member/requests" class="cyc-filtre">
+          <i class="icon icon-users"></i> Demandes d'adhésion
+          {{if gt .JoinRequestCount 0}}<span class="badge-alerte">{{.JoinRequestCount}}</span>
+          {{else}}<span class="compte">0</span>{{end}}
+        </a>
+      </div>
+      {{end}}
+    </form>
+
+    {{if .Members}}
+    <div class="cyc-deborde">
+      <table class="cyc-table">
+        <thead>
+          <tr>
+            <th>Membre</th>
+            <th>Adresse</th>
+            {{if .Group.HasMembership}}<th class="serre">Adhésion {{.AnneeCourante}}</th>{{end}}
+            <th class="serre num">Solde</th>
+            <th class="actions"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody id="mbr-lignes">
+          {{template "lignesMembres" .}}
+        </tbody>
+      </table>
+    </div>
+
+    {{/* Le défilement continu remplace les numéros de page : atteindre
+         quelqu'un en fin de liste ne demande plus de compter les pages, on
+         descend. Le déclencheur a besoin d'une hauteur — un bloc sans surface
+         n'est jamais signalé comme entrant dans la fenêtre. */}}
+    <div id="mbr-chargement" class="cyc-chargement" hidden>Chargement des membres suivants…</div>
+    <div id="mbr-sentinelle" aria-hidden="true"></div>
+
+    <noscript>
+      {{if gt .TotalPages 1}}
+      <div class="cyc-pages">
+        {{range seq 1 .TotalPages}}
+        <a href="/member?page={{.}}{{if $.SearchQuery}}&amp;q={{$.SearchQuery}}{{end}}{{if $.MemberFilter}}&amp;filter={{$.MemberFilter}}{{end}}"
+           class="{{if eq . $.CurrentPage}}actif{{end}}">{{.}}</a>
+        {{end}}
+      </div>
+      {{end}}
+    </noscript>
+
+    {{else}}
+    <div class="cyc-aucun">
+      <i class="icon icon-users icone"></i>
+      <p>
+        {{if or .SearchQuery .MemberFilter}}Aucun membre ne correspond.
+        {{else}}Aucun membre dans ce groupe.{{end}}
+      </p>
+      {{if or .SearchQuery .MemberFilter}}
+      <a href="/member" class="cyc-btn">Revenir à la liste complète</a>
+      {{end}}
+    </div>
+    {{end}}
+
+  </div>
 </div>
+
+<script>
+(function () {
+  // Défilement continu. La recherche et le filtre en cours voyagent avec
+  // chaque demande : sans eux, la fournée suivante ramènerait la liste
+  // entière par-dessus un résultat filtré.
+  var corps = document.getElementById('mbr-lignes');
+  var sentinelle = document.getElementById('mbr-sentinelle');
+  var temoin = document.getElementById('mbr-chargement');
+  if (!corps || !sentinelle || !window.IntersectionObserver || !window.fetch) return;
+
+  var params = new URLSearchParams(window.location.search);
+  var page = {{.CurrentPage}}, occupe = false;
+  var fini = {{if lt .CurrentPage .TotalPages}}false{{else}}true{{end}};
+  var observateur = null;
+
+  function suivante() {
+    if (occupe || fini) return;
+    occupe = true;
+    if (temoin) temoin.hidden = false;
+    var url = '/member/more?page=' + (page + 1)
+      + '&q=' + encodeURIComponent(params.get('q') || '')
+      + '&filter=' + encodeURIComponent(params.get('filter') || '');
+    fetch(url, {credentials: 'same-origin'})
+      .then(function (r) {
+        // 204 : plus personne à ajouter. C'est le signal de fin, et il évite
+        // d'avoir à connaître d'avance le nombre de fournées.
+        if (r.status === 204) { fini = true; return ''; }
+        if (!r.ok) throw new Error('statut ' + r.status);
+        return r.text();
+      })
+      .then(function (html) {
+        if (html && html.trim()) {
+          corps.insertAdjacentHTML('beforeend', html);
+          page += 1;
+        } else {
+          fini = true;
+        }
+      })
+      .catch(function () {
+        // On cesse de demander plutôt que de marteler un serveur qui répond
+        // mal. La recherche reste le moyen d'atteindre quelqu'un.
+        fini = true;
+      })
+      .then(function () {
+        occupe = false;
+        if (temoin) temoin.hidden = true;
+        if (fini && observateur) observateur.disconnect();
+      });
+  }
+
+  observateur = new IntersectionObserver(function (entrees) {
+    for (var i = 0; i < entrees.length; i++) {
+      if (entrees[i].isIntersecting) suivante();
+    }
+  }, {rootMargin: '400px'});
+  observateur.observe(sentinelle);
+})();
+</script>
 {{end}}

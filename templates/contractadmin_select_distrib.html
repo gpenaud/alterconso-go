@@ -1,34 +1,30 @@
 {{define "content"}}
 {{template "contractadmin_nav" .}}
 
-<h3 style="font-style:italic;">Commandes</h3>
+<div class="cyc-section">
+  <h4>Commandes</h4>
+  <p class="cyc-aide">Choisissez la distribution dont vous voulez voir les commandes.</p>
+</div>
 
 {{if .Distribs}}
-<table class="table table-bordered table-striped" style="background:#fff;">
-  <thead>
-    <tr>
-      <th style="width:45%;">Date</th>
-      <th style="width:35%;">Lieu</th>
-      <th style="width:20%;"></th>
-    </tr>
-  </thead>
-  <tbody>
-    {{range .Distribs}}
-    <tr>
-      <td style="vertical-align:middle;">{{.DateLabel}}</td>
-      <td style="vertical-align:middle;">{{.Place}}</td>
-      <td style="vertical-align:middle;">
-        <a href="/contractAdmin/ordersByDate/{{.DateISO}}/{{$.Group.ID}}?catalog={{$.Catalog.ID}}"
-           class="btn btn-default btn-sm">
-          <i class="icon icon-basket"></i> Commandes
-        </a>
-      </td>
-    </tr>
-    {{end}}
-  </tbody>
-</table>
+<div class="cyc-liste">
+  {{range .Distribs}}
+  <a class="cyc-sommaire lien"
+     href="/contractAdmin/ordersByDate/{{.DateISO}}/{{$.Group.ID}}?catalog={{$.Catalog.ID}}">
+    <span class="ident">
+      <span class="nom">{{.DateLabel}}</span>
+      <span class="second">{{.Place}}</span>
+    </span>
+    <span class="cyc-badge"><i class="icon icon-basket"></i> Voir les commandes</span>
+    <i class="icon icon-chevron-right chevron"></i>
+  </a>
+  {{end}}
+</div>
 {{else}}
-<p class="text-muted">Aucune distribution pour ce catalogue.</p>
+<div class="cyc-aucun">
+  <i class="icon icon-calendar icone"></i>
+  <p>Aucune distribution pour ce catalogue.</p>
+</div>
 {{end}}
 
 {{template "contractadmin_close" .}}

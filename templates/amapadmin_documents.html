@@ -1,90 +1,94 @@
 {{define "content"}}
 {{template "amapadmin_nav" .}}
-<div class="col-md-9">
-  <h2>Documents</h2>
-  <div class="article" style="padding:32px 36px;">
 
-    <p style="color:#555;margin-bottom:20px;">
-      Vous pouvez ici envoyer des documents <b>PDF</b> relatifs à votre groupe.<br/>
-      Ils seront visibles sur votre page publique et sur la page des commandes selon les paramètres de visibilité que vous aurez choisis.
-    </p>
+<p class="cyc-aide">
+  Des fichiers PDF visibles sur la page publique du groupe et sur la page des
+  commandes, selon la visibilité que vous leur donnez.
+</p>
 
-    {{if .ErrorMsg}}
-    <div style="background:#fdecea;color:#c0392b;padding:12px 16px;border-radius:4px;margin-bottom:16px;">
-      <i class="icon icon-alert"></i> {{.ErrorMsg}}
-    </div>
-    {{end}}
+{{if .ErrorMsg}}
+<div class="cyc-danger"><i class="icon icon-alert"></i> {{.ErrorMsg}}</div>
+{{end}}
 
-    <button type="button" class="btn btn-success" data-toggle="modal" data-target="#modalNewDoc" style="margin-bottom:20px;">
-      <i class="icon icon-plus"></i> Nouveau document
-    </button>
-
-    {{if .Docs}}
-    <table class="table" style="margin-bottom:0;">
-      <thead>
-        <tr style="color:#aaa;font-weight:normal;border-bottom:1px solid #eee;">
-          <th style="font-weight:normal;">Nom</th>
-          <th style="font-weight:normal;width:160px;">Fichier</th>
-          <th style="font-weight:normal;width:90px;">Taille</th>
-          <th style="font-weight:normal;width:110px;">Ajouté le</th>
-          <th style="font-weight:normal;width:140px;text-align:right;"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .Docs}}
-        <tr>
-          <td style="vertical-align:middle;padding:12px 14px;"><b>{{.Name}}</b></td>
-          <td style="vertical-align:middle;padding:12px 14px;color:#888;font-size:0.95em;">
-            <i class="icon icon-file"></i> {{.FileName}}
-          </td>
-          <td style="vertical-align:middle;padding:12px 14px;color:#888;">{{.SizeLabel}}</td>
-          <td style="vertical-align:middle;padding:12px 14px;color:#888;">{{.CreatedAt}}</td>
-          <td style="vertical-align:middle;padding:12px 14px;text-align:right;white-space:nowrap;">
-            <a href="{{.URL}}" target="_blank" class="btn btn-default" title="Ouvrir">
-              <i class="icon icon-chevron-right"></i>
-            </a>
-            <a href="/amapadmin/documents/delete/{{.ID}}" class="btn btn-danger" title="Supprimer"
-               onclick="return confirm('Supprimer ce document ?')">
-              <i class="icon icon-delete"></i>
-            </a>
-          </td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
-    {{else}}
-    <div style="padding:40px;color:#aaa;text-align:center;">
-      <p style="margin:0;">Aucun document pour l'instant.</p>
-    </div>
-    {{end}}
-  </div>
+<div class="cyc-barre">
+  <button type="button" class="cyc-btn cyc-btn-primaire" data-toggle="modal" data-target="#modalNewDoc">
+    <i class="icon icon-plus"></i> Nouveau document
+  </button>
 </div>
 
-<!-- Modal upload -->
+{{if .Docs}}
+<div class="cyc-deborde">
+  <table class="cyc-table">
+    <thead>
+      <tr>
+        <th>Nom</th>
+        <th>Fichier</th>
+        <th class="serre num">Taille</th>
+        <th class="serre">Ajouté le</th>
+        <th class="actions"><span class="sr-only">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Docs}}
+      <tr>
+        <td><span class="cyc-nom">{{.Name}}</span></td>
+        <td><span class="cyc-lieu"><i class="icon icon-file-pdf"></i> {{.FileName}}</span></td>
+        <td class="serre num">{{.SizeLabel}}</td>
+        <td class="serre">{{.CreatedAt}}</td>
+        <td class="actions">
+          <div class="cyc-actions">
+            <a href="{{.URL}}" target="_blank" rel="noopener" class="cyc-icone-btn" title="Ouvrir le document">
+              <i class="icon icon-eye"></i><span class="sr-only">Ouvrir</span>
+            </a>
+            <a href="/amapadmin/documents/delete/{{.ID}}" class="cyc-icone-btn danger" title="Supprimer"
+               onclick="return confirm('Supprimer « {{.Name}} » ?')">
+              <i class="icon icon-delete"></i><span class="sr-only">Supprimer</span>
+            </a>
+          </div>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{else}}
+<div class="cyc-aucun">
+  <i class="icon icon-file icone"></i>
+  <p>Aucun document pour l'instant.</p>
+</div>
+{{end}}
+
+<!-- Modal : envoi d'un document -->
 <div class="modal fade" id="modalNewDoc" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">
-    <div class="modal-content" style="border-radius:6px;overflow:hidden;">
+    <div class="modal-content cyc" style="border-radius:12px;overflow:hidden;">
       <form method="POST" action="/amapadmin/documents" enctype="multipart/form-data">
-        <div style="padding:24px 28px 16px;">
-          <h4 style="font-style:italic;margin:0;font-size:1.4em;">Nouveau document</h4>
-        </div>
-        <hr style="margin:0;" />
-        <div style="padding:24px 28px;">
-          <div class="form-group" style="margin-bottom:16px;">
-            <label style="display:block;color:#666;font-weight:normal;margin-bottom:6px;">Nom du document</label>
-            <input type="text" name="name" class="form-control" placeholder="(laisser vide pour utiliser le nom du fichier)" />
+        <div style="padding:24px 26px 0;">
+          <h4 style="margin:0 0 4px;font-weight:700;">Nouveau document</h4>
+          <p class="cyc-note" style="margin:0 0 18px;">PDF uniquement, 10 Mo au maximum.</p>
+          <div class="cyc-champs">
+            <div class="cyc-champ large">
+              <label for="doc-name">Nom du document</label>
+              <input type="text" id="doc-name" name="name"
+                     placeholder="Laisser vide pour reprendre le nom du fichier" />
+            </div>
+            <div class="cyc-champ large">
+              <label for="doc-file">Fichier</label>
+              <input type="file" id="doc-file" name="file" accept="application/pdf,.pdf" required />
+            </div>
           </div>
-          <div class="form-group" style="margin-bottom:0;">
-            <label style="display:block;color:#666;font-weight:normal;margin-bottom:6px;">Fichier PDF (max 10 Mo)</label>
-            <input type="file" name="file" accept="application/pdf,.pdf" required />
-          </div>
         </div>
-        <div style="padding:16px 28px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:8px;">
-          <button type="button" class="btn btn-default" data-dismiss="modal">Annuler</button>
-          <button type="submit" class="btn btn-success"><i class="icon icon-chevron-right"></i> Envoyer</button>
+        <div class="cyc-pied" style="padding:16px 26px;margin:20px 0 0;">
+          <button type="button" class="cyc-btn" data-dismiss="modal">Annuler</button>
+          <span class="cyc-espace"></span>
+          <button type="submit" class="cyc-btn cyc-btn-primaire">
+            <i class="icon icon-upload"></i> Envoyer
+          </button>
         </div>
       </form>
     </div>
   </div>
 </div>
+
+{{template "amapadmin_close" .}}
 {{end}}

@@ -1,0 +1,98 @@
+{{define "content"}}
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  {{/* Tout l'écran dans un seul bloc blanc : titre, tableau et retour. Le
+       titre posé au-dessus de la carte flottait entre le fil d'Ariane et le
+       contenu, sans qu'on sache s'il appartenait au site ou à l'écran. */}}
+  <div class="cyc-panneau">
+
+    <div class="cyc-entete">
+    <div>
+      <h3>Cycles de distribution</h3>
+      <p class="cyc-chapeau">
+        Un cycle regroupe les distributions programmées ensemble. On peut y
+        attacher un rappel, envoyé automatiquement à l'ouverture des commandes
+        de chacune de ses distributions.
+      </p>
+    </div>
+      {{if .Cycles}}
+      <a href="/distribution/cycles/new" class="cyc-btn cyc-btn-primaire">
+        <i class="icon icon-plus"></i> Nouveau cycle
+      </a>
+      {{end}}
+    </div>
+
+    {{if .Cycles}}
+    <div class="cyc-deborde">
+    <table class="cyc-table">
+      <thead>
+        <tr>
+          <th>Cycle</th>
+          <th>Période</th>
+          <th>Rythme</th>
+          <th class="num">Distributions</th>
+          <th class="num">À venir</th>
+          <th>Rappel</th>
+          <th class="actions"><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Cycles}}
+        <tr>
+          <td>
+            <a href="/distribution/cycles/{{.ID}}" class="cyc-nom">{{.Name}}</a>
+            <span class="cyc-lieu">{{.Place}}</span>
+          </td>
+          <td style="color:#555;white-space:nowrap;">{{.Period}}</td>
+          <td style="color:#555;">{{.Rhythm}}</td>
+          <td class="num"><span class="cyc-chiffre">{{.NbDistribs}}</span></td>
+          <td class="num">
+            <span class="cyc-chiffre">{{.NbUpcoming}}<small>à venir</small></span>
+          </td>
+          <td>
+            {{if eq .MessageState "Actif"}}
+            <span class="cyc-etat">Actif</span>
+            {{else}}
+            <span class="cyc-vide">—</span>
+            {{end}}
+          </td>
+          <td class="actions">
+            <div class="cyc-actions">
+              <a href="/distribution/cycles/{{.ID}}" class="cyc-btn">
+                <i class="icon icon-edit"></i> Modifier
+              </a>
+              <form method="POST" action="/distribution/cycles/{{.ID}}/delete"
+                    onsubmit="return confirm('Supprimer le cycle « {{.Name}} » ? Ses {{.NbDistribs}} distribution(s) seront retirées du calendrier, sauf celles où des adhérents ont déjà commandé.')">
+                <button type="submit" class="cyc-btn cyc-btn-danger" title="Supprimer ce cycle">
+                  <i class="icon icon-delete"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    </div>
+    {{else}}
+    <div class="cyc-aucun">
+      <i class="icon icon-calendar icone"></i>
+      <p>
+        Aucun cycle pour l'instant.<br />
+        Un cycle programme une série de distributions, et porte le rappel qui les annonce.
+      </p>
+      <a href="/distribution/cycles/new" class="cyc-btn cyc-btn-primaire">
+        <i class="icon icon-plus"></i> Créer un premier cycle
+      </a>
+    </div>
+    {{end}}
+
+    <div class="cyc-pied">
+      <a href="/distribution" class="cyc-btn">
+        <i class="icon icon-chevron-left"></i> Retour aux distributions
+      </a>
+    </div>
+
+  </div>
+</div>
+{{end}}

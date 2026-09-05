@@ -1,85 +1,180 @@
 {{define "content"}}
-<div class="col-md-8">
-  <h2 style="margin:0 0 12px;padding:0 4px;">Dernières commandes</h2>
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
 
-  {{if .RecentOrders}}
-  <div class="article">
-    <h4><i class="icon icon-basket"></i> Commandes variables</h4>
-    <table class="table table-bordered table-condensed">
-      <tr class="greyhead">
-        <th>Produit</th><th>Qté</th><th>Total</th>
-      </tr>
-      {{range .RecentOrders}}
-      <tr>
-        <td>{{.ProductName}}</td>
-        <td>{{.SmartQty}}</td>
-        <td>{{price .Total}} €</td>
-      </tr>
-      {{end}}
-    </table>
-  </div>
-  {{else}}
-  <div class="article">
-    <h4><i class="icon icon-basket"></i> Commandes variables</h4>
-  </div>
-  {{end}}
+  {{/* La fiche d'abord : c'est ce qu'on vient vérifier ou corriger. Les
+       commandes et les contrats viennent ensuite, l'un après l'autre plutôt
+       qu'en deux colonnes — la colonne de droite empilait le compte, une
+       alerte d'adhésion, un tutoriel mort et un choix de langue sans effet. */}}
+  <div class="cyc-panneau">
 
+    <div class="cyc-fiche-tete">
+      <span class="cyc-initiales grande">{{if .User}}{{initials .User.FirstName .User.LastName}}{{end}}</span>
+      <div class="ident">
+        <h3>{{if .User}}{{.User.FirstName}} {{.User.LastName}}{{end}}</h3>
+        <p class="cyc-chapeau">
+          {{if .User}}<a href="mailto:{{.User.Email}}">{{.User.Email}}</a>{{end}}
+          {{if .Group}} · membre de {{.Group.Name}}{{end}}
+        </p>
+      </div>
+      <div class="cyc-actions-nommees serrees">
+        <a href="/account/edit" class="cyc-btn cyc-btn-primaire">
+          <i class="icon icon-edit"></i> Modifier mes informations
+        </a>
+      </div>
+    </div>
+
+    {{/* Le renouvellement d'adhésion se lit ici, sur la fiche, et non dans un
+         encart perdu à droite : c'est une information sur moi. */}}
+    {{if .MembershipRenewalPeriod}}
+    <div class="cyc-danger">
+      <i class="icon icon-alert"></i>
+      Votre cotisation est à renouveler pour la période
+      <b>{{.MembershipRenewalPeriod}}</b>. Rapprochez-vous d'un responsable du
+      groupe pour la mettre à jour.
+    </div>
+    {{else if .Group}}{{if .Group.HasMembership}}
+    <div class="cyc-succes">
+      <i class="icon icon-check"></i>
+      Votre adhésion est à jour pour l'année en cours.
+    </div>
+    {{end}}{{end}}
+
+    <dl class="cyc-detail bordee">
+      <div>
+        <dt>Téléphone</dt>
+        <dd {{if not .User.Phone}}class="muet"{{end}}>
+          {{if .User.Phone}}{{deref .User.Phone}}{{else}}Non renseigné{{end}}
+        </dd>
+      </div>
+      <div>
+        <dt>Adresse</dt>
+        <dd {{if not .User.Address1}}class="muet"{{end}}>
+          {{if .User.Address1}}{{deref .User.Address1}}{{else}}Non renseignée{{end}}
+        </dd>
+      </div>
+      <div>
+        <dt>Commune</dt>
+        <dd {{if not .User.City}}class="muet"{{end}}>
+          {{if .User.ZipCode}}{{deref .User.ZipCode}} {{end}}{{if .User.City}}{{deref .User.City}}{{else}}{{if not .User.ZipCode}}Non renseignée{{end}}{{end}}
+        </dd>
+      </div>
+      <div>
+        <dt>Courriel</dt>
+        <dd><a href="mailto:{{.User.Email}}">{{.User.Email}}</a></dd>
+      </div>
+    </dl>
+
+  </div>
+
+  {{/* Les engagements longs — un contrat court sur des mois — passent avant
+       les commandes du mois : ils sont plus rares et plus structurants. */}}
   {{if .Subscriptions}}
-  <div class="article" style="margin-top:12px;">
-    <h4><i class="icon icon-refresh"></i> Contrats AMAP</h4>
-    {{range .Subscriptions}}
-    <p><b>{{.CatalogName}}</b> — du {{.StartDate}} au {{.EndDate}}</p>
-    {{end}}
-  </div>
-  {{end}}
-</div>
-
-<div class="col-md-4">
-
-  <!-- Compte -->
-  <h2 style="margin:0 0 12px;padding:0 4px;">Compte</h2>
-  <div class="article" style="margin-bottom:16px;">
-    <p>
-      <i class="icon icon-user"></i> <b>{{if .User}}{{.User.FirstName}} {{.User.LastName}}{{end}}</b><br/>
-      <i class="icon icon-mail"></i> {{if .User}}<a href="mailto:{{.User.Email}}" style="color:#5a8a00;">{{.User.Email}}</a>{{end}}<br/>
-      {{if .User}}{{if .User.Phone}}<i class="icon icon-phone"></i> {{deref .User.Phone}}{{end}}{{end}}
-    </p>
-    <a href="/account/edit" class="btn btn-default btn-sm"><i class="icon icon-edit"></i> Modifier</a>
-    <a href="/account/quit" class="btn btn-default btn-sm"><i class="icon icon-delete"></i> Quitter ce groupe</a>
-  </div>
-
-  <!-- Adhésion -->
-  {{if .MembershipRenewalPeriod}}
-  <h2 style="margin:0 0 12px;padding:0 4px;">Adhésion</h2>
-  <div class="article" style="margin-bottom:16px;background:#fdf2f2;border-color:#e8b0b0;">
-    <p style="color:#c0392b;margin:0;">
-      <i class="icon icon-alert"></i> Cotisation à renouveler pour la période <b>{{.MembershipRenewalPeriod}}</b>
-    </p>
-  </div>
-  {{end}}
-
-  <!-- Tutoriels -->
-  {{if .IsGroupManager}}
-  <h2 style="margin:0 0 12px;padding:0 4px;">Tutoriels</h2>
-  <div class="article" style="margin-bottom:16px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;">
-      <span>Visite guidée de l'administrateur de groupe</span>
-      <a href="#" class="btn btn-default btn-sm"><i class="icon icon-chevron-right"></i> Commencer</a>
+  <div class="cyc-panneau">
+    <div class="cyc-entete">
+      <div>
+        <h3>Mes contrats</h3>
+        <p class="cyc-chapeau">
+          Les catalogues auxquels vous êtes engagé sur une période.
+        </p>
+      </div>
+    </div>
+    <div class="cyc-deborde">
+      <table class="cyc-table">
+        <thead>
+          <tr><th>Catalogue</th><th>Début</th><th>Fin</th></tr>
+        </thead>
+        <tbody>
+          {{range .Subscriptions}}
+          <tr>
+            <td><b>{{.CatalogName}}</b></td>
+            <td>{{.StartDate}}</td>
+            <td>{{if .EndDate}}{{.EndDate}}{{else}}<span class="cyc-note">sans terme</span>{{end}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
     </div>
   </div>
   {{end}}
 
-  <!-- Langue -->
-  <h2 style="margin:0 0 12px;padding:0 4px;">Langue</h2>
-  <div class="article">
-    <p>Afficher l'interface dans une autre langue (beta) :</p>
-    <ul style="padding-left:20px;margin-bottom:8px;">
-      <li><a href="?lang=fr" style="color:#5a8a00;">Français</a></li>
-      <li><a href="?lang=de" style="color:#5a8a00;">Deutsch</a></li>
-      <li><a href="?lang=en" style="color:#5a8a00;">English</a></li>
-    </ul>
-    <p>La langue actuelle est <b>Français</b></p>
+  <div class="cyc-panneau">
+    <div class="cyc-entete">
+      <div>
+        <h3>Mes commandes récentes</h3>
+        <p class="cyc-chapeau">
+          Ce que vous avez commandé au cours du mois écoulé, et son règlement.
+        </p>
+      </div>
+      <div class="cyc-actions-nommees serrees">
+        <a href="/home" class="cyc-btn">
+          <i class="icon icon-basket"></i> Commander
+        </a>
+      </div>
+    </div>
+
+    {{if .RecentOrders}}
+    <div class="cyc-deborde">
+      <table class="cyc-table">
+        <thead>
+          <tr>
+            <th>Produit</th>
+            <th>Quantité</th>
+            <th style="text-align:right;">Total</th>
+            <th>Règlement</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .RecentOrders}}
+          <tr>
+            <td><b>{{.ProductName}}</b></td>
+            <td>{{.SmartQty}}</td>
+            <td style="text-align:right;">{{price .Total}} €</td>
+            <td>
+              {{if .Paid}}
+              <span class="cyc-badge ok"><i class="icon icon-check"></i> Payé</span>
+              {{else}}
+              <span class="cyc-badge attention">À régler</span>
+              {{end}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <div class="cyc-aucun">
+      <i class="icon icon-basket icone"></i>
+      <p>Aucune commande au cours du mois écoulé.</p>
+      <a href="/home" class="cyc-btn cyc-btn-primaire">
+        <i class="icon icon-basket"></i> Voir les distributions à venir
+      </a>
+    </div>
+    {{end}}
   </div>
+
+  {{/* Quitter le groupe était un bouton gris à côté de « Modifier », de même
+       taille et de même poids. C'est pourtant la seule action irréversible de
+       la page : elle a sa propre zone, en bas, et elle s'annonce. */}}
+  {{if .Group}}
+  <div class="cyc-panneau cyc-zone-danger">
+    <div class="cyc-entete">
+      <div>
+        <h3>Quitter le groupe</h3>
+        <p class="cyc-chapeau">
+          Vous perdriez l'accès à {{.Group.Name}}, à ses distributions et à
+          l'historique de vos commandes. Vos commandes en cours ne seraient pas
+          annulées pour autant : prévenez un responsable.
+        </p>
+      </div>
+      <div class="cyc-actions-nommees serrees">
+        <a href="/account/quit" class="cyc-btn cyc-btn-danger">
+          <i class="icon icon-sign-out"></i> Quitter {{.Group.Name}}
+        </a>
+      </div>
+    </div>
+  </div>
+  {{end}}
 
 </div>
 {{end}}

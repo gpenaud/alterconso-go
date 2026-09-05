@@ -1,31 +1,29 @@
 {{define "content"}}
 {{template "amapadmin_nav" .}}
-<div class="col-md-9">
-  <h2>Monnaie</h2>
-  <div class="article" style="padding:32px 36px;">
-    <p style="color:#666;margin:0 0 20px;">Monnaie utilisée par votre groupe.</p>
-    <form method="POST" action="/amapadmin/currency" class="form-horizontal">
 
-      <div class="form-group" style="margin-bottom:20px;">
-        <label class="col-sm-5 control-label" style="text-align:left;padding-top:6px;">Symbole de votre monnaie</label>
-        <div class="col-sm-7">
-          <input type="text" name="currency" class="form-control" value="{{.Group.Currency}}" />
-        </div>
+<form method="POST" action="/amapadmin/currency">
+  <div class="cyc-section">
+    <div class="cyc-champs">
+      <div class="cyc-champ">
+        <label for="currency">Symbole</label>
+        <input type="text" id="currency" name="currency" value="{{.Group.Currency}}" placeholder="€" />
+        <p class="cyc-note">Ce qui suit les montants à l'écran.</p>
       </div>
-
-      <div class="form-group" style="margin-bottom:28px;">
-        <label class="col-sm-5 control-label" style="text-align:left;padding-top:6px;">Code ISO à 3 lettres</label>
-        <div class="col-sm-7">
-          <input type="text" name="currencyCode" class="form-control" maxlength="3" placeholder="EUR" value="{{.Group.CurrencyCode}}" />
-        </div>
+      <div class="cyc-champ">
+        <label for="currencyCode">Code ISO</label>
+        <input type="text" id="currencyCode" name="currencyCode" maxlength="3"
+               placeholder="EUR" value="{{.Group.CurrencyCode}}" />
+        <p class="cyc-note">Trois lettres, employées par les exports comptables.</p>
       </div>
-
-      <div class="form-group" style="margin-bottom:0;">
-        <div class="col-sm-offset-5 col-sm-7">
-          <button type="submit" class="btn btn-success">OK</button>
-        </div>
-      </div>
-    </form>
+    </div>
   </div>
-</div>
+
+  <div class="cyc-pied">
+    <button type="submit" class="cyc-btn cyc-btn-primaire">
+      <i class="icon icon-check"></i> Enregistrer
+    </button>
+  </div>
+</form>
+
+{{template "amapadmin_close" .}}
 {{end}}

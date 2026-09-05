@@ -1,61 +1,121 @@
 {{define "content"}}
-<div class="col-md-12">
-  <div class="article">
-    <h3>Demandes d'adhésion</h3>
-    <p class="text-muted" style="margin-bottom:16px;">
-      Ces personnes ont créé un compte et demandé à rejoindre le groupe. Accepter
-      les fait entrer immédiatement ; il suffit que l'un des gestionnaires
-      tranche.
-    </p>
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <div class="cyc-panneau">
+
+    <div class="cyc-entete">
+      <div>
+        <h3>Demandes d'adhésion</h3>
+        <p class="cyc-chapeau">
+          Ces personnes ont créé un compte et demandé à rejoindre le groupe.
+          Accepter les fait entrer immédiatement ; il suffit que l'un des
+          gestionnaires tranche.
+        </p>
+      </div>
+      <a href="/member" class="cyc-btn">
+        <i class="icon icon-chevron-left"></i> Retour aux membres
+      </a>
+    </div>
 
     {{if .Requests}}
-    <table class="table table-bordered table-hover table-condensed">
-      <thead>
-        <tr class="greyhead">
-          <th>Nom</th>
-          <th>Email</th>
-          <th>Téléphone</th>
-          <th>Commune</th>
-          <th>Demandé le</th>
-          <th>Message</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .Requests}}
-        <tr>
-          <td><b>{{.Name}}</b></td>
-          <td>{{.Email}}</td>
-          <td>{{if .Phone}}{{.Phone}}{{else}}<span class="text-muted">—</span>{{end}}</td>
-          <td>{{if .City}}{{.City}}{{else}}<span class="text-muted">—</span>{{end}}</td>
-          <td>{{.Date}}</td>
-          <td>{{if .Message}}{{nl2br .Message}}{{else}}<span class="text-muted">—</span>{{end}}</td>
-          <td style="white-space:nowrap;">
-            <form method="POST" action="/member/requests/{{.ID}}/accept" style="display:inline;"
+    {{/* Une liste dépliable, comme celle des membres : la ligne dit qui
+         demande et depuis quand, le panneau donne ses coordonnées, son
+         message, et les deux décisions. Un tableau à sept colonnes écrasait
+         le message, qui est justement ce sur quoi on tranche. */}}
+    <div class="cyc-liste" id="dem-liste">
+      {{range .Requests}}
+      <div class="cyc-bloc">
+        <button type="button" class="cyc-sommaire" aria-expanded="false">
+          <span class="cyc-initiales">{{initials .Name ""}}</span>
+          <span class="ident">
+            <span class="nom">{{.Name}}</span>
+            <span class="second">{{.Email}}</span>
+          </span>
+          <span class="lieu">{{if .City}}{{.City}}{{end}}</span>
+          <span class="cyc-badge">Demandé le {{.Date}}</span>
+          <i class="icon icon-chevron-down chevron"></i>
+        </button>
+
+        <div class="cyc-repli"><div>
+          <dl class="cyc-detail">
+            <div>
+              <dt>Courriel</dt>
+              <dd><a href="mailto:{{.Email}}">{{.Email}}</a></dd>
+            </div>
+            <div>
+              <dt>Téléphone</dt>
+              <dd {{if not .Phone}}class="muet"{{end}}>{{if .Phone}}{{.Phone}}{{else}}Non renseigné{{end}}</dd>
+            </div>
+            <div>
+              <dt>Commune</dt>
+              <dd {{if not .City}}class="muet"{{end}}>{{if .City}}{{.City}}{{else}}Non renseignée{{end}}</dd>
+            </div>
+            <div>
+              <dt>Demande reçue le</dt>
+              <dd>{{.Date}}</dd>
+            </div>
+          </dl>
+
+          {{if .Message}}
+          <div class="cyc-message">
+            <div class="intitule">Son message</div>
+            <p>{{nl2br .Message}}</p>
+          </div>
+          {{end}}
+
+          <div class="cyc-actions-nommees">
+            <form method="POST" action="/member/requests/{{.ID}}/accept"
                   onsubmit="return confirm('Accepter {{.Name}} dans le groupe ?')">
-              <button type="submit" class="btn btn-success btn-xs">
-                <i class="icon icon-check"></i> Accepter
+              <button type="submit" class="cyc-btn cyc-btn-primaire">
+                <i class="icon icon-check"></i> Accepter dans le groupe
               </button>
             </form>
-            &nbsp;
-            <form method="POST" action="/member/requests/{{.ID}}/refuse" style="display:inline;"
+            <form method="POST" action="/member/requests/{{.ID}}/refuse"
                   onsubmit="return confirm('Refuser la demande de {{.Name}} ?')">
-              <button type="submit" class="btn btn-danger btn-xs">
+              <button type="submit" class="cyc-btn cyc-btn-danger">
                 <i class="icon icon-delete"></i> Refuser
               </button>
             </form>
-          </td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
+          </div>
+        </div></div>
+      </div>
+      {{end}}
+    </div>
+
     {{else}}
-    <p class="text-muted">Aucune demande en attente.</p>
+    <div class="cyc-aucun">
+      <i class="icon icon-check icone"></i>
+      <p>Aucune demande en attente.</p>
+      <a href="/member" class="cyc-btn">Retour aux membres</a>
+    </div>
     {{end}}
 
-    <a href="/member" class="btn btn-default btn-sm">
-      <i class="icon icon-chevron-left"></i> Retour
-    </a>
   </div>
 </div>
+
+<script>
+// Dépliage, délégué au conteneur. Une seule demande ouverte à la fois : deux
+// messages dépliés se lisent mal l'un sous l'autre.
+(function () {
+  var liste = document.getElementById('dem-liste');
+  if (!liste) return;
+  liste.addEventListener('click', function (e) {
+    var tete = e.target.closest ? e.target.closest('.cyc-sommaire') : null;
+    if (!tete) return;
+    var bloc = tete.parentNode;
+    var ouvert = !bloc.classList.contains('deplie');
+    var autres = liste.querySelectorAll('.cyc-bloc.deplie');
+    for (var i = 0; i < autres.length; i++) {
+      if (autres[i] === bloc) continue;
+      autres[i].classList.remove('deplie');
+      autres[i].querySelector('.cyc-repli').classList.remove('ouvert');
+      var precedent = autres[i].querySelector('.cyc-sommaire');
+      if (precedent) precedent.setAttribute('aria-expanded', 'false');
+    }
+    bloc.classList.toggle('deplie', ouvert);
+    bloc.querySelector('.cyc-repli').classList.toggle('ouvert', ouvert);
+    tete.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+  });
+})();
+</script>
 {{end}}

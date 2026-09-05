@@ -2,7 +2,9 @@
 	Alterconso SASS stylesheet
 	Use it with with bootstrap 3
 */
-@import url("https://fonts.googleapis.com/css?family=Cabin:400,400i,700");
+/* Cabin est desormais servie par l'application : voir css/cabin.css,
+   charge par base.html. Cet import transmettait l'adresse IP de chaque
+   lecteur a Google pour afficher du texte. */
 /*
   Group map on /group/map
 */

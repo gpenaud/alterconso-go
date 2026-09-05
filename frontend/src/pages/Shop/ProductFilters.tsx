@@ -1,4 +1,4 @@
-import { COLORS } from "./theme";
+import { COLORS, RADIUS } from "./theme";
 
 export type TagFilter = "organic" | "bulk";
 
@@ -8,8 +8,8 @@ interface Props {
 }
 
 const ITEMS: Array<{ key: TagFilter; label: string; icon: string; activeColor: string }> = [
-  { key: "organic", label: "Bio", icon: "icon-bio", activeColor: "#16993B" },
-  { key: "bulk", label: "Vrac", icon: "icon-bulk", activeColor: "#a53fa1" },
+  { key: "organic", label: "Bio", icon: "icon-bio", activeColor: COLORS.vert },
+  { key: "bulk", label: "Vrac", icon: "icon-bulk", activeColor: COLORS.alerte },
 ];
 
 /**
@@ -28,8 +28,17 @@ export function ProductFilters({ active, onToggle }: Props) {
         gap: 8,
       }}
     >
-      <span style={{ fontSize: "0.75rem", color: COLORS.mediumGrey, marginRight: 4 }}>
-        Filtrer :
+      <span
+        style={{
+          fontSize: "0.72rem",
+          fontWeight: 700,
+          letterSpacing: "0.07em",
+          textTransform: "uppercase",
+          color: COLORS.grisClair,
+          marginRight: 4,
+        }}
+      >
+        Filtrer
       </span>
       {ITEMS.map((it) => {
         const isActive = active.has(it.key);
@@ -42,14 +51,14 @@ export function ProductFilters({ active, onToggle }: Props) {
             style={{
               gap: 6,
               fontSize: "0.85rem",
-              padding: "4px 10px",
-              borderRadius: 16,
-              border: `1px solid ${isActive ? it.activeColor : COLORS.lightGrey}`,
-              background: isActive ? it.activeColor : COLORS.white,
-              color: isActive ? COLORS.white : COLORS.darkGrey,
+              padding: "6px 13px",
+              borderRadius: RADIUS.rond,
+              border: `1px solid ${isActive ? it.activeColor : COLORS.trait}`,
+              background: isActive ? it.activeColor : COLORS.blanc,
+              color: isActive ? COLORS.blanc : COLORS.gris,
               cursor: "pointer",
-              fontWeight: isActive ? 700 : 400,
-              transition: "all 0.15s",
+              fontWeight: isActive ? 700 : 500,
+              transition: "all 0.13s ease",
             }}
           >
             <i className={it.icon} style={{ fontSize: 14 }} aria-hidden="true" />

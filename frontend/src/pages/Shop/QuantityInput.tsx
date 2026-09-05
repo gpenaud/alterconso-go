@@ -1,4 +1,4 @@
-import { COLORS } from "./theme";
+import { COLORS, RADIUS } from "./theme";
 
 interface Props {
   value: number;
@@ -15,9 +15,9 @@ export function QuantityInput({ value, onChange }: Props) {
 
   const stepStyle: React.CSSProperties = {
     flex: 1,
-    backgroundColor: COLORS.primary,
-    color: COLORS.white,
-    fontSize: "1.4rem",
+    backgroundColor: COLORS.vert,
+    color: COLORS.blanc,
+    fontSize: "1.3rem",
     lineHeight: 1,
     cursor: "pointer",
     textAlign: "center",
@@ -31,8 +31,8 @@ export function QuantityInput({ value, onChange }: Props) {
     <div
       className="flex items-stretch"
       style={{
-        border: `1px solid ${COLORS.primary}`,
-        borderRadius: 6,
+        border: `1px solid ${COLORS.vert}`,
+        borderRadius: RADIUS.bouton,
         overflow: "hidden",
         width: 110,
         height: 40,
@@ -51,8 +51,8 @@ export function QuantityInput({ value, onChange }: Props) {
         className="flex items-center justify-center"
         style={{
           flex: 1,
-          backgroundColor: COLORS.white,
-          color: COLORS.primary,
+          backgroundColor: COLORS.blanc,
+          color: COLORS.vert,
           fontSize: "1.1rem",
           fontWeight: 700,
         }}

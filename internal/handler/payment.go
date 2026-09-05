@@ -49,6 +49,7 @@ func (h *PaymentHandler) GetPaymentTypes(c *gin.Context) {
 //	@Param        body  body      object  true  "userId, amount, paymentType, name, relatedOpId"
 //	@Success      200   {object}  map[string]interface{}
 //	@Router       /groups/{id}/payments [post]
+//
 // CreatePayment enregistre un paiement pour un membre.
 // Body: { "userId": X, "amount": Y, "paymentType": "cash", "name": "...", "relatedOpId": Z }
 // Seuls les admins peuvent créer des paiements pour d'autres utilisateurs.

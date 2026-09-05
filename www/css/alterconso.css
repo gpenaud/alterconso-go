@@ -1,0 +1,222 @@
+/* Modernisation de l'interface — couche posée après style.css.
+ *
+ * Étend à tout le site le travail fait sur les écrans des cycles : de l'air,
+ * une hiérarchie lisible, des titres qui ne sont plus noirs, des tableaux
+ * respirables et des cibles tactiles utilisables au doigt.
+ *
+ * Une feuille plutôt qu'une reprise des gabarits : les règles portent sur les
+ * classes que Bootstrap et style.css posent déjà, et valent donc pour les
+ * soixante-dix écrans d'un coup. Aucun gabarit n'est réécrit, donc rien ne
+ * change dans ce que les pages disent — seulement dans la façon dont elles le
+ * montrent.
+ *
+ * Chargée EN DERNIER pour l'emporter sans recourir à !important, réservé ici
+ * aux quelques marges écrites en style inline dans les gabarits.
+ */
+
+:root {
+  --ac-titre:#583816;        /* brun terre, déjà dans la charte */
+  --ac-titre-doux:#6d6a63;
+  --ac-vert:#5a8a00;
+  --ac-vert-fonce:#456a00;
+  --ac-vert-pale:#f2f7e8;
+  --ac-trait:#e7e3d9;
+  --ac-gris:#6d6a63;
+  --ac-gris-clair:#9a968e;
+  --ac-creme:#fbf9f4;
+  --ac-encre:#26251f;
+  --ac-police:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+              "Helvetica Neue", Arial, sans-serif;
+  --ac-police-titre:'Cabin', -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+
+/* ─── Fond et texte ──────────────────────────────────────────────────────── */
+body { font-family:var(--ac-police); color:var(--ac-encre);
+       -webkit-font-smoothing:antialiased; }
+
+/* ─── Titres ─────────────────────────────────────────────────────────────── */
+/* L'italique disparaît : à ces tailles il gêne la lecture et date la page.
+   Le brun remplace le noir, et rend au vert son rôle de signal — il ne dit
+   plus que les liens, les états et les actions. */
+h1, h2, h3, h4, h5 {
+  font-family:var(--ac-police-titre);
+  font-style:normal;
+  font-weight:700;
+  color:var(--ac-titre);
+  letter-spacing:-.01em;
+}
+h1 { font-size:1.9em; margin:4px 0 14px !important; }
+
+/* Contextes où le fond n'est pas clair : le brun y serait illisible, parfois
+   invisible. .modal.help est posée sur #583816 — exactement notre brun.
+   La couleur héritée du conteneur reste la bonne. */
+.modal.help h1, .modal.help h2, .modal.help h3, .modal.help h4, .modal.help h5,
+.popover h1, .popover h2, .popover h3, .popover h4,
+.navbar h1, .navbar h2, .navbar h3, .navbar h4,
+.alert h1, .alert h2, .alert h3, .alert h4,
+.blockIconBadge h1, .blockIconBadge h2, .blockIconBadge h3, .blockIconBadge h4 {
+  color:inherit;
+}
+h2 { font-size:1.6em; margin:0 0 16px; }
+h3 { font-size:1.3em; margin:0 0 14px; }
+h4 { font-size:1.1em; margin:0 0 10px; }
+
+/* ─── Fil d'Ariane ───────────────────────────────────────────────────────── */
+/* Il touchait le titre. Discret, mais il lui faut de l'air pour cesser d'être
+   lu comme la première ligne de la page. */
+.breadcrumb {
+  background:transparent; padding:0; margin:6px 0 20px;
+  font-size:.87em; color:var(--ac-gris-clair);
+}
+.breadcrumb > li + li:before { color:var(--ac-gris-clair); padding:0 7px; }
+.breadcrumb a { color:var(--ac-gris); }
+.breadcrumb a:hover { color:var(--ac-vert-fonce); }
+.breadcrumb > .active { color:var(--ac-gris-clair); }
+
+/* ─── Cartes ─────────────────────────────────────────────────────────────── */
+/* .article était à 8px de padding : le contenu touchait les bords. */
+.article {
+  border-radius:12px;
+  padding:22px 24px;
+  margin-bottom:20px;
+  box-shadow:0 1px 2px rgba(0,0,0,.05), 0 1px 12px rgba(0,0,0,.03);
+}
+.article > h2:first-child, .article > h3:first-child, .article > h4:first-child {
+  margin-top:0;
+}
+
+/* ─── Tableaux ───────────────────────────────────────────────────────────── */
+table.table { border-collapse:separate; border-spacing:0; }
+table.table > thead > tr > th,
+table.table tr.greyhead > th, table.table tr.greyhead > td {
+  background:transparent;
+  border-bottom:2px solid var(--ac-trait);
+  border-top:0;
+  color:var(--ac-gris-clair);
+  font-size:.75em; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  padding:0 12px 10px;
+  vertical-align:bottom;
+}
+table.table > tbody > tr > td {
+  border-top:0;
+  border-bottom:1px solid var(--ac-trait);
+  padding:13px 12px;
+  vertical-align:middle;
+}
+table.table > tbody > tr:last-child > td { border-bottom:0; }
+table.table-hover > tbody > tr:hover { background:var(--ac-creme); }
+table.table-striped > tbody > tr:nth-of-type(odd) { background:transparent; }
+table.table-bordered, table.table-bordered > tbody > tr > td,
+table.table-bordered > thead > tr > th { border-left:0; border-right:0; }
+
+/* ─── Boutons ────────────────────────────────────────────────────────────── */
+.btn {
+  border-radius:6px; font-weight:500; padding:8px 15px;
+  transition:background .13s ease, border-color .13s ease, color .13s ease;
+}
+.btn-xs { padding:5px 10px; border-radius:5px; }
+.btn-sm { padding:7px 13px; }
+.btn-lg { padding:12px 22px; border-radius:8px; }
+.btn-default { background:#fff; border-color:var(--ac-trait); color:#4a4a4a; }
+.btn-default:hover, .btn-default:focus { background:var(--ac-creme);
+  border-color:#d5d0c4; color:var(--ac-encre); }
+.btn-success { background:var(--ac-vert); border-color:var(--ac-vert); }
+.btn-success:hover, .btn-success:focus, .btn-success:active {
+  background:var(--ac-vert-fonce); border-color:var(--ac-vert-fonce); }
+.btn-primary { background:var(--ac-vert); border-color:var(--ac-vert); }
+.btn-primary:hover, .btn-primary:focus { background:var(--ac-vert-fonce);
+  border-color:var(--ac-vert-fonce); }
+.btn:focus-visible { outline:none; box-shadow:0 0 0 3px rgba(90,138,0,.25); }
+
+/* ─── Formulaires ────────────────────────────────────────────────────────── */
+.form-control {
+  border:1px solid #d8d3c8; border-radius:6px; box-shadow:none;
+  padding:8px 12px; height:auto; color:var(--ac-encre);
+  transition:border-color .13s ease, box-shadow .13s ease;
+}
+.form-control:focus { border-color:var(--ac-vert); box-shadow:0 0 0 3px rgba(90,138,0,.13); }
+label { font-weight:600; color:#4a4a4a; }
+.input-group-btn .btn { border-radius:0 6px 6px 0; }
+
+/* ─── Alertes ────────────────────────────────────────────────────────────── */
+.alert { border-radius:8px; border-width:1px; padding:13px 16px; margin-bottom:18px; }
+.alert-success { background:var(--ac-vert-pale); border-color:#cfe0a8; color:var(--ac-vert-fonce); }
+.alert-danger  { background:#fdf1f0; border-color:#e8c4c2; color:#8f302e; }
+.alert-info    { background:#f3f6fa; border-color:#cfdbe8; color:#3d5a75; }
+
+/* ─── Barre de navigation ────────────────────────────────────────────────── */
+/* Jusqu'à huit entrées quand on détient tous les droits — quatre à gauche,
+   quatre à droite. Avec la police système, plus large que Cabin, elles ne
+   tenaient plus sur une ligne et Bootstrap les renvoyait à la ligne suivante.
+   On récupère la place sur les marges intérieures plutôt qu'en retirant des
+   entrées ou en rognant les libellés.
+   La navbar garde Cabin : elle est plus étroite, et c'est elle qui donne au
+   site son air familier. */
+.navbar { font-family:var(--ac-police-titre); border-radius:10px;
+          border-color:var(--ac-trait); }
+.navbar-nav > li > a {
+  padding-left:12px; padding-right:12px;
+  font-size:.95em; white-space:nowrap;
+}
+.navbar-nav > li > a > i.icon { margin-right:4px; }
+.navbar-default .navbar-nav > .active > a,
+.navbar-default .navbar-nav > .active > a:hover {
+  background:var(--ac-vert-pale); color:var(--ac-vert-fonce);
+  font-weight:600; border-radius:8px;
+}
+.navbar-default .navbar-nav > li > a { color:#4a4a4a; }
+.navbar-default .navbar-nav > li > a:hover { color:var(--ac-vert-fonce);
+  background:var(--ac-creme); border-radius:8px; }
+
+/* Sur les écrans intermédiaires, huit entrées restent serrées : on rogne les
+   marges plutôt que de déborder. */
+@media (min-width:992px) and (max-width:1199px) {
+  .navbar-nav > li > a { padding-left:8px; padding-right:8px; font-size:.9em; }
+  .navbar-nav > li > a > i.icon { margin-right:3px; }
+}
+
+/* Le menu se replie sous 992 px, et non sous 768 px comme Bootstrap le fait
+   par défaut.
+   Entre les deux, le conteneur ne mesure que 750 px alors que huit entrées en
+   réclament près de 900 : elles passaient à la ligne. Mieux vaut le bouton
+   d'ouverture qu'un menu sur deux niveaux — une tablette en portrait tombe
+   précisément dans cet intervalle. */
+@media (max-width:991px) {
+  .navbar-header { float:none; }
+  .navbar-left, .navbar-right { float:none !important; }
+  .navbar-toggle { display:block; }
+  .navbar-collapse { border-top:1px solid var(--ac-trait); }
+  .navbar-collapse.collapse { display:none !important; }
+  .navbar-collapse.collapse.in { display:block !important; }
+  .navbar-nav { float:none !important; margin:6px 0; }
+  .navbar-nav > li { float:none; }
+  .navbar-nav > li > a { padding:12px 15px; min-height:44px; }
+  .navbar-nav.admin { border-top:1px solid var(--ac-trait); margin-top:6px; padding-top:6px; }
+  .collapsing { overflow:hidden !important; }
+}
+
+/* ─── Liens ──────────────────────────────────────────────────────────────── */
+a { color:var(--ac-vert); }
+a:hover, a:focus { color:var(--ac-vert-fonce); }
+
+/* ─── Pagination ─────────────────────────────────────────────────────────── */
+.pagination > li > a { color:var(--ac-vert); border-color:var(--ac-trait); }
+.pagination > .active > a, .pagination > .active > a:hover {
+  background:var(--ac-vert); border-color:var(--ac-vert); }
+
+/* ─── Écrans tactiles ────────────────────────────────────────────────────── */
+@media (max-width:768px) {
+  /* 44 px au doigt, et 16 px dans les champs — en dessous, iOS zoome à chaque
+     mise au point et le formulaire part de travers. */
+  .btn { min-height:44px; padding:11px 16px; }
+  .btn-xs, .btn-sm { min-height:40px; padding:9px 14px; }
+  .form-control { font-size:16px; min-height:44px; }
+  .article { padding:16px 15px; border-radius:10px; }
+  h1 { font-size:1.55em; }
+  h2 { font-size:1.35em; }
+  .breadcrumb { margin-bottom:16px; }
+  /* Les tableaux larges défilent dans leur bloc plutôt que de pousser la page
+     entière de côté. */
+  .table-responsive, .article > table.table { display:block; overflow-x:auto;
+    -webkit-overflow-scrolling:touch; }
+}

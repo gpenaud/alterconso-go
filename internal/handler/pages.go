@@ -22,6 +22,10 @@ import (
 // ---- Template helpers ----
 
 var funcMap = template.FuncMap{
+	// Les numéros sont saisis à la main : d'un trait, espacés, parfois d'un
+	// double espace. La colonne mêlait tous ces formats ; on les redit ici
+	// deux chiffres par deux, comme on les prononce.
+	"telephone": formatTelephone,
 	"deref": func(s *string) string {
 		if s == nil {
 			return ""
@@ -92,6 +96,38 @@ var funcMap = template.FuncMap{
 			}
 		}
 		return fmt.Sprintf("%g", v)
+	},
+	// initials : les initiales pour la pastille du menu de compte.
+	//
+	// Découpe en runes et non en octets : « %.1s » sur « Élise » couperait le
+	// É en deux et afficherait un caractère de remplacement.
+	"initials": func(first, last string) string {
+		pick := func(s string) string {
+			for _, r := range strings.TrimSpace(s) {
+				return strings.ToUpper(string(r))
+			}
+			return ""
+		}
+		out := pick(first) + pick(last)
+		if out == "" {
+			return "?"
+		}
+		return out
+	},
+	// adminTiles : les domaines d'administration ouverts à ce visiteur.
+	//
+	// Exposée au gabarit pour que le menu latéral se compose depuis la même
+	// source que l'écran d'accueil de l'administration. Deux listes tenues à la
+	// main auraient divergé au premier ajout.
+	"adminTiles": adminTilesFor,
+	// isAdminSection : cette page appartient-elle à l'administration ? C'est ce
+	// qui décide d'afficher le menu latéral, et de décaler le contenu.
+	"isAdminSection": func(category string) bool {
+		switch category {
+		case "admin", "member", "distribution", "contract", "amapadmin":
+			return true
+		}
+		return false
 	},
 	"paginateInts": paginateInts,
 	"seq": func(start, end int) []int {
@@ -168,17 +204,28 @@ type PageData struct {
 	// le responsable technique, personne d'autre.
 	CanManageRights   bool
 	AllowedCatalogIDs []uint // nil = tous (GroupManager ou CatalogAdmin global)
-	Category          string
-	Breadcrumb        []BreadcrumbItem
-	Flash             string
-	FlashError        bool
-	Redirect          string
-	Container         string
-	HideNav           bool
+	// EstProducteurAutonome : ne tient que ses propres catalogues, nommément
+	// désignés, et n'a aucune fonction transverse dans le groupe. C'est le
+	// producteur qui vient mettre ses produits à jour, et rien d'autre.
+	EstProducteurAutonome bool
+	Category              string
+	Breadcrumb            []BreadcrumbItem
+	Flash                 string
+	FlashError            bool
+	Redirect              string
+	Container             string
+	HideNav               bool
 	// impersonation (« se connecter en tant que »)
 	IsImpersonating  bool
 	ImpersonatorName string
 	// home page
+	// HeroDistrib : la distribution mise en avant, et NextDistribs celles qui
+	// suivent, réduites à une ligne. L'accueil sert à commander maintenant,
+	// pas à comparer six jeudis : la hiérarchie de l'écran suit celle de
+	// l'usage. MultiDistribs reste entier — les modales de commande en ont
+	// besoin, et l'API le sert tel quel.
+	HeroDistrib   *MultiDistribView
+	NextDistribs  []MultiDistribView
 	Groups        []model.Group
 	MultiDistribs []MultiDistribView
 	OpenCatalogs  []model.Catalog
@@ -228,17 +275,39 @@ type PageData struct {
 	// suggère (cf. buildPageData).
 	SuggestPhone bool
 	// member page pagination
-	TotalMembers     int
-	TotalPages       int
-	CurrentPage      int
+	TotalMembers int
+	TotalPages   int
+	CurrentPage  int
 	// JoinRequestCount : demandes d'adhésion en attente. Le compteur est ce qui
 	// fait revenir sur l'écran — un lien seul se laisse oublier, et une demande
 	// oubliée est un adhérent qui ne vient jamais.
 	JoinRequestCount int
 	SearchQuery      string
+	MemberFilter     string
+	// AnneeCourante : l'année civile, pour intituler « Adhésion 2026 ». Elle
+	// vient du serveur plutôt que d'une fonction de gabarit : l'horloge n'a
+	// rien à faire dans un modèle.
+	AnneeCourante int
 }
 
 // CanManageCatalog retourne true si l'utilisateur peut gérer le catalogue donné.
+// estProducteurAutonome distingue le producteur de celui qui administre.
+//
+// Le raccourci « Gérer mes produits » ne vaut que pour lui : un gestionnaire
+// du groupe, un responsable des distributions ou un titulaire du droit
+// « catalogues » sur l'ensemble du groupe passent par l'espace
+// d'administration, où cet écran figure déjà. Le leur montrer deux fois
+// n'aiderait personne et brouillerait le sens du bouton.
+//
+// La distinction tient à la portée du droit : une liste de catalogues nommés
+// désigne un producteur, l'absence de liste désigne un droit global.
+func estProducteurAutonome(pd PageData) bool {
+	if pd.IsGroupManager || pd.HasDistributions || !pd.HasCatalogAdmin {
+		return false
+	}
+	return len(pd.AllowedCatalogIDs) > 0
+}
+
 func (pd *PageData) CanManageCatalog(catalogID uint) bool {
 	if pd.IsGroupManager {
 		return true
@@ -258,27 +327,39 @@ func (pd *PageData) CanManageCatalog(catalogID uint) bool {
 }
 
 type MultiDistribView struct {
-	ID              uint               `json:"id"`
-	Place           string             `json:"place"`
-	PlaceAddress    string             `json:"placeAddress"`
-	DayOfWeek       string             `json:"dayOfWeek"`
-	Day             string             `json:"day"`
-	Month           string             `json:"month"`
-	StartHour       string             `json:"startHour"`
-	EndHour         string             `json:"endHour"`
-	DayLabelFull    string             `json:"dayLabelFull"`
-	Active          bool               `json:"active"`
-	Past            bool               `json:"past"`
-	CanOrder        bool               `json:"canOrder"`
-	OrderNotYetOpen bool               `json:"orderNotYetOpen"`
-	OrderStartDate  string             `json:"orderStartDate,omitempty"`
-	OrderEndDate    string             `json:"orderEndDate,omitempty"`
-	Distributions   bool               `json:"distributions"`
-	UserOrders      []UserOrderView    `json:"userOrders,omitempty"`
-	UserOrderTotal  float64            `json:"userOrderTotal"`
-	ProductImages   []ProductImageView `json:"productImages,omitempty"`
-	VolunteerNeeded int                `json:"volunteerNeeded"`
-	VolunteerRoles  []string           `json:"volunteerRoles,omitempty"`
+	ID              uint            `json:"id"`
+	Place           string          `json:"place"`
+	PlaceAddress    string          `json:"placeAddress"`
+	DayOfWeek       string          `json:"dayOfWeek"`
+	Day             string          `json:"day"`
+	Month           string          `json:"month"`
+	StartHour       string          `json:"startHour"`
+	EndHour         string          `json:"endHour"`
+	DayLabelFull    string          `json:"dayLabelFull"`
+	Active          bool            `json:"active"`
+	Past            bool            `json:"past"`
+	CanOrder        bool            `json:"canOrder"`
+	OrderNotYetOpen bool            `json:"orderNotYetOpen"`
+	OrderStartDate  string          `json:"orderStartDate,omitempty"`
+	OrderEndDate    string          `json:"orderEndDate,omitempty"`
+	Distributions   bool            `json:"distributions"`
+	UserOrders      []UserOrderView `json:"userOrders,omitempty"`
+	UserOrderTotal  float64         `json:"userOrderTotal"`
+	// Vendors : les producteurs présents ce jour-là, dédupliqués — deux
+	// catalogues peuvent appartenir au même. « Qui sera là » est ce qui donne
+	// envie d'ouvrir la boutique, plus qu'une date et une heure.
+	Vendors       []VendorView       `json:"vendors,omitempty"`
+	ProductImages []ProductImageView `json:"productImages,omitempty"`
+	// Highlight : le libellé de mise en avant du premier catalogue qui en
+	// porte un. Un seul, même si deux campagnes rares tombaient le même jour :
+	// deux pastilles côte à côte se neutralisent, et il n'y a plus d'exception.
+	Highlight       string `json:"highlight,omitempty"`
+	VolunteerNeeded int    `json:"volunteerNeeded"`
+	// UserIsVolunteer : le lecteur s'est inscrit pour tenir une permanence ce
+	// jour-là. On le remercie au lieu de lui réclamer ce qu'il a déjà donné.
+	UserIsVolunteer   bool     `json:"userIsVolunteer"`
+	UserVolunteerRole string   `json:"userVolunteerRole,omitempty"`
+	VolunteerRoles    []string `json:"volunteerRoles,omitempty"`
 }
 
 type UserOrderView struct {
@@ -290,9 +371,36 @@ type UserOrderView struct {
 	Total       float64 `json:"total"`
 }
 
+// VendorView : un producteur présent à une distribution, avec de quoi le
+// présenter — la description que son responsable de catalogue a rédigée, et
+// quelques-uns de ses produits.
+//
+// La description vient du producteur et non du catalogue : c'est la ferme
+// qu'on présente, et elle ne change pas d'un contrat à l'autre.
+type VendorView struct {
+	ID          uint               `json:"id"`
+	Name        string             `json:"name"`
+	City        string             `json:"city,omitempty"`
+	Organic     bool               `json:"organic"`
+	Description string             `json:"description,omitempty"`
+	Products    []ProductImageView `json:"products,omitempty"`
+}
+
 type ProductImageView struct {
 	URL  string `json:"url"`
 	Name string `json:"name"`
+	// HasPhoto : une photographie a réellement été importée — ni l'illustration
+	// générique servie par défaut, ni un pictogramme déposé à sa place. La
+	// bande de l'accueil ne montre que celles-là : une rangée de silhouettes
+	// ne dit rien de ce qu'on trouvera.
+	HasPhoto bool `json:"hasPhoto"`
+	// Category : la sous-catégorie du produit, pour varier ce qu'on montre
+	// d'un même producteur. Zéro quand il n'en a pas.
+	Category uint `json:"-"`
+	// FileID et Header servent à juger l'image sans la charger deux fois ; ils
+	// ne quittent pas le serveur.
+	FileID uint   `json:"-"`
+	Header []byte `json:"-"`
 }
 
 type DistribView struct {
@@ -318,6 +426,7 @@ type MemberView struct {
 	FirstName string
 	LastName  string
 	Email     string
+	Phone     string
 	Balance   float64
 	IsManager bool
 	Address   string
@@ -462,6 +571,9 @@ func (h *PagesHandler) buildPageData(c *gin.Context) PageData {
 					}
 				}
 			}
+			// Calculé une fois les catalogues autorisés connus : la portée du
+			// droit est justement ce qui distingue le producteur.
+			pd.EstProducteurAutonome = estProducteurAutonome(pd)
 		}
 	}
 	return pd
@@ -698,6 +810,11 @@ const homePeriodDays = 21
 
 func (h *PagesHandler) HomePage(c *gin.Context) {
 	pd := h.buildPageData(c)
+	// L'accueil prend toute la largeur : c'est l'écran où l'on choisit sa
+	// distribution et où l'on commande, et les cartes y gagnent à s'étaler.
+	// La feuille borne cette largeur pour que les lignes restent lisibles sur
+	// un grand écran.
+	pd.Container = "container-fluid ac-large"
 	if pd.User == nil {
 		c.Redirect(http.StatusFound, "/user/login?__redirect=/home")
 		return
@@ -746,6 +863,7 @@ func (h *PagesHandler) HomePage(c *gin.Context) {
 		Preload("Place").
 		Preload("Distributions").
 		Preload("Distributions.Catalog").
+		Preload("Distributions.Catalog.Vendor").
 		Order("distrib_start_date ASC").
 		Find(&distribs)
 
@@ -789,23 +907,101 @@ func (h *PagesHandler) HomePage(c *gin.Context) {
 			Past:         !now.Before(time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())),
 		}
 
-		// Product images from all catalogs in this distribution (max 8)
+		// Producteurs présents et leurs produits.
+		//
+		// Un passage sur les catalogues du jour : chacun désigne un producteur
+		// et porte ses produits. Les producteurs sont dédupliqués — deux
+		// catalogues peuvent venir de la même ferme — et leurs produits se
+		// cumulent alors : on présente la ferme, pas le contrat.
+		type ligneProduit struct {
+			Name     string
+			Category *uint
+			FileID   *uint
+			FileName *string
+			Header   []byte
+		}
+		parVendeur := make(map[uint]int, len(md.Distributions))
+		candidats := make([][]ProductImageView, 0, len(md.Distributions))
+
 		for _, d := range md.Distributions {
-			if len(view.ProductImages) >= 8 {
-				break
+			v := d.Catalog.Vendor
+			if v.ID == 0 {
+				continue
 			}
-			remaining := 8 - len(view.ProductImages)
-			var prods []model.Product
-			h.db.Where("catalog_id = ?", d.Catalog.ID).
-				Preload("Image").Limit(remaining).Find(&prods)
-			for _, p := range prods {
-				url := "/img/taxo/grey/fruits-legumes.png"
-				if p.Image != nil {
-					url = FileURL(p.Image.ID, h.cfg.Key, p.Image.Name)
+			idx, connu := parVendeur[v.ID]
+			if !connu {
+				vv := VendorView{ID: v.ID, Name: v.Name, Organic: v.Organic}
+				if v.City != nil {
+					vv.City = *v.City
 				}
-				view.ProductImages = append(view.ProductImages, ProductImageView{URL: url, Name: p.Name})
+				if v.Description != nil {
+					vv.Description = *v.Description
+				}
+				view.Vendors = append(view.Vendors, vv)
+				candidats = append(candidats, nil)
+				idx = len(view.Vendors) - 1
+				parVendeur[v.ID] = idx
+			}
+
+			// On ratisse large — bien au-delà des six vignettes retenues.
+			//
+			// Les six premiers produits d'un catalogue viennent souvent du même
+			// rayon : la Ferme du Jointout ouvre sur ses crottins, et ses cent
+			// légumes attendent plus loin. Varier après coup un échantillon
+			// déjà uniforme ne donne rien ; il faut d'abord voir large.
+			//
+			// Le coût reste modeste : la requête ne ramène qu'un nom, une
+			// catégorie et quarante-huit octets d'en-tête par produit, sans
+			// jamais charger d'image.
+			var lignes []ligneProduit
+			h.db.Table("products").
+				Select("products.name, products.txp_sub_category_id AS category, "+
+					"f.id AS file_id, f.name AS file_name, LEFT(f.data, 48) AS header").
+				Joins("JOIN File f ON f.id = products.imageId").
+				Where("products.catalog_id = ?", d.Catalog.ID).
+				Order("products.id").
+				Limit(catalogScanLimit).
+				Scan(&lignes)
+
+			for _, ln := range lignes {
+				img := ProductImageView{
+					Name: ln.Name,
+					URL:  FileURL(*ln.FileID, h.cfg.Key, *ln.FileName),
+				}
+				if ln.Category != nil {
+					img.Category = *ln.Category
+				}
+				// Le jugement de l'image attend : il peut coûter un décodage,
+				// et l'immense majorité de ces candidats ne sera pas retenue.
+				img.Header = ln.Header
+				img.FileID = *ln.FileID
+				candidats[idx] = append(candidats[idx], img)
 			}
 		}
+
+		// Les rayons alternent avant qu'on ne choisisse, et non après : c'est
+		// tout l'objet du ratissage ci-dessus.
+		for idx := range view.Vendors {
+			retenus := spreadCategories(dedupeFamilies(dedupeVariants(candidats[idx])))
+			for _, img := range retenus {
+				if len(view.Vendors[idx].Products) >= vendorProductCount {
+					break
+				}
+				// Le décodage n'a lieu qu'ici, sur les quelques produits qui
+				// ont une chance d'être montrés.
+				if !h.isProductPhoto(img.FileID, img.Header) {
+					continue
+				}
+				img.HasPhoto = true
+				img.Header = nil
+				view.Vendors[idx].Products = append(view.Vendors[idx].Products, img)
+			}
+		}
+
+		// La bande de vignettes se compose une fois tous les producteurs
+		// connus, sans requête supplémentaire : elle pioche dans ce qu'ils ont
+		// déjà rapporté.
+		view.ProductImages = pickAcrossVendors(view.Vendors)
 
 		// L'état de commande se décide catalogue par catalogue, et non sur la
 		// seule première distribution du jour : un producteur qui repousse sa
@@ -860,7 +1056,24 @@ func (h *PagesHandler) HomePage(c *gin.Context) {
 				}
 			}
 		}
+		// L'inscription du lecteur, s'il en a pris une : le bandeau lui dit
+		// alors merci plutôt que de lui redemander de venir.
+		var moi model.Volunteer
+		if h.db.Where("multi_distrib_id = ? AND user_id = ?", md.ID, claims.UserID).
+			First(&moi).Error == nil {
+			view.UserIsVolunteer = true
+			if moi.Role != nil {
+				view.UserVolunteerRole = *moi.Role
+			}
+		}
+
 		nbNeeded := len(rolesNeeded)
+		view.VolunteerTotal = nbNeeded
+		view.VolunteerFilled = int(nbRegistered)
+		if view.VolunteerFilled > nbNeeded {
+			// Plus d'inscrits que de postes : la pastille dirait « 3 sur 2 ».
+			view.VolunteerFilled = nbNeeded
+		}
 		if nbNeeded > int(nbRegistered) {
 			view.VolunteerNeeded = nbNeeded - int(nbRegistered)
 			view.VolunteerRoles = rolesNeeded
@@ -976,16 +1189,30 @@ func (h *PagesHandler) ContractViewPage(c *gin.Context) {
 		if p.Qt != nil {
 			qt = *p.Qt
 		}
+		// Les étiquettes de prix et de conditionnement, comme sur l'écran de
+		// gestion : la fiche laissait ces deux champs vides, et la vignette
+		// d'un produit s'affichait donc sans son prix.
+		unit := unitLabels[p.UnitType]
+		if unit == "" {
+			unit = "pièce"
+		}
+		qtAffiche := qt
+		if qtAffiche == 0 {
+			qtAffiche = 1
+		}
 		productViews = append(productViews, ProductView{
-			ID:       p.ID,
-			Name:     p.Name,
-			Ref:      ref,
-			UnitType: unitLabels[p.UnitType],
-			Price:    p.Price,
-			VAT:      p.VAT,
-			Qt:       qt,
-			Organic:  p.Organic,
-			ImageURL: imgURL,
+			ID:            p.ID,
+			Name:          p.Name,
+			Ref:           ref,
+			UnitType:      unit,
+			QtLabel:       fmt.Sprintf("%s %s", floatToFractionStr(qtAffiche), unit),
+			Price:         p.Price,
+			PriceLabel:    formatPrice(p.Price) + " €",
+			VAT:           p.VAT,
+			Qt:            qt,
+			Organic:       p.Organic,
+			VariablePrice: p.VariablePrice,
+			ImageURL:      imgURL,
 		})
 	}
 
@@ -1070,9 +1297,11 @@ func (h *PagesHandler) AccountPage(c *gin.Context) {
 
 	pd.Title = "Mon compte"
 	pd.Category = "account"
+	// Même colonne utile que la page des commandes.
+	pd.Container = "container-fluid ac-accueil"
 	pd.Breadcrumb = []BreadcrumbItem{{Name: "Mon compte", Link: "/account"}}
 
-	t, err := loadTemplates("base.html", "design.html", "account.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "account.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1092,11 +1321,12 @@ func (h *PagesHandler) AccountEditPage(c *gin.Context) {
 	}
 	pd.Title = "Modifier mon compte"
 	pd.Category = "account"
+	pd.Container = "container-fluid ac-accueil"
 	pd.Breadcrumb = []BreadcrumbItem{
 		{Name: "Mon compte", Link: "/account"},
 		{Name: "Modifier", Link: ""},
 	}
-	t, err := loadTemplates("base.html", "design.html", "account_edit.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "account_edit.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1145,45 +1375,75 @@ func (h *PagesHandler) AccountUpdate(c *gin.Context) {
 
 // ---- Member page (admin) ----
 
-func (h *PagesHandler) MemberPage(c *gin.Context) {
-	pd := h.buildPageData(c)
-	if pd.User == nil || pd.Group == nil {
-		c.Redirect(http.StatusFound, "/user/choose")
-		return
-	}
-	if !pd.IsGroupManager && !pd.HasMembership {
-		c.Redirect(http.StatusFound, "/home")
-		return
-	}
+// filtreMembres applique le filtre demandé à la liste des membres.
+//
+// Ces filtres figuraient déjà comme liens dans l'écran, mais le paramètre
+// n'était lu nulle part : ils ramenaient tous la liste entière. Les voici
+// effectifs — un filtre qui ne filtre pas est pire que pas de filtre, il fait
+// conclure à tort qu'aucun membre ne correspond.
+//
+// Les sous-requêtes évitent de multiplier les lignes : une jointure sur les
+// paniers ferait apparaître un membre autant de fois qu'il a commandé.
+func filtreMembres(q *gorm.DB, filtre string, groupID uint, annee int) *gorm.DB {
+	const paniers = `SELECT 1 FROM baskets b
+		JOIN multi_distribs md ON md.id = b.multi_distrib_id
+		WHERE b.user_id = user_groups.user_id AND md.group_id = ?`
+	const adhesion = `SELECT 1 FROM memberships m
+		WHERE m.user_id = user_groups.user_id AND m.group_id = ? AND m.year = ?`
 
-	const perPage = 10
-	pageStr := c.DefaultQuery("page", "1")
-	page, _ := strconv.Atoi(pageStr)
-	if page < 1 {
-		page = 1
+	switch filtre {
+	case "withOrder":
+		return q.Where("EXISTS ("+paniers+")", groupID)
+	case "noOrder":
+		return q.Where("NOT EXISTS ("+paniers+")", groupID)
+	case "neverConnected":
+		return q.Where("users.last_login IS NULL")
+	case "upToDate":
+		return q.Where("EXISTS ("+adhesion+")", groupID, annee)
+	case "renewMembership":
+		return q.Where("NOT EXISTS ("+adhesion+")", groupID, annee)
 	}
+	return q
+}
 
-	search := strings.TrimSpace(c.Query("q"))
+// membresPerPage : la taille d'une fournée. Assez pour remplir un écran,
+// assez petit pour que la suivante arrive avant qu'on l'attende.
+const membresPerPage = 25
 
-	// Requête de base partagée pour le COUNT et le SELECT.
-	base := h.db.Model(&model.UserGroup{}).Where("user_groups.group_id = ?", pd.Group.ID)
+// chargerMembres remplit pd.Members pour une page donnée et rend l'effectif
+// correspondant au filtre.
+//
+// Partagée par l'écran et par le fragment du défilement continu : deux
+// implémentations auraient divergé au premier ajustement de tri ou de filtre,
+// et la deuxième fournée n'aurait plus suivi la première.
+// anneeCourante : l'année civile. Isolée pour que l'écran et son fragment la
+// lisent au même endroit.
+func anneeCourante() int { return time.Now().Year() }
+
+func (h *PagesHandler) chargerMembres(pd *PageData, search, filtre string, page int) int64 {
+
+	// Requête de base partagée pour le COUNT et le SELECT. La jointure sur les
+	// utilisateurs est systématique : la recherche, le filtre « jamais
+	// connecté » et le tri alphabétique en dépendent tous les trois.
+	base := h.db.Model(&model.UserGroup{}).
+		Joins("JOIN users ON users.id = user_groups.user_id").
+		Where("user_groups.group_id = ?", pd.Group.ID)
 	if search != "" {
 		like := "%" + search + "%"
-		base = base.Joins("JOIN users ON users.id = user_groups.user_id").
-			Where("users.first_name LIKE ? OR users.last_name LIKE ? OR users.email LIKE ?",
-				like, like, like)
+		base = base.Where("users.first_name LIKE ? OR users.last_name LIKE ? OR users.email LIKE ?",
+			like, like, like)
 	}
+	base = filtreMembres(base, filtre, pd.Group.ID, time.Now().Year())
 
 	var totalCount int64
 	base.Count(&totalCount)
-	totalPages := int(totalCount) / perPage
-	if int(totalCount)%perPage != 0 {
-		totalPages++
-	}
 
+	// Tri par nom : sans ordre explicite, la base rend ce qu'elle veut, et la
+	// page 2 pouvait redonner un membre déjà vu en page 1.
 	var ugs []model.UserGroup
 	base.Preload("User").
-		Offset((page - 1) * perPage).Limit(perPage).Find(&ugs)
+		Order("users.last_name, users.first_name").
+		Offset((page - 1) * membresPerPage).Limit(membresPerPage).Find(&ugs)
 
 	// Adhésions de l'année courante pour les membres affichés (un seul SELECT
 	// IN au lieu d'une requête par ligne).
@@ -1217,10 +1477,16 @@ func (h *PagesHandler) MemberPage(c *gin.Context) {
 		}
 		fee, paid := feeByUserID[ug.UserID]
 		pd.Members = append(pd.Members, MemberView{
-			ID:             ug.User.ID,
-			FirstName:      ug.User.FirstName,
-			LastName:       ug.User.LastName,
-			Email:          ug.User.Email,
+			ID:        ug.User.ID,
+			FirstName: ug.User.FirstName,
+			LastName:  ug.User.LastName,
+			Email:     ug.User.Email,
+			Phone: func() string {
+				if ug.User.Phone == nil {
+					return ""
+				}
+				return *ug.User.Phone
+			}(),
 			Balance:        ug.Balance,
 			IsManager:      ug.IsGroupManager(),
 			Address:        addr,
@@ -1229,6 +1495,31 @@ func (h *PagesHandler) MemberPage(c *gin.Context) {
 		})
 	}
 
+	return totalCount
+}
+
+func (h *PagesHandler) MemberPage(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil {
+		c.Redirect(http.StatusFound, "/user/choose")
+		return
+	}
+	if !pd.IsGroupManager && !pd.HasMembership {
+		c.Redirect(http.StatusFound, "/home")
+		return
+	}
+
+	const perPage = membresPerPage
+	pageStr := c.DefaultQuery("page", "1")
+	page, _ := strconv.Atoi(pageStr)
+	if page < 1 {
+		page = 1
+	}
+	search := strings.TrimSpace(c.Query("q"))
+	filtre := c.Query("filter")
+
+	totalCount := h.chargerMembres(&pd, search, filtre, page)
+
 	// Effectif total du groupe (indépendant d'une éventuelle recherche), pour
 	// le libellé « Membres du groupe (N) » de la barre latérale.
 	totalMembers := totalCount
@@ -1236,9 +1527,16 @@ func (h *PagesHandler) MemberPage(c *gin.Context) {
 		h.db.Model(&model.UserGroup{}).Where("group_id = ?", pd.Group.ID).Count(&totalMembers)
 	}
 	pd.TotalMembers = int(totalMembers)
+	// Le nombre de pages ne sert plus qu'au repli sans JavaScript et à dire au
+	// script s'il reste quelque chose à charger.
+	totalPages := int(totalCount) / membresPerPage
+	if int(totalCount)%membresPerPage != 0 {
+		totalPages++
+	}
 	pd.TotalPages = totalPages
 	pd.CurrentPage = page
 	pd.SearchQuery = search
+	pd.MemberFilter = filtre
 
 	pd.JoinRequestCount = pendingJoinRequestCount(h.db, pd.Group.ID)
 
@@ -1246,7 +1544,7 @@ func (h *PagesHandler) MemberPage(c *gin.Context) {
 	pd.Category = "member"
 	pd.Breadcrumb = []BreadcrumbItem{{Name: "Membres", Link: "/member"}}
 
-	t, err := loadTemplates("base.html", "design.html", "member.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "member.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1430,7 +1728,9 @@ func (h *PagesHandler) DistributionPage(c *gin.Context) {
 	pd.Category = "distribution"
 	pd.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}}
 
-	t, err := loadTemplates("base.html", "design.html", "distribution.html")
+	// Même largeur que les autres écrans de gestion.
+	pd.Container = "container-fluid ac-accueil"
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1538,7 +1838,7 @@ func (h *PagesHandler) AmapPage(c *gin.Context) {
 	pd.Category = "amap"
 	pd.Breadcrumb = []BreadcrumbItem{{Name: "Producteurs", Link: "/amap"}}
 
-	t, err := loadTemplates("base.html", "design.html", "amap.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "amap.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1563,15 +1863,14 @@ func (h *PagesHandler) ContractAdminPage(c *gin.Context) {
 
 	frDays := [...]string{"Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"}
 	frMonths := [...]string{"", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"}
-	frDate := func(t *time.Time, withTime bool) string {
+	// La date seule, avec son année : la ligne d'un catalogue en côtoie
+	// d'autres qui courent sur plusieurs saisons, et « Lundi 21 Novembre » ne
+	// disait pas laquelle. L'heure de fin, elle, n'apprend rien dans une liste.
+	frDate := func(t *time.Time) string {
 		if t == nil {
 			return ""
 		}
-		s := fmt.Sprintf("%s %d %s", frDays[t.Weekday()], t.Day(), frMonths[t.Month()])
-		if withTime && (t.Hour() != 0 || t.Minute() != 0) {
-			s += fmt.Sprintf(" à %02d:%02d", t.Hour(), t.Minute())
-		}
-		return s
+		return fmt.Sprintf("%d %s %d", t.Day(), frMonths[t.Month()], t.Year())
 	}
 
 	var catalogs []model.Catalog
@@ -1584,14 +1883,10 @@ func (h *PagesHandler) ContractAdminPage(c *gin.Context) {
 		if !pd.CanManageCatalog(cat.ID) {
 			continue
 		}
-		startStr := ""
-		endStr := ""
-		if cat.StartDate != nil {
-			startStr = "du " + frDate(cat.StartDate, false)
-		}
-		if cat.EndDate != nil {
-			endStr = "au " + frDate(cat.EndDate, true)
-		}
+		// Sans « du » ni « au » collés à la valeur : le gabarit les écrivait
+		// aussi, et la ligne annonçait « du du Lundi 21 Novembre ».
+		startStr := frDate(cat.StartDate)
+		endStr := frDate(cat.EndDate)
 		pd.AdminCatalogs = append(pd.AdminCatalogs, CatalogAdminRow{
 			ID:         cat.ID,
 			VendorName: cat.Vendor.Name,
@@ -1606,7 +1901,7 @@ func (h *PagesHandler) ContractAdminPage(c *gin.Context) {
 	pd.Category = "contract"
 	pd.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"}}
 
-	t, err := loadTemplates("base.html", "design.html", "contract_admin.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contract_admin.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1897,4 +2192,256 @@ func pluralPiece(n float64) string {
 		return "pièces"
 	}
 	return "pièce"
+}
+
+// splitDistribs sépare la distribution à mettre en avant de celles qui suivent.
+//
+// La première ouverte à la commande l'emporte : c'est celle sur laquelle
+// l'adhérent peut agir, et la mettre en avant lui épargne de chercher laquelle
+// parmi une pile de journées se ressemblant toutes. À défaut — tout est fermé,
+// ou rien n'ouvre encore — la plus proche tient la place, car l'écran ne doit
+// jamais commencer par un vide.
+func splitDistribs(views []MultiDistribView) (*MultiDistribView, []MultiDistribView) {
+	if len(views) == 0 {
+		return nil, nil
+	}
+	choisi := 0
+	for i := range views {
+		if views[i].CanOrder {
+			choisi = i
+			break
+		}
+	}
+	hero := views[choisi]
+	reste := make([]MultiDistribView, 0, len(views)-1)
+	for i := range views {
+		if i != choisi {
+			reste = append(reste, views[i])
+		}
+	}
+	return &hero, reste
+}
+
+// bandeTarget : combien de vignettes la bande cherche à montrer.
+//
+// Huit sur une carte large donne des vignettes d'environ 130 px — assez pour
+// reconnaître un légume, assez peu pour ne pas transformer l'accueil en
+// catalogue. Le compte s'écarte de cette cible quand la diversité l'exige :
+// mieux vaut neuf vignettes couvrant neuf fermes que huit qui en cachent une.
+const bandeTarget = 8
+
+// catalogScanLimit : combien de produits d'un catalogue on examine avant de
+// choisir. Assez large pour atteindre les rayons que l'ordre de création
+// relègue au fond, assez borné pour que la requête reste courte.
+const catalogScanLimit = 120
+
+// vendorProductCount : combien de produits chaque producteur montre dans son
+// volet. De quoi donner une idée sans transformer la page en catalogue.
+const vendorProductCount = 6
+
+// bandeMax borne l'écart : au-delà, les vignettes deviennent trop petites pour
+// qu'on y distingue quoi que ce soit.
+const bandeMax = 12
+
+// epinglerEnTete remonte un producteur en première place, en préservant
+// l'ordre des autres.
+//
+// La mise en avant annonce une campagne rare ; la laisser en cinquième
+// position dans le volet reviendrait à l'annoncer puis à la cacher. Rendue
+// telle quelle quand le producteur ne figure pas dans la liste — un catalogue
+// mis en avant peut n'avoir aucun produit ce jour-là.
+func epinglerEnTete(vendors []VendorView, id uint) []VendorView {
+	if id == 0 || len(vendors) < 2 {
+		return vendors
+	}
+	pos := -1
+	for i := range vendors {
+		if vendors[i].ID == id {
+			pos = i
+			break
+		}
+	}
+	if pos <= 0 {
+		return vendors
+	}
+	tete := vendors[pos]
+	reste := append(vendors[:pos:pos], vendors[pos+1:]...)
+	return append([]VendorView{tete}, reste...)
+}
+
+// highlightDesDistribs rend la mise en avant d'une journée : le libellé du
+// premier catalogue qui en porte un, dans l'ordre où ils sont proposés.
+//
+// Un seul, et non la liste : deux pastilles côte à côte se neutralisent, et
+// une journée où tout est exceptionnel n'a plus rien d'exceptionnel.
+func highlightDesDistribs(ds []model.Distribution) string {
+	for _, d := range ds {
+		if h := d.Catalog.Highlight(); h != "" {
+			return h
+		}
+	}
+	return ""
+}
+
+// pickAcrossVendors choisit les produits de la bande en alternant les
+// producteurs.
+//
+// Un tour donne à chacun son premier produit, le suivant son deuxième, et
+// ainsi de suite. Prendre les huit premiers rencontrés — ce qui se faisait —
+// les tirait presque tous du même catalogue : la bande montrait une ferme et
+// taisait les cinq autres, alors qu'elle est là pour dire ce qu'on trouvera.
+//
+// Chaque producteur présent apparaît donc au moins une fois, tant qu'ils
+// tiennent dans bandeMax.
+func pickAcrossVendors(vendors []VendorView) []ProductImageView {
+	if len(vendors) == 0 {
+		return nil
+	}
+
+	// Un producteur par vignette au minimum : s'ils sont plus nombreux que la
+	// cible, on l'élève pour n'en éclipser aucun, jusqu'à la limite.
+	cible := bandeTarget
+
+	// Seules les vraies photos entrent dans la bande : l'illustration générique
+	// ne dit rien de ce qu'on trouvera, et une rangée de silhouettes grises
+	// dessert la distribution qu'elle est censée annoncer.
+	illustres := make([][]ProductImageView, 0, len(vendors))
+	for _, v := range vendors {
+		var avecPhoto []ProductImageView
+		for _, p := range v.Products {
+			if p.HasPhoto {
+				avecPhoto = append(avecPhoto, p)
+			}
+		}
+		if len(avecPhoto) > 0 {
+			illustres = append(illustres, spreadCategories(avecPhoto))
+		}
+	}
+	if len(illustres) == 0 {
+		return nil
+	}
+
+	if len(illustres) > cible {
+		cible = len(illustres)
+		if cible > bandeMax {
+			cible = bandeMax
+		}
+	}
+
+	out := make([]ProductImageView, 0, cible)
+	for tour := 0; len(out) < cible; tour++ {
+		ajoute := false
+		for _, produits := range illustres {
+			if tour >= len(produits) {
+				continue
+			}
+			out = append(out, produits[tour])
+			ajoute = true
+			if len(out) == cible {
+				break
+			}
+		}
+		// Plus personne n'a de produit à ce rang : inutile d'aller plus loin.
+		if !ajoute {
+			break
+		}
+	}
+	return out
+}
+
+// formatTelephone redit un numéro par paires de chiffres — « 03 85 72 30 92 ».
+// Les numéros arrivent tels qu'ils ont été tapés : collés, espacés, pointillés,
+// parfois avec un espace en trop, et la colonne en devenait illisible.
+//
+// Ce qui n'est pas un numéro français à dix chiffres ressort inchangé. Un
+// numéro suisse — « 00 41 792377328 » — redécoupé par paires ne serait ni plus
+// juste ni plus lisible ; mieux vaut ne pas y toucher que le mettre de travers.
+func formatTelephone(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	var d []byte
+	for i := 0; i < len(s); i++ {
+		if s[i] >= '0' && s[i] <= '9' {
+			d = append(d, s[i])
+		}
+	}
+	// « +33 6 83 15 30 40 » se lit ici sous sa forme nationale : c'est celle
+	// que le reste de la colonne emploie.
+	if strings.HasPrefix(s, "+33") && len(d) == 11 {
+		d = append([]byte{'0'}, d[2:]...)
+	}
+	if len(d) != 10 {
+		return s
+	}
+	var b strings.Builder
+	for i := 0; i < 10; i += 2 {
+		if i > 0 {
+			b.WriteByte(' ')
+		}
+		b.Write(d[i : i+2])
+	}
+	return b.String()
+}
+
+// logoDuPortail : le logo à montrer sur les écrans où personne n'est encore
+// connecté — connexion, inscription, mot de passe oublié.
+//
+// C'est celui du groupe, qui est aussi celui de l'association ayant conçu le
+// logiciel. Aucun groupe n'est « le sien » à ce moment-là, mais un portail qui
+// n'en héberge qu'un peut montrer le sien sans ambiguïté. Dès qu'il y en a
+// deux, la page n'en affiche aucun plutôt que d'en élire un au hasard : la
+// limite à deux suffit à trancher sans parcourir toute la table.
+func (h *PagesHandler) logoDuPortail() string {
+	var groupes []model.Group
+	h.db.Preload("Logo").Limit(2).Find(&groupes)
+	if len(groupes) == 1 && groupes[0].Logo != nil {
+		return FileURL(groupes[0].Logo.ID, h.cfg.Key, groupes[0].Logo.Name)
+	}
+	return ""
+}
+
+// spreadCategories réordonne les produits d'un producteur pour que ses
+// premiers montrent des rayons différents.
+//
+// Une ferme qui vend des fromages et vingt légumes voyait ses vignettes tirées
+// du même rayon — la bande annonçait des légumes et taisait la crémerie, alors
+// qu'elle est là pour dire l'étendue de ce qu'on trouvera.
+//
+// Un tour de table entre catégories, dans l'ordre où elles apparaissent : le
+// premier produit de chacune, puis le deuxième, et ainsi de suite. Les produits
+// sans catégorie forment un groupe comme les autres, plutôt que d'être écartés.
+func spreadCategories(produits []ProductImageView) []ProductImageView {
+	if len(produits) < 3 {
+		return produits
+	}
+
+	ordre := make([]uint, 0, 4)
+	groupes := make(map[uint][]ProductImageView, 4)
+	for _, p := range produits {
+		if _, vu := groupes[p.Category]; !vu {
+			ordre = append(ordre, p.Category)
+		}
+		groupes[p.Category] = append(groupes[p.Category], p)
+	}
+	if len(ordre) < 2 {
+		return produits
+	}
+
+	out := make([]ProductImageView, 0, len(produits))
+	for tour := 0; len(out) < len(produits); tour++ {
+		ajoute := false
+		for _, cat := range ordre {
+			g := groupes[cat]
+			if tour < len(g) {
+				out = append(out, g[tour])
+				ajoute = true
+			}
+		}
+		if !ajoute {
+			break
+		}
+	}
+	return out
 }

@@ -1,149 +1,153 @@
 {{define "content"}}
 {{template "contractadmin_nav" .}}
 
-{{/* Même template pour la création et l'édition : le formulaire poste sur
-     l'URL courante. Un produit sans ID n'existe pas encore en base. */}}
-<h3 style="font-style:italic;">{{if .Product.ID}}Modifier un produit{{else}}Nouveau produit{{end}}</h3>
+<form method="POST">
 
-<form method="POST" class="form-horizontal" style="max-width:720px;">
-
-  <div class="form-group">
-    <label class="col-sm-3 control-label">Nom</label>
-    <div class="col-sm-7">
-      <input type="text" name="name" class="form-control" value="{{.Product.Name}}" required />
-    </div>
-    {{if .ImageURL}}
-    <div class="col-sm-2" style="padding-left:0;">
-      <img src="{{.ImageURL}}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #ddd;" />
-    </div>
-    {{end}}
-  </div>
-
-  {{/* Catégorie de la taxonomie du shop. Un produit sans catégorie n'est pas
-       perdu : il se range sous « Autres ». */}}
-  <div class="form-group">
-    <label class="col-sm-3 control-label">Catégorie</label>
-    <div class="col-sm-9">
-      <select name="txp_category" class="form-control" style="max-width:320px;">
-        <option value="">— Autres —</option>
-        {{$sel := .SelectedCategoryID}}
-        {{range .Categories}}
-        <option value="{{.ID}}" {{if eq .ID $sel}}selected{{end}}>{{.Name}}</option>
-        {{end}}
-      </select>
-    </div>
-  </div>
-
-  <div class="form-group">
-    <label class="col-sm-3 control-label">Référence</label>
-    <div class="col-sm-9">
-      <input type="text" name="ref" class="form-control" value="{{if .Product.Ref}}{{deref .Product.Ref}}{{end}}" />
-    </div>
-  </div>
-
-  <div class="form-group">
-    <label class="col-sm-3 control-label">Prix *</label>
-    <div class="col-sm-9">
-      <input type="text" name="price" inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?"
-             class="form-control" value="{{priceFr .Product.Price}}" required
-             onblur="var v=parseFloat(this.value.replace(',','.')); if(!isNaN(v)) this.value = v.toFixed(2).replace('.', ',');" />
+  <div class="cyc-section">
+    <h4>{{if .Product.ID}}Modifier « {{.Product.Name}} »{{else}}Nouveau produit{{end}}</h4>
+    <div class="cyc-champs">
+      <div class="cyc-champ large">
+        <label for="name">Nom *</label>
+        <input type="text" id="name" name="name" value="{{.Product.Name}}" required />
+      </div>
+      <div class="cyc-champ">
+        <label for="price">Prix *</label>
+        <input type="text" id="price" name="price" inputmode="decimal"
+               pattern="[0-9]+([.,][0-9]{1,2})?"
+               value="{{printf "%.2f" .Product.Price}}" required />
+      </div>
+      <div class="cyc-champ">
+        <label for="ref">Référence</label>
+        <input type="text" id="ref" name="ref" value="{{if .Product.Ref}}{{deref .Product.Ref}}{{end}}" />
+        <p class="cyc-note">Facultative — sert au producteur pour s'y retrouver.</p>
+      </div>
+      <div class="cyc-champ">
+        {{/* Catégorie de la taxonomie du shop. Un produit sans catégorie n'est
+             pas perdu : il se range sous « Autres ». */}}
+        <label for="txp_category">Catégorie</label>
+        {{$sel := .SelectedCategory}}
+        <select id="txp_category" name="txp_category">
+          <option value="">— Autres —</option>
+          {{range .Categories}}
+          <option value="{{.ID}}" {{if eq .ID $sel}}selected{{end}}>{{.Name}}</option>
+          {{end}}
+        </select>
+      </div>
+      <div class="cyc-champ large">
+        <label for="description">Description</label>
+        <textarea id="description" name="description" rows="3">{{if .Product.Description}}{{deref .Product.Description}}{{end}}</textarea>
+      </div>
     </div>
   </div>
 
-  <div class="form-group">
-    <label class="col-sm-3 control-label">Description</label>
-    <div class="col-sm-9">
-      <textarea name="description" class="form-control" rows="3">{{if .Product.Description}}{{deref .Product.Description}}{{end}}</textarea>
+  <div class="cyc-section">
+    <h4>Conditionnement</h4>
+    <p class="cyc-aide">
+      Ce que représente une unité vendue : une pièce, 500 g, un litre…
+    </p>
+    {{$u := .Product.UnitType}}
+    <div class="cyc-champs">
+      <div class="cyc-champ">
+        <label for="unit_type">Unité de base</label>
+        <select id="unit_type" name="unit_type">
+          <option value="Piece"      {{if or (eq $u "Piece") (eq $u "Unit")}}selected{{end}}>Pièce</option>
+          <option value="Kilogram"   {{if eq $u "Kilogram"}}selected{{end}}>Kilogrammes</option>
+          <option value="Gram"       {{if eq $u "Gram"}}selected{{end}}>Grammes</option>
+          <option value="Litre"      {{if eq $u "Litre"}}selected{{end}}>Litres</option>
+          <option value="Centilitre" {{if eq $u "Centilitre"}}selected{{end}}>Centilitres</option>
+          <option value="Millilitre" {{if eq $u "Millilitre"}}selected{{end}}>Millilitres</option>
+        </select>
+      </div>
+      <div class="cyc-champ">
+        <label for="qt">Quantité</label>
+        <input type="text" id="qt" name="qt" placeholder="1, 1/2, 0,25…"
+               value="{{if .Product.Qt}}{{derefFloatStr .Product.Qt}}{{end}}" />
+      </div>
+      <div class="cyc-champ">
+        <label for="vat">TVA</label>
+        <select id="vat" name="vat">
+          <option value="0"   {{if eq .Product.VAT 0.0}}selected{{end}}>0 %</option>
+          <option value="2.1" {{if eq .Product.VAT 2.1}}selected{{end}}>2,1 %</option>
+          <option value="5.5" {{if eq .Product.VAT 5.5}}selected{{end}}>5,5 %</option>
+          <option value="10"  {{if eq .Product.VAT 10.0}}selected{{end}}>10 %</option>
+          <option value="20"  {{if eq .Product.VAT 20.0}}selected{{end}}>20 %</option>
+        </select>
+      </div>
+      <div class="cyc-champ">
+        {{/* Le stock se compte en unités entières, quelle que soit l'unité de
+             vente : 3 barquettes, 10 bocaux. Laissé vide, il n'est pas suivi —
+             un zéro vaudrait « rupture » et masquerait le produit. */}}
+        <label for="stock">Stock</label>
+        <input type="number" id="stock" name="stock" step="1" min="0"
+               placeholder="Non suivi"
+               value="{{if .Product.Stock}}{{printf "%.0f" (derefFloat .Product.Stock)}}{{end}}" />
+        <p class="cyc-note">Laisser vide pour ne pas suivre le stock.</p>
+      </div>
     </div>
   </div>
 
-  <div class="form-group">
-    <label class="col-sm-3 control-label">Stock</label>
-    <div class="col-sm-9">
-      {{/* Le stock se compte en unités entières, quelle que soit l'unité de
-           vente : 3 barquettes, 10 bocaux. Laisser vide pour ne pas le suivre —
-           un zéro vaudrait « rupture » et masquerait le produit. */}}
-      <input type="number" name="stock" step="1" min="0" class="form-control"
-        placeholder="laisser vide si non suivi"
-        value="{{if .Product.Stock}}{{printf "%.0f" (derefFloat .Product.Stock)}}{{end}}" />
+  <div class="cyc-section">
+    <h4>Nature du produit</h4>
+    <label class="cyc-bascule {{if .Product.Active}}actif{{end}}">
+      <input type="checkbox" name="active" value="1" {{if .Product.Active}}checked{{end}} />
+      <span>
+        <span class="titre">Disponible à la commande</span>
+        <p class="cyc-note">Décoché, le produit reste au catalogue mais ne se commande plus.</p>
+      </span>
+    </label>
+    <label class="cyc-bascule {{if .Product.Organic}}actif{{end}}">
+      <input type="checkbox" name="organic" value="1" {{if .Product.Organic}}checked{{end}} />
+      <span>
+        <span class="titre">Agriculture biologique</span>
+        <p class="cyc-note">Affiche le logo AB à côté du produit.</p>
+      </span>
+    </label>
+    <label class="cyc-bascule {{if .Product.VariablePrice}}actif{{end}}">
+      <input type="checkbox" name="variable_price" value="1" {{if .Product.VariablePrice}}checked{{end}} />
+      <span>
+        <span class="titre">Prix variable selon la pesée</span>
+        <p class="cyc-note">Le prix affiché est indicatif ; le montant se règle à la distribution.</p>
+      </span>
+    </label>
+    <label class="cyc-bascule {{if .Product.MultiWeight}}actif{{end}}">
+      <input type="checkbox" name="multi_weight" value="1" {{if .Product.MultiWeight}}checked{{end}} />
+      <span>
+        <span class="titre">Vente en gros</span>
+        <p class="cyc-note">Plusieurs pièces livrées ensemble, pesées séparément.</p>
+      </span>
+    </label>
+  </div>
+
+  <div class="cyc-section">
+    <h4>Revente</h4>
+    <p class="cyc-aide">
+      À remplir seulement si ce produit vient d'un autre producteur que celui
+      du catalogue. Laissé vide, le produit est réputé de sa production.
+    </p>
+    <div class="cyc-champs">
+      <div class="cyc-champ large">
+        <label for="resale_from">Producteur d'origine</label>
+        <input type="text" id="resale_from" name="resale_from"
+               placeholder="GAEC du Bois" value="{{deref .Product.ResaleFrom}}" />
+      </div>
     </div>
   </div>
 
-  <div class="form-group">
-    <label class="col-sm-3 control-label">Unité de base</label>
-    <div class="col-sm-9" style="display:flex;gap:16px;align-items:center;">
-      {{$u := .Product.UnitType}}
-      <select name="unit_type" class="form-control" style="flex:1;max-width:220px;">
-        <option value="Piece"      {{if or (eq $u "Piece") (eq $u "Unit")}}selected{{end}}>Pièce</option>
-        <option value="Kilogram"   {{if eq $u "Kilogram"}}selected{{end}}>Kilogrammes</option>
-        <option value="Gram"       {{if eq $u "Gram"}}selected{{end}}>Grammes</option>
-        <option value="Litre"      {{if eq $u "Litre"}}selected{{end}}>Litres</option>
-        <option value="Centilitre" {{if eq $u "Centilitre"}}selected{{end}}>Centilitres</option>
-        <option value="Millilitre" {{if eq $u "Millilitre"}}selected{{end}}>Millilitres</option>
-      </select>
-      <label style="margin:0;font-weight:normal;color:#555;white-space:nowrap;">Quantité</label>
-      <input type="text" name="qt" class="form-control" placeholder="ex: 1, 1/2, 1/4"
-        style="flex:1;max-width:220px;"
-        value="{{if .Product.Qt}}{{qtDisplay .Product.Qt}}{{else}}1{{end}}" />
-    </div>
-  </div>
-
-  <div class="form-group">
-    <label class="col-sm-3 control-label">TVA</label>
-    <div class="col-sm-9">
-      <select name="vat" class="form-control" style="max-width:120px;">
-        <option value="0"   {{if eq .Product.VAT 0.0}}selected{{end}}>0%</option>
-        <option value="2.1" {{if eq .Product.VAT 2.1}}selected{{end}}>2,1%</option>
-        <option value="5.5" {{if eq .Product.VAT 5.5}}selected{{end}}>5,5%</option>
-        <option value="10"  {{if eq .Product.VAT 10.0}}selected{{end}}>10%</option>
-        <option value="20"  {{if eq .Product.VAT 20.0}}selected{{end}}>20%</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="form-group">
-    <label class="col-sm-3 control-label">Options</label>
-    <div class="col-sm-9">
-      <label style="font-weight:normal;display:block;"
-             title="Affiche un badge « Bio » sur la fiche produit dans la boutique.">
-        <input type="checkbox" name="organic" value="1" {{if .Product.Organic}}checked{{end}} /> Agriculture biologique
-      </label>
-      <label style="font-weight:normal;display:block;"
-             title="Permet au producteur de saisir un « Prix total après pesée » par ligne de commande pour ce produit, qui remplace alors quantité × prix unitaire dans la facture.">
-        <input type="checkbox" name="variable_price" value="1" {{if .Product.VariablePrice}}checked{{end}} /> Prix variable selon pesée
-      </label>
-      <label style="font-weight:normal;display:block;"
-             title="Affiche un badge « Commandé en gros » sur la fiche produit dans la boutique.">
-        <input type="checkbox" name="multi_weight" value="1" {{if .Product.MultiWeight}}checked{{end}} /> Vente en gros
-      </label>
-      <label style="font-weight:normal;display:block;"
-             title="Décocher pour retirer le produit du catalogue sans le supprimer (il n'apparaît plus dans la boutique ni dans les commandes).">
-        <input type="checkbox" name="active" value="1" {{if .Product.Active}}checked{{end}} /> Disponible
-      </label>
-    </div>
-  </div>
-
-  <div class="form-group">
-    <label class="col-sm-3 control-label">Revente</label>
-    <div class="col-sm-9">
-      <input type="text" name="resale_from" class="form-control"
-             placeholder="Nom du producteur d'origine (ex : GAEC du Bois)"
-             value="{{deref .Product.ResaleFrom}}" />
-      <p class="help-block" style="margin-top:4px;">
-        Renseigne ce champ uniquement si ce produit est revendu (pas produit
-        par le producteur du catalogue). Laisse vide sinon.
-      </p>
-    </div>
-  </div>
-
-  <div class="form-group">
-    <div class="col-sm-offset-3 col-sm-9">
-      <button type="submit" class="btn btn-primary">OK</button>
-      <a href="/contractAdmin/products/{{.Catalog.ID}}" class="btn btn-default" style="margin-left:8px;">Annuler</a>
-    </div>
+  <div class="cyc-pied">
+    <a href="/contractAdmin/products/{{.Catalog.ID}}" class="cyc-btn">Annuler</a>
+    <button type="submit" class="cyc-btn cyc-btn-primaire">
+      <i class="icon icon-check"></i> {{if .Product.ID}}Enregistrer{{else}}Créer le produit{{end}}
+    </button>
   </div>
 
 </form>
+
+<script>
+document.addEventListener('change', function (e) {
+  var b = e.target.closest ? e.target.closest('.cyc-bascule') : null;
+  if (b && e.target.type === 'checkbox') b.classList.toggle('actif', e.target.checked);
+});
+</script>
 
 {{template "contractadmin_close" .}}
 {{end}}

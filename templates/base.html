@@ -12,16 +12,21 @@
   <link rel="icon" href="/img/logo3.png" />
   {{end}}
 
+  <!-- Cabin, servie par l'application : aucune requete vers un tiers pour
+       afficher du texte. Placee avant style.css, qui l'utilise. -->
+  <link rel="stylesheet" href="/css/cabin.css" />
   <link rel="stylesheet" href="/css/bootstrap.min.css" />
   <link rel="stylesheet" type="text/css" href="/css/style.css"/>
   <link rel="stylesheet" href="/font/icons.css" />
+  <!-- Modernisation de l'interface, chargee en dernier pour l'emporter. -->
+  <link rel="stylesheet" href="/css/alterconso.css" />
 
   <script type="text/javascript" src="/js/jquery-3.7.1.min.js"></script>
   <script type="text/javascript" src="/js/bootstrap-3.4.1.min.js"></script>
   <script type="text/javascript" src="/js/app-shim.js"></script>
 </head>
 
-<body class="{{if .Container}}{{.Container}}{{else}}container{{end}}">
+<body class="{{if .Container}}{{.Container}}{{else}}container{{end}}{{if .User}}{{if isAdminSection .Category}} ac-avec-lateral{{end}}{{end}}">
 
   <!-- Modal window -->
   <div class="modal" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">

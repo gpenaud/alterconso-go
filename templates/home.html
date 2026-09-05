@@ -1,97 +1,98 @@
 {{define "content"}}
-  <div id="content" class="col-md-8" style="padding-top:24px;">
+  <div id="content" class="col-md-12" style="padding-top:20px;">
+  {{if .Group}}{{if .Group.TxtHome}}
+  <div class="ac-mot-accueil">{{nl2br .Group.TxtHome}}</div>
+  {{end}}{{end}}
 
-    {{if .MultiDistribs}}
-    {{range .MultiDistribs}}
-    <div class="distrib">
-
-      <!-- Header bar -->
-      <div class="header {{if .Active}}active{{end}}" style="padding-top:10px;padding-bottom:10px;font-size:17px;line-height:1.7;{{if .CanOrder}}background-color:#84BD55;color:#fff;{{end}}">
-        <div class="dateBoxOffset">
-          <div class="dateBox">
-            <div class="box">
-              <div style="font-size:14px;line-height:1.2;padding:4px 8px 0;">{{.DayOfWeek}}</div>
-              <div style="font-size:32px;color:#990000;line-height:1;padding:0 8px;">{{.Day}}</div>
-              <div style="font-size:14px;line-height:1.2;padding:0 8px 4px;">{{.Month}}</div>
-            </div>
-          </div>
-        </div>
-        <div class="info">
-          <i class="icon icon-clock"></i> Distribution de {{.StartHour}} à {{.EndHour}}
-        </div>
-        <div class="info">
-          <i class="icon icon-map-marker"></i> {{.Place}}
-        </div>
-        {{if .PlaceAddress}}
-        <div class="address">{{.PlaceAddress}}</div>
-        {{end}}
-      </div>
-
-      <!-- Product thumbnails (hidden when orders are closed) -->
-      {{if and .ProductImages (or .CanOrder .OrderNotYetOpen)}}
-      <div class="content" style="display:flex;gap:4px;flex-wrap:nowrap;overflow:hidden;padding:8px 12px;justify-content:center;">
-        {{range .ProductImages}}
-        <div title="{{.Name}}" style="width:76px;height:76px;border:1px solid #ddd;border-radius:8px;overflow:hidden;background:#fff;flex-shrink:0;cursor:default;">
-          <img src="{{.URL}}" loading="lazy" decoding="async" width="76" height="76" style="width:100%;height:100%;object-fit:cover;" />
-        </div>
-        {{end}}
-      </div>
-      {{end}}
-
-      <!-- État de commande
-           CanOrder            : un seul bouton vers /shop ; libellé adapté.
-           !CanOrder + Orders  : modale "Ma commande" pour relire le détail.
-           !CanOrder           : message texte (ouvre / fermées). -->
-      {{if .Distributions}}
-      <div class="content" style="text-align:center;padding:8px 12px;">
-        {{if .CanOrder}}
-        <a href="/shop/{{.ID}}" class="btn btn-lg btn-primary">
-          <i class="icon icon-basket"></i>
-          {{if .UserOrders}}Ma commande : {{price .UserOrderTotal}} €{{else}}Commander{{end}}
-        </a>
-        {{if .OrderEndDate}}
-        <div style="color:#888;font-size:1em;margin-top:12px;">
-          <i class="icon icon-clock"></i> La commande fermera le {{.OrderEndDate}}
-        </div>
-        {{end}}
-        {{else}}
-        {{if .UserOrders}}
-        <button type="button" class="btn btn-default" style="margin-bottom:12px;" data-toggle="modal" data-target="#modalMyOrder-{{.ID}}">
-          <i class="icon icon-basket"></i> Ma commande : {{price .UserOrderTotal}} €
-        </button>
-        <br>
-        {{end}}
-        {{if .OrderNotYetOpen}}
-        <span style="color:#aaa;font-size:1.2em;display:block;padding:8px 0;">
-          <i class="icon icon-clock"></i> La commande ouvrira {{.OrderStartDate}}
+    {{if .HeroDistrib}}
+    {{with .HeroDistrib}}
+    <section class="ac-prochaine {{if .CanOrder}}ouverte{{end}}">
+      <div class="ac-prochaine-corps">
+        <span class="ac-prochaine-etiquette">
+          {{if .CanOrder}}Commandes ouvertes{{else if .OrderNotYetOpen}}Prochaine distribution{{else}}Prochaine distribution{{end}}
         </span>
-        {{else}}
-        <span style="color:#aaa;font-size:1.05em;">
-          <i class="icon icon-clock"></i> Commandes fermées
-        </span>
-        {{end}}
-        {{end}}
-      </div>
-      {{end}}
+        <h2 class="ac-prochaine-date">{{.DayLabelFull}}</h2>
+        <div class="ac-prochaine-infos">
+          <span><i class="icon icon-clock"></i> de {{.StartHour}} à {{.EndHour}}</span>
+          <span><i class="icon icon-map-marker"></i> {{.Place}}{{if .PlaceAddress}}, {{.PlaceAddress}}{{end}}</span>
+        </div>
 
-      <!-- Volunteer alert -->
-      {{if gt .VolunteerNeeded 0}}
-      <div class="content">
-        <div style="background:#fdecea;border:1px solid #f5c6c6;border-radius:4px;padding:16px;text-align:center;">
-          <p style="margin-bottom:8px;">
-            <i class="icon icon-alert" style="color:#c0392b;"></i>
-            Nous avons besoin de <b>{{.VolunteerNeeded}}</b> bénévole(s) pour les rôles suivants :
-          </p>
-          <p style="color:#c0392b;font-weight:bold;margin-bottom:12px;">
-            {{range .VolunteerRoles}}{{.}},{{end}}
-          </p>
-          <a href="/distribution/volunteersCalendar" class="btn btn-danger btn-sm">
-            <i class="icon icon-chevron-right"></i> Inscription
+        {{/* Les producteurs présents : la donnée existait et ne servait à
+             personne. « Qui sera là » est ce qui donne envie d'ouvrir la
+             boutique — plus qu'une date et une heure. */}}
+        {{if .Vendors}}
+        <div class="ac-prochaine-producteurs">
+          <span class="compte">{{len .Vendors}} producteur{{if gt (len .Vendors) 1}}s{{end}}</span>
+          {{range .Vendors}}<span class="nom">{{.Name}}{{if .Organic}} <i class="icon icon-leaf" title="Bio"></i>{{end}}</span>{{end}}
+        </div>
+        {{end}}
+
+        {{if and .ProductImages (or .CanOrder .OrderNotYetOpen)}}
+        <div class="ac-prochaine-vignettes">
+          {{range .ProductImages}}
+          <img src="{{.URL}}" alt="{{.Name}}" title="{{.Name}}" loading="lazy" decoding="async" />
+          {{end}}
+        </div>
+        {{end}}
+
+        {{if .Distributions}}
+        <div class="ac-prochaine-action">
+          {{if .CanOrder}}
+          <a href="/shop/{{.ID}}" class="ac-btn-commander">
+            <i class="icon icon-basket"></i>
+            {{if .UserOrders}}Ma commande · {{price .UserOrderTotal}} €{{else}}Commander{{end}}
           </a>
+          {{if .OrderEndDate}}<span class="ac-echeance">Ferme le {{.OrderEndDate}}</span>{{end}}
+          {{else}}
+          {{if .UserOrders}}
+          <button type="button" class="ac-btn-second" data-toggle="modal" data-target="#modalMyOrder-{{.ID}}">
+            <i class="icon icon-basket"></i> Ma commande · {{price .UserOrderTotal}} €
+          </button>
+          {{end}}
+          <span class="ac-echeance">
+            {{if .OrderNotYetOpen}}Ouvre {{.OrderStartDate}}{{else}}Commandes fermées{{end}}
+          </span>
+          {{end}}
         </div>
-      </div>
-      {{end}}
+        {{end}}
 
+        {{if gt .VolunteerNeeded 0}}
+        <div class="ac-appel-benevoles">
+          <i class="icon icon-alert"></i>
+          <span>
+            <b>{{.VolunteerNeeded}}</b> bénévole{{if gt .VolunteerNeeded 1}}s{{end}} manque{{if eq .VolunteerNeeded 1}}{{else}}nt{{end}}
+            {{if .VolunteerRoles}}({{range $i, $r := .VolunteerRoles}}{{if $i}}, {{end}}{{$r}}{{end}}){{end}}
+          </span>
+          <a href="/distribution/volunteersCalendar">S'inscrire</a>
+        </div>
+        {{end}}
+      </div>
+    </section>
+    {{end}}
+
+    {{if .NextDistribs}}
+    <div class="ac-suivantes">
+      <div class="ac-suivantes-titre">Les distributions suivantes</div>
+      {{range .NextDistribs}}
+      <a class="ac-suivante {{if .CanOrder}}ouverte{{end}}"
+         href="{{if .CanOrder}}/shop/{{.ID}}{{else}}/distribution/list/{{.ID}}{{end}}">
+        <span class="jour">{{.DayOfWeek}} {{.Day}} {{.Month}}</span>
+        <span class="lieu">{{.Place}} · {{.StartHour}}–{{.EndHour}}</span>
+        <span class="etat">
+          {{if .CanOrder}}{{if .UserOrders}}Ma commande · {{price .UserOrderTotal}} €{{else}}Commander{{end}}
+          {{else if .OrderNotYetOpen}}Ouvre {{.OrderStartDate}}
+          {{else}}Fermée{{end}}
+        </span>
+        <i class="icon icon-chevron-right"></i>
+      </a>
+      {{end}}
+    </div>
+    {{end}}
+    {{end}}
+
+    {{/* Les modales restent hors de la mise en page : elles valent pour toutes
+         les distributions, mise en avant comprise. */}}
+    {{range .MultiDistribs}}
       <!-- Modal détail commande -->
       {{if .UserOrders}}
       <div class="modal fade" id="modalMyOrder-{{.ID}}" tabindex="-1" role="dialog">
@@ -177,18 +178,10 @@
   </div>
 
   <!-- RIGHT COLUMN -->
-  <div class="col-md-4" style="padding-top:24px;">
-    {{if .Group}}
-    <div class="article" style="margin-bottom:16px;">
-      {{if .Group.TxtHome}}<p>{{nl2br .Group.TxtHome}}</p>{{end}}
-    </div>
-    {{end}}
-    <hr style="margin: 12px 0;" />
-    <div>
-      <a href="/distribution/volunteersCalendar" class="btn btn-default btn-sm">
-        <i class="icon icon-calendar"></i> Calendrier des permanences
-      </a>
-    </div>
+  <div class="col-md-12" style="padding-bottom:24px;">
+    <a href="/distribution/volunteersCalendar" class="btn btn-default btn-sm">
+      <i class="icon icon-calendar"></i> Calendrier des permanences
+    </a>
   </div>
 
 {{end}}

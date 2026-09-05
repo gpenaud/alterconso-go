@@ -1,0 +1,57 @@
+{{define "content"}}
+<div class="col-md-12 cyc">
+  <div class="cyc-entete">
+    <div>
+      <h3>À propos</h3>
+      <p class="cyc-chapeau">
+        Ce que fait cette application, et à qui s'adresser quand quelque chose
+        ne va pas.
+      </p>
+    </div>
+  </div>
+
+  <div class="ac-tuiles">
+    <div class="ac-tuile">
+      <div class="ac-tuile-lien">
+        <span class="ac-tuile-icone"><i class="icon icon-mail"></i></span>
+        <span class="ac-tuile-titre">Une question sur le groupe</span>
+        <span class="ac-tuile-desc">
+          Commandes, distributions, adhésion : la messagerie vous met en
+          relation avec les personnes qui s'en occupent.
+        </span>
+      </div>
+      <div class="ac-tuile-liens"><a href="/messages">Écrire au groupe</a></div>
+    </div>
+
+    {{if .TechnicalManagerEmail}}
+    <div class="ac-tuile">
+      <div class="ac-tuile-lien">
+        <span class="ac-tuile-icone"><i class="icon icon-cog"></i></span>
+        <span class="ac-tuile-titre">Un problème technique</span>
+        <span class="ac-tuile-desc">
+          Le site refuse une action, affiche une erreur, ou se comporte de
+          travers : c'est au responsable technique qu'il faut le dire.
+        </span>
+      </div>
+      <div class="ac-tuile-liens">
+        <a href="mailto:{{.TechnicalManagerEmail}}">{{.TechnicalManagerEmail}}</a>
+      </div>
+    </div>
+    {{end}}
+
+    <div class="ac-tuile">
+      <div class="ac-tuile-lien">
+        <span class="ac-tuile-icone"><i class="icon icon-info"></i></span>
+        <span class="ac-tuile-titre">D'où vient ce site</span>
+        <span class="ac-tuile-desc">
+          Il est réalisé sur la base d'une version libre de l'application
+          Cagette, développée par la SCOP Alilo.
+        </span>
+      </div>
+      <div class="ac-tuile-liens">
+        <a href="https://www.alilo.fr" target="_blank" rel="noopener">alilo.fr</a>
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}

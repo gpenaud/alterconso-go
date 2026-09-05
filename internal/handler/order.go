@@ -131,10 +131,10 @@ func (h *OrderHandler) CreateOrUpdate(c *gin.Context) {
 	claims := middleware.GetClaims(c)
 
 	var payload struct {
-		UserID         uint                  `json:"userId"`
-		DistributionID uint                  `json:"distributionId" binding:"required"`
-		CatalogID      *uint                 `json:"catalogId"`
-		Orders         []service.OrderData   `json:"orders"         binding:"required"`
+		UserID         uint                `json:"userId"`
+		DistributionID uint                `json:"distributionId" binding:"required"`
+		CatalogID      *uint               `json:"catalogId"`
+		Orders         []service.OrderData `json:"orders"         binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

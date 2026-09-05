@@ -1,22 +1,46 @@
 {{define "content"}}
-<div class="col-md-12">
-  <div class="article">
-    <h3>Quitter le groupe</h3>
-    <div class="alert alert-warning">
-      <i class="icon icon-alert"></i>
-      Êtes-vous sûr de vouloir quitter le groupe <b>{{if .Group}}{{.Group.Name}}{{end}}</b> ?<br/>
-      Vous perdrez l'accès à ce groupe et à ses commandes.
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <div class="cyc-panneau cyc-zone-danger">
+
+    <div class="cyc-entete">
+      <div>
+        <h3>Quitter {{if .Group}}{{.Group.Name}}{{else}}le groupe{{end}}</h3>
+        <p class="cyc-chapeau">
+          Cette action est immédiate et vous ne pouvez pas la défaire vous-même :
+          il faudra qu'un responsable vous réinscrive.
+        </p>
+      </div>
     </div>
-    <p>
-      <a href="/account/quit?token=confirm" class="btn btn-danger"
-         onclick="return confirm('Confirmer : quitter ce groupe ?')">
-        <i class="icon icon-delete"></i> Quitter le groupe
+
+    <dl class="cyc-detail bordee">
+      <div>
+        <dt>Ce que vous perdez</dt>
+        <dd>L'accès aux distributions, aux catalogues et à l'historique de vos
+            commandes dans ce groupe.</dd>
+      </div>
+      <div>
+        <dt>Ce qui reste</dt>
+        <dd>Votre compte et vos autres groupes. Vos commandes déjà passées ne
+            sont pas annulées : prévenez un responsable si vous ne pouvez plus
+            les honorer.</dd>
+      </div>
+    </dl>
+
+    {{/* Un formulaire, et non un lien : quitter le groupe efface une
+         inscription, et cela ne doit pas pouvoir arriver au simple chargement
+         d'une adresse. */}}
+    <form method="POST" action="/account/quit" class="cyc-pied"
+          onsubmit="return confirm('Confirmer : quitter ce groupe ?');">
+      <a href="/account" class="cyc-btn">
+        <i class="icon icon-chevron-left"></i> Rester dans le groupe
       </a>
-      &nbsp;
-      <a href="/home" class="btn btn-default">
-        <i class="icon icon-chevron-left"></i> Annuler
-      </a>
-    </p>
+      <span class="cyc-espace"></span>
+      <button type="submit" class="cyc-btn cyc-btn-danger">
+        <i class="icon icon-sign-out"></i> Quitter définitivement
+      </button>
+    </form>
+
   </div>
 </div>
 {{end}}

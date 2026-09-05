@@ -1,58 +1,76 @@
 {{define "content"}}
-<div class="col-md-12">
-  <div class="article">
-    <div class="text-center">
-      <h3>Valider la distribution du {{.Date}}</h3>
-      <h4><i class="icon icon-map-marker"></i> {{.Place}}</h4>
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <div class="cyc-panneau">
+
+    <div class="cyc-entete">
+      <div>
+        <h3>Valider la distribution du {{.Date}}</h3>
+        <p class="cyc-chapeau">
+          <i class="icon icon-map-marker"></i> {{.Place}} — valider clôt la
+          distribution et arrête les commandes qui restaient ouvertes.
+        </p>
+      </div>
       {{if .Confirmed}}
-      <div style="font-size:1.5em;margin:32px;color:#080;">
-        <i class="icon icon-check"></i> Validée
-      </div>
+      <span class="cyc-badge ok"><i class="icon icon-check"></i> Validée</span>
       {{else}}
-      <div style="color:#AAA;font-size:1.5em;margin:32px;">
-        <i class="icon icon-circle-empty"></i> Non validée
-      </div>
+      <span class="cyc-badge attention">Non validée</span>
       {{end}}
     </div>
 
     {{if .Users}}
-    <table class="table table-bordered table-hover table-condensed">
-      <thead>
-        <tr class="greyhead"><th>Membre</th><th class="text-right">Total commande</th><th></th></tr>
-      </thead>
-      <tbody>
-        {{range .Users}}
-        <tr class="{{if .Validated}}success{{else}}danger{{end}}">
-          <td>{{.UserName}}</td>
-          <td class="text-right">{{price .Total}} €</td>
-          <td>
-            {{if .Validated}}
-            <span class="label label-success"><i class="icon icon-check"></i> Validé</span>
-            {{else}}
-            <span class="label label-danger">À valider</span>
-            {{end}}
-          </td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
+    <div class="cyc-deborde">
+      <table class="cyc-table">
+        <thead>
+          <tr>
+            <th>Membre</th>
+            <th class="serre num">Total commandé</th>
+            <th class="serre num">État</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Users}}
+          <tr>
+            <td>
+              <div class="cyc-identite">
+                <span class="cyc-initiales">{{initialesDe .UserName}}</span>
+                <span class="nom">{{.UserName}}</span>
+              </div>
+            </td>
+            <td class="serre num">{{price .Total}} €</td>
+            <td class="serre num">
+              {{if .Validated}}
+              <span class="cyc-badge ok"><i class="icon icon-check"></i> Validé</span>
+              {{else}}
+              <span class="cyc-badge attention">À valider</span>
+              {{end}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <div class="cyc-aucun">
+      <i class="icon icon-basket icone"></i>
+      <p>Aucune commande sur cette distribution.</p>
+    </div>
     {{end}}
 
-    {{if not .Confirmed}}
-    <p class="text-center">
+    <div class="cyc-pied">
+      <a href="/distribution" class="cyc-btn">
+        <i class="icon icon-chevron-left"></i> Retour au calendrier
+      </a>
+      <span class="cyc-espace"></span>
+      {{if not .Confirmed}}
       <a href="/distribution/validate/{{.MultiDistrib.ID}}?action=validate"
-         class="btn btn-lg btn-primary"
+         class="cyc-btn cyc-btn-primaire"
          onclick="return confirm('Confirmer la validation de cette distribution ?')">
         <i class="icon icon-check"></i> Valider la distribution
       </a>
-    </p>
-    {{end}}
+      {{end}}
+    </div>
 
-    <p>
-      <a href="/distribution" class="btn btn-default">
-        <i class="icon icon-chevron-left"></i> Retour
-      </a>
-    </p>
   </div>
 </div>
 {{end}}

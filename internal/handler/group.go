@@ -101,9 +101,9 @@ func (h *GroupHandler) Create(c *gin.Context) {
 	claims := middleware.GetClaims(c)
 
 	var payload struct {
-		Name      string           `json:"name"      binding:"required"`
-		GroupType model.GroupType  `json:"groupType"`
-		RegOption model.RegOption  `json:"regOption"`
+		Name      string          `json:"name"      binding:"required"`
+		GroupType model.GroupType `json:"groupType"`
+		RegOption model.RegOption `json:"regOption"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

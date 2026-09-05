@@ -1,39 +1,63 @@
+{{/* La coquille des paramètres : le titre, les onglets, et le bloc blanc qui
+     reçoit le contenu.
+
+     Les onglets passent à l'horizontale, comme ceux d'un catalogue. En colonne,
+     ils prenaient un quart de la largeur pour six entrées écrites en capitales,
+     et la reprenaient aux tableaux de droits et de documents. */}}
 {{define "amapadmin_nav"}}
-<style>
-  .amapadmin-section ~ .col-md-9 .article { padding: 24px 28px; }
-  .amapadmin-section ~ .col-md-9 .article + .article { margin-top: 16px; }
-  .amapadmin-section ~ .col-md-9 .article h3,
-  .amapadmin-section ~ .col-md-9 .article h4 { margin-top: 0; }
-  .amapadmin-section ~ .col-md-9 > h2 { margin: 0 0 12px; padding: 0 4px; }
-  /* La colonne de droite est offsetée seulement si elle n'a pas son propre titre */
-  @media (min-width:992px) { .amapadmin-section ~ .col-md-9:not(:has(> h2)) { padding-top: 48px; } }
-</style>
-<div class="col-md-3 amapadmin-section">
-  <h2 style="margin:0 0 12px;padding:0 4px;">Paramètres</h2>
-  <div class="article" style="padding:0;">
-    <ul class="nav nav-pills nav-stacked" style="margin:0;">
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <div class="cyc-panneau">
+
+    <div class="cyc-entete">
+      <div>
+        <h3>{{if .AmapAdminTitre}}{{.AmapAdminTitre}}{{else}}Paramètres{{end}}</h3>
+        <p class="cyc-chapeau">
+          {{if .AmapAdminChapeau}}{{.AmapAdminChapeau}}
+          {{else}}Ce qui règle le fonctionnement du groupe : son identité, ses
+          droits, ses adhésions et ses documents.{{end}}
+        </p>
+      </div>
+    </div>
+
+    <nav class="cyc-onglets">
+      <a href="/amapadmin" {{if eq .AmapAdminTab ""}}class="actif"{{end}}>
+        <i class="icon icon-home"></i> Le groupe
+      </a>
       {{/* Masqué à qui ne peut pas y entrer : le lien mènerait à un refus. */}}
       {{if .CanManageRights}}
-      <li {{if eq .AmapAdminTab "rights"}}class="active"{{end}}>
-        <a href="/amapadmin/rights"><i class="icon icon-user"></i> DROITS D'ADMINISTRATION</a>
-      </li>
+      <a href="/amapadmin/rights" {{if eq .AmapAdminTab "rights"}}class="actif"{{end}}>
+        <i class="icon icon-user"></i> Droits
+      </a>
       {{end}}
-      <li {{if eq .AmapAdminTab "vatRates"}}class="active"{{end}}>
-        <a href="/amapadmin/vatRates"><i class="icon icon-balance"></i> TAUX DE TVA</a>
-      </li>
-      <li {{if eq .AmapAdminTab "volunteers"}}class="active"{{end}}>
-        <a href="/amapadmin/volunteers"><i class="icon icon-calendar-check"></i> PERMANENCES</a>
-      </li>
-      <li {{if eq .AmapAdminTab "membership"}}class="active"{{end}}>
-        <a href="/amapadmin/membership"><i class="icon icon-card"></i> ADHÉSIONS</a>
-      </li>
-      <li {{if eq .AmapAdminTab "currency"}}class="active"{{end}}>
-        <a href="/amapadmin/currency"><i class="icon icon-euro"></i> MONNAIE</a>
-      </li>
-      <li {{if eq .AmapAdminTab "documents"}}class="active"{{end}}>
-        <a href="/amapadmin/documents"><i class="icon icon-file"></i> DOCUMENTS</a>
-      </li>
-    </ul>
+      <a href="/amapadmin/vatRates" {{if eq .AmapAdminTab "vatRates"}}class="actif"{{end}}>
+        <i class="icon icon-balance"></i> Taux de TVA
+      </a>
+      <a href="/amapadmin/volunteers" {{if eq .AmapAdminTab "volunteers"}}class="actif"{{end}}>
+        <i class="icon icon-calendar-check"></i> Permanences
+      </a>
+      <a href="/amapadmin/membership" {{if eq .AmapAdminTab "membership"}}class="actif"{{end}}>
+        <i class="icon icon-card"></i> Adhésions
+      </a>
+      <a href="/amapadmin/currency" {{if eq .AmapAdminTab "currency"}}class="actif"{{end}}>
+        <i class="icon icon-euro"></i> Monnaie
+      </a>
+      <a href="/amapadmin/documents" {{if eq .AmapAdminTab "documents"}}class="actif"{{end}}>
+        <i class="icon icon-file"></i> Documents
+      </a>
+      {{/* Réservé à qui détient le droit : l'onglet mènerait sinon à un refus. */}}
+      {{if .HasDatabaseAdmin}}
+      <a href="/admin/db" class="danger {{if eq .AmapAdminTab "db"}}actif{{end}}">
+        <i class="icon icon-cog"></i> Base de données
+      </a>
+      {{end}}
+    </nav>
+
+    <div class="cyc-onglet-contenu">
+{{end}}
+
+{{define "amapadmin_close"}}
+    </div>
   </div>
 </div>
 {{end}}

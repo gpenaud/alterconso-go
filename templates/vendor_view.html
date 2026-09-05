@@ -1,24 +1,74 @@
 {{define "content"}}
-<div class="row">
-  <div class="col-md-9">
-    <div class="article">
-      <h2>{{.Vendor.Name}}</h2>
-      {{if .Vendor.Description}}<p>{{deref .Vendor.Description}}</p>{{end}}
-      {{if .Vendor.City}}<p><i class="icon icon-home"></i> {{deref .Vendor.City}}</p>{{end}}
-      {{if .Vendor.Phone}}<p><i class="icon icon-phone"></i> {{deref .Vendor.Phone}}</p>{{end}}
-      <p><i class="icon icon-mail"></i> <a href="mailto:{{.Vendor.Email}}">{{.Vendor.Email}}</a></p>
-      {{if .Vendor.Organic}}<span class="label label-success">Bio</span>{{end}}
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <div class="cyc-panneau">
 
+    <div class="cyc-fiche-tete">
+      <span class="cyc-initiales grande">{{initialesDe .Vendor.Name}}</span>
+      <div class="ident">
+        <h3>
+          {{.Vendor.Name}}
+          {{if .Vendor.Organic}}
+          <span class="cyc-badge ok" style="vertical-align:middle;margin-left:8px;">
+            <i class="icon icon-bio"></i> Bio
+          </span>
+          {{end}}
+        </h3>
+        <p class="cyc-chapeau">
+          <a href="mailto:{{.Vendor.Email}}">{{.Vendor.Email}}</a>
+          {{if .Vendor.Phone}} · {{deref .Vendor.Phone}}{{end}}
+        </p>
+      </div>
+      <div class="cyc-actions-nommees serrees">
+        <a href="/amap" class="cyc-btn">
+          <i class="icon icon-chevron-left"></i> Tous les producteurs
+        </a>
+      </div>
+    </div>
+
+    <dl class="cyc-detail bordee">
+      <div>
+        <dt>Commune</dt>
+        <dd {{if not .Vendor.City}}class="muet"{{end}}>{{if .Vendor.City}}{{deref .Vendor.City}}{{else}}Non renseignée{{end}}</dd>
+      </div>
+      <div>
+        <dt>Téléphone</dt>
+        <dd {{if not .Vendor.Phone}}class="muet"{{end}}>{{if .Vendor.Phone}}{{deref .Vendor.Phone}}{{else}}Non renseigné{{end}}</dd>
+      </div>
+      <div>
+        <dt>Courriel</dt>
+        <dd><a href="mailto:{{.Vendor.Email}}">{{.Vendor.Email}}</a></dd>
+      </div>
+      <div>
+        <dt>Agriculture biologique</dt>
+        <dd {{if not .Vendor.Organic}}class="muet"{{end}}>{{if .Vendor.Organic}}Oui{{else}}Non déclarée{{end}}</dd>
+      </div>
+    </dl>
+
+    {{if .Vendor.Description}}
+    <div class="cyc-section" style="margin-top:22px;">
+      <h4>Présentation</h4>
+      <div class="cyc-message">
+        <p>{{nl2br (deref .Vendor.Description)}}</p>
+      </div>
+    </div>
+    {{end}}
+
+    <div class="cyc-section">
+      <h4>Catalogues dans le groupe</h4>
       {{if .Catalogs}}
-      <hr/>
-      <h4>Catalogues</h4>
-      <ul>
+      <div class="cyc-filtres">
         {{range .Catalogs}}
-        <li><a href="/contract/view/{{.ID}}">{{.Name}}</a></li>
+        <a href="/contract/view/{{.ID}}" class="cyc-filtre">
+          <i class="icon icon-products"></i> {{.Name}}
+        </a>
         {{end}}
-      </ul>
+      </div>
+      {{else}}
+      <p class="cyc-note">Aucun catalogue pour ce producteur.</p>
       {{end}}
     </div>
+
   </div>
 </div>
 {{end}}

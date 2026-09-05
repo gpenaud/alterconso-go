@@ -454,31 +454,31 @@ func productInfo(p model.Product) gin.H {
 		qt = *p.Qt
 	}
 	return gin.H{
-		"id":            p.ID,
-		"name":          p.Name,
-		"ref":           ref,
-		"image":         nil,
-		"price":         p.Price,
-		"vat":           p.VAT,
-		"vatValue":      p.Price * p.VAT / 100,
-		"desc":          desc,
-		"categories":    []int{},
-		"subcategories": []int{},
-		"orderable":     true,
-		"stock":         p.Stock,
-		"hasFloatQt":    p.HasFloatQt,
-		"qt":            qt,
-		"unitType":      normalizeUnitType(p.UnitType),
-		"organic":       p.Organic,
-		"variablePrice": p.VariablePrice,
-		"wholesale":     p.MultiWeight,
-		"active":        p.Active,
-		"bulk":          false,
-		"catalogId":     p.CatalogID,
-		"catalogTax":    taxRate,
+		"id":             p.ID,
+		"name":           p.Name,
+		"ref":            ref,
+		"image":          nil,
+		"price":          p.Price,
+		"vat":            p.VAT,
+		"vatValue":       p.Price * p.VAT / 100,
+		"desc":           desc,
+		"categories":     []int{},
+		"subcategories":  []int{},
+		"orderable":      true,
+		"stock":          p.Stock,
+		"hasFloatQt":     p.HasFloatQt,
+		"qt":             qt,
+		"unitType":       normalizeUnitType(p.UnitType),
+		"organic":        p.Organic,
+		"variablePrice":  p.VariablePrice,
+		"wholesale":      p.MultiWeight,
+		"active":         p.Active,
+		"bulk":           false,
+		"catalogId":      p.CatalogID,
+		"catalogTax":     taxRate,
 		"catalogTaxName": taxName,
-		"vendorId":      p.Catalog.VendorID,
-		"resaleFrom":    p.ResaleFrom,
+		"vendorId":       p.Catalog.VendorID,
+		"resaleFrom":     p.ResaleFrom,
 	}
 }
 
@@ -523,20 +523,20 @@ func orderInfo(o model.UserOrder) gin.H {
 	smartQt := fmt.Sprintf("%.0f", o.Quantity)
 	total := o.TotalPrice()
 	return gin.H{
-		"id":                 o.ID,
-		"userId":             o.UserID,
-		"userName":           o.User.FirstName + " " + o.User.LastName,
-		"product":            productInfo(o.Product),
-		"quantity":           o.Quantity,
-		"smartQt":            smartQt,
-		"productPrice":       o.ProductPrice,
-		"subTotal":           o.Quantity * o.ProductPrice,
-		"feesRate":           o.FeesRate,
-		"total":              total,
-		"paid":               o.Paid,
-		"invertSharedOrder":  false,
-		"catalogId":          o.Product.CatalogID,
-		"catalogName":        o.Product.Catalog.Name,
+		"id":                o.ID,
+		"userId":            o.UserID,
+		"userName":          o.User.FirstName + " " + o.User.LastName,
+		"product":           productInfo(o.Product),
+		"quantity":          o.Quantity,
+		"smartQt":           smartQt,
+		"productPrice":      o.ProductPrice,
+		"subTotal":          o.Quantity * o.ProductPrice,
+		"feesRate":          o.FeesRate,
+		"total":             total,
+		"paid":              o.Paid,
+		"invertSharedOrder": false,
+		"catalogId":         o.Product.CatalogID,
+		"catalogName":       o.Product.Catalog.Name,
 	}
 }
 
@@ -556,6 +556,9 @@ func (h *CompatHandler) ShopInit(c *gin.Context) {
 	var md model.MultiDistrib
 	if err := h.db.Preload("Place").
 		Preload("Group").
+		// Le logo du groupe : le shop porte le même en-tête que les pages Go,
+		// et il n'avait aucun moyen de l'obtenir.
+		Preload("Group.Logo").
 		Preload("Distributions.Catalog.Vendor").
 		First(&md, mdID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
@@ -596,7 +599,7 @@ func (h *CompatHandler) ShopInit(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success":               true,
 		"place":                 placeInfos(md.Place),
-		"group":                 gin.H{"id": md.Group.ID, "name": md.Group.Name},
+		"group":                 gin.H{"id": md.Group.ID, "name": md.Group.Name, "logo": logoDuGroupe(md.Group, h.cfg.Key)},
 		"distributionStartDate": md.DistribStartDate.Format("2006-01-02 15:04:05"),
 		"distributionEndDate":   md.DistribEndDate.Format("2006-01-02 15:04:05"),
 		"orderEndDates":         []gin.H{},
@@ -935,4 +938,14 @@ func smartQty(qty float64, unit model.UnitType) string {
 		}
 		return fmt.Sprintf("%.2f", qty)
 	}
+}
+
+// logoDuGroupe : l'adresse signée du logo, ou une chaîne vide si le groupe n'en
+// a pas. Le shop affiche le même en-tête que les pages Go — logo puis nom — et
+// l'API ne lui donnait que le nom.
+func logoDuGroupe(g model.Group, key string) string {
+	if g.Logo == nil {
+		return ""
+	}
+	return FileURL(g.Logo.ID, key, g.Logo.Name)
 }

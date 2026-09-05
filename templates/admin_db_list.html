@@ -1,66 +1,72 @@
 {{define "content"}}
 {{template "admin_db_nav" .}}
-<div class="col-md-9">
-  <div class="article">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
-      <h3 style="margin:0;">{{.Model.Label}} <span style="color:#888;font-size:0.7em;font-style:normal;">({{.Total}})</span></h3>
-      <a href="/admin/db/{{.Model.Slug}}/new" class="btn btn-success btn-sm">
-        <i class="icon icon-plus"></i> Nouveau
-      </a>
-    </div>
 
-    {{if .Model.SearchableCols}}
-    <form method="GET" class="admin-db-search">
-      <input type="text" name="search" class="form-control input-sm" placeholder="Rechercher…" value="{{.Search}}" />
-      <button type="submit" class="btn btn-default btn-sm">Filtrer</button>
-      {{if .Search}}
-      <a href="/admin/db/{{.Model.Slug}}" class="btn btn-default btn-sm">Réinitialiser</a>
-      {{end}}
-    </form>
-    {{end}}
-
-    {{if .Rows}}
-    <div style="overflow-x:auto;">
-      <table class="table table-striped admin-db-table" style="margin-bottom:0;">
-        <thead>
-          <tr>
-            {{range .Headers}}<th>{{.}}</th>{{end}}
-            <th style="text-align:right;"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {{range .Rows}}
-          <tr>
-            {{range .Cells}}<td>{{.}}</td>{{end}}
-            <td style="text-align:right;white-space:nowrap;">
-              <a href="/admin/db/{{$.Model.Slug}}/edit/{{.ID}}" class="btn btn-default btn-xs" title="Éditer">
-                <i class="icon icon-edit"></i>
-              </a>
-              <form method="POST" action="/admin/db/{{$.Model.Slug}}/delete/{{.ID}}" style="display:inline;"
-                    onsubmit="return confirm('Supprimer définitivement cet enregistrement ?');">
-                <button type="submit" class="btn btn-danger btn-xs" title="Supprimer">
-                  <i class="icon icon-delete"></i>
-                </button>
-              </form>
-            </td>
-          </tr>
-          {{end}}
-        </tbody>
-      </table>
-    </div>
-
-    <div class="admin-db-pager">
-      {{if .HasPrev}}
-      <a href="?page={{.PrevPage}}{{if .Search}}&search={{.Search}}{{end}}" class="btn btn-default btn-xs">« Précédent</a>
-      {{end}}
-      <span>Page <b>{{.Page}}</b> / {{.PageCount}}</span>
-      {{if .HasNext}}
-      <a href="?page={{.NextPage}}{{if .Search}}&search={{.Search}}{{end}}" class="btn btn-default btn-xs">Suivant »</a>
-      {{end}}
-    </div>
-    {{else}}
-    <p class="text-muted" style="margin-top:16px;">Aucun enregistrement{{if .Search}} ne correspond à la recherche{{end}}.</p>
-    {{end}}
+<div class="cyc-barre">
+  <div>
+    <h4 style="margin:0 0 3px;">{{.Model.Label}}</h4>
+    <p class="cyc-note" style="margin:0;">{{.Total}} enregistrement{{if gt .Total 1}}s{{end}}</p>
   </div>
+  {{if .Model.SearchableCols}}
+  <form method="GET" class="cyc-recherche" style="margin-left:auto;">
+    <i class="icon icon-search"></i>
+    <input type="search" name="search" value="{{.Search}}" placeholder="Rechercher…" />
+  </form>
+  {{end}}
+  <a href="/admin/db/{{.Model.Slug}}/new" class="cyc-btn cyc-btn-primaire">
+    <i class="icon icon-plus"></i> Nouvel enregistrement
+  </a>
 </div>
+
+{{if .Rows}}
+<div class="cyc-deborde">
+  <table class="cyc-table">
+    <thead>
+      <tr>
+        {{range .Headers}}<th>{{.}}</th>{{end}}
+        <th class="actions"><span class="sr-only">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Rows}}
+      <tr>
+        {{range .Cells}}<td>{{.}}</td>{{end}}
+        <td class="actions">
+          <div class="cyc-actions">
+            <a href="/admin/db/{{$.Model.Slug}}/edit/{{.ID}}" class="cyc-icone-btn" title="Modifier">
+              <i class="icon icon-edit"></i><span class="sr-only">Modifier</span>
+            </a>
+            <form method="POST" action="/admin/db/{{$.Model.Slug}}/delete/{{.ID}}"
+                  onsubmit="return confirm('Supprimer définitivement cet enregistrement ? Cette action ne se défait pas.');">
+              <button type="submit" class="cyc-icone-btn danger" title="Supprimer">
+                <i class="icon icon-delete"></i><span class="sr-only">Supprimer</span>
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<div class="cyc-pages">
+  {{if .HasPrev}}
+  <a href="?page={{.PrevPage}}{{if .Search}}&amp;search={{.Search}}{{end}}">‹ Précédent</a>
+  {{end}}
+  <span class="ellipse">page {{.Page}} sur {{.PageCount}}</span>
+  {{if .HasNext}}
+  <a href="?page={{.NextPage}}{{if .Search}}&amp;search={{.Search}}{{end}}">Suivant ›</a>
+  {{end}}
+</div>
+{{else}}
+<div class="cyc-aucun">
+  <i class="icon icon-list icone"></i>
+  <p>Aucun enregistrement{{if .Search}} ne correspond à la recherche{{end}}.</p>
+  {{if .Search}}
+  <a href="/admin/db/{{.Model.Slug}}" class="cyc-btn">Voir tous les enregistrements</a>
+  {{end}}
+</div>
+{{end}}
+
+{{template "admin_db_close" .}}
 {{end}}

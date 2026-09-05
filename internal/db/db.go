@@ -143,6 +143,8 @@ func Migrate(db *gorm.DB) error {
 		&model.Message{},
 		&model.Membership{},
 		&model.GroupJoinRequest{},
+		&model.DistributionCycle{},
+		&model.CycleMessage{},
 		&model.Volunteer{},
 		&model.VolunteerRole{},
 		&model.GroupDoc{},

@@ -24,9 +24,9 @@ import (
 
 type MemberDetailData struct {
 	PageData
-	Member          model.User
-	MemberUG        model.UserGroup
-	CatalogSubs     []CatalogSubsView
+	Member           model.User
+	MemberUG         model.UserGroup
+	CatalogSubs      []CatalogSubsView
 	DistribOrderSets []DistribOrderSet
 	// Adhésion de l'année courante : nil si pas encore payée pour ce
 	// (user, group, currentYear). Affichée seulement si le groupe gère
@@ -56,15 +56,15 @@ type DistribOrderSet struct {
 }
 
 type OrderLineView struct {
-	ProductName string
-	SmartQty    string
+	ProductName  string
+	SmartQty     string
 	ProductPrice float64
-	SubTotal    float64
-	Fees        float64
-	Total       float64
-	CatalogName string
-	CatalogID   uint
-	Paid        bool
+	SubTotal     float64
+	Fees         float64
+	Total        float64
+	CatalogName  string
+	CatalogID    uint
+	Paid         bool
 }
 
 type MemberBalanceEntry struct {
@@ -191,7 +191,9 @@ func (h *PagesHandler) MemberViewPage(c *gin.Context) {
 		ddata.DistribOrderSets = append(ddata.DistribOrderSets, *distribMap[mdID])
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "member_view.html")
+	// Même largeur que les autres écrans de gestion.
+	ddata.Container = "container-fluid ac-accueil"
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "member_view.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -294,7 +296,9 @@ func (h *PagesHandler) MemberPaymentsPage(c *gin.Context) {
 	}
 	data.Title = "Paiements — " + member.FirstName + " " + member.LastName
 
-	t, err := loadTemplates("base.html", "design.html", "member_payments.html")
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "member_payments.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -356,8 +360,13 @@ func (h *PagesHandler) MemberInsertPage(c *gin.Context) {
 		PageData
 		Flash string
 		Error string
+		// Les mêmes listes que l'écran de modification : elles y étaient
+		// recopiées à la main dans le gabarit, plus courtes et déjà
+		// divergentes.
+		Nationalities []CountryOption
+		Countries     []CountryOption
 	}
-	ip := InsertPage{PageData: pd}
+	ip := InsertPage{PageData: pd, Nationalities: nationalities, Countries: countries}
 	ip.Title = "Ajouter un membre"
 
 	if c.Request.Method == http.MethodPost {
@@ -439,7 +448,9 @@ func (h *PagesHandler) MemberInsertPage(c *gin.Context) {
 		}
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "member_insert.html")
+	// Même largeur que les autres écrans de gestion.
+	pd.Container = "container-fluid ac-accueil"
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "member_insert.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -501,13 +512,21 @@ func (h *PagesHandler) MemberEditPage(c *gin.Context) {
 
 	if c.Request.Method == http.MethodPost {
 		strPtr := func(s string) *string {
-			if s == "" { return nil }
+			if s == "" {
+				return nil
+			}
 			return &s
 		}
 		var flags uint
-		if c.PostForm("notif4h") == "1"   { flags |= uint(model.UserFlagEmailNotif4h) }
-		if c.PostForm("notif24h") == "1"  { flags |= uint(model.UserFlagEmailNotif24h) }
-		if c.PostForm("notifOpen") == "1" { flags |= uint(model.UserFlagEmailNotifOuverture) }
+		if c.PostForm("notif4h") == "1" {
+			flags |= uint(model.UserFlagEmailNotif4h)
+		}
+		if c.PostForm("notif24h") == "1" {
+			flags |= uint(model.UserFlagEmailNotif24h)
+		}
+		if c.PostForm("notifOpen") == "1" {
+			flags |= uint(model.UserFlagEmailNotifOuverture)
+		}
 
 		updates := map[string]interface{}{
 			"first_name":           strings.TrimSpace(c.PostForm("firstName")),
@@ -565,7 +584,9 @@ func (h *PagesHandler) MemberEditPage(c *gin.Context) {
 	}
 	ep.Title = "Modifier — " + member.FirstName + " " + member.LastName
 
-	t, err := loadTemplates("base.html", "design.html", "member_edit.html")
+	// Même largeur que les autres écrans de gestion.
+	ep.Container = "container-fluid ac-accueil"
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "member_edit.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -757,7 +778,9 @@ func (h *PagesHandler) InsertPaymentPage(c *gin.Context) {
 	data.Category = "member"
 	data.Breadcrumb = []BreadcrumbItem{{Name: "Membres", Link: "/member"}}
 
-	t, err := loadTemplates("base.html", "design.html", "insert_payment.html")
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "insert_payment.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -805,7 +828,11 @@ func (h *PagesHandler) ForgotPasswordPage(c *gin.Context) {
 		}
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "forgotten_password.html")
+	// Sans design.html : les trois écrans du parcours d'entrée — connexion,
+	// inscription, mot de passe oublié — se tiennent seuls. L'en-tête du site
+	// y affichait un groupe qu'on n'a pas encore rejoint.
+	data.LogoURL = h.logoDuPortail()
+	t, err := loadTemplates("base.html", "cycles_style.html", "forgotten_password.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1231,13 +1258,18 @@ type MessagesData struct {
 	RecipientEmailsJSON template.JS
 	// TempRecipient : destinataire éphémère injecté via query string, non
 	// persistant. Disparaît dès qu'on recharge /messages sans le param.
-	// Cas d'usage actuel : ?distribOrders=YYYY-MM-DD pour les clients d'une
-	// distribution donnée.
+	// Deux cas : ?distribOrders=YYYY-MM-DD pour les clients d'une distribution
+	// donnée, ?member=N pour un adhérent unique depuis la liste des membres.
 	TempRecipient *RecipientOption
+	// FormAction : l'adresse d'envoi du formulaire, paramètres compris. Un
+	// destinataire éphémère n'est reconstruit qu'à partir de la requête ; posté
+	// sur « /messages » nu, il n'existait plus au moment de résoudre les
+	// adresses et l'envoi repartait avec « aucun destinataire ».
+	FormAction template.URL
 	// Feedback d'envoi affiché après un POST réussi (PRG via query params).
-	SendSuccess  int
-	SendFailed   int
-	SendNoRcpt   bool
+	SendSuccess int
+	SendFailed  int
+	SendNoRcpt  bool
 }
 
 // RecipientOption décrit une option ajoutée dynamiquement au select des
@@ -1280,8 +1312,8 @@ func (h *PagesHandler) distribOrdersEmails(groupID uint, day time.Time, scopedCa
 	dayStart := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, day.Location())
 	dayEnd := dayStart.AddDate(0, 0, 1)
 	var rows []struct {
-		Email    string
-		LastName string
+		Email     string
+		LastName  string
 		FirstName string
 	}
 	q := h.db.Table("user_orders").
@@ -1826,9 +1858,42 @@ func (h *PagesHandler) MessagesPage(c *gin.Context) {
 		}
 	}
 
+	// Les destinataires éphémères court-circuitent buildScopedRecipients, qui
+	// est pourtant ce qui borne l'envoi aux droits de chacun. Ils portent donc
+	// leur propre contrôle : sans lui, n'importe quel adhérent obtenait par une
+	// simple adresse — et voyait s'afficher, via « Voir la liste » — les
+	// courriels que la liste déroulante lui refuse.
+	peutViserUnMembre := pd.IsGroupManager || pd.HasMembership
+	peutViserUneCommande := pd.IsGroupManager || pd.HasCatalogAdmin || pd.HasDistributions
+
+	// Destinataire éphémère : ?member=N → un adhérent unique, depuis la liste
+	// des membres. La recherche est bornée au groupe courant, ce qui empêche
+	// de viser un utilisateur arbitraire par son identifiant.
+	if idStr := c.Query("member"); idStr != "" && peutViserUnMembre {
+		if id, err := strconv.ParseUint(idStr, 10, 64); err == nil && id > 0 {
+			var ug model.UserGroup
+			if err := h.db.Preload("User").
+				Where("user_id = ? AND group_id = ?", uint(id), pd.Group.ID).
+				First(&ug).Error; err == nil && ug.User.Email != "" {
+				key := fmt.Sprintf("member-%d", ug.UserID)
+				emailsByRecipient[key] = []string{ug.User.Email}
+				nom := strings.TrimSpace(ug.User.FirstName + " " + ug.User.LastName)
+				if nom == "" {
+					nom = ug.User.Email
+				}
+				data.TempRecipient = &RecipientOption{
+					Value:   key,
+					Name:    nom,
+					Tooltip: ug.User.Email,
+					Count:   1,
+				}
+			}
+		}
+	}
+
 	// Destinataire éphémère : ?distribOrders=YYYY-MM-DD → tous les membres
 	// ayant commandé pour une distribution de cette date dans ce groupe.
-	if dateStr := c.Query("distribOrders"); dateStr != "" {
+	if dateStr := c.Query("distribOrders"); dateStr != "" && peutViserUneCommande {
 		if d, err := time.Parse("2006-01-02", dateStr); err == nil {
 			var scopedCatalogID uint
 			if catalogIDStr := c.Query("catalog"); catalogIDStr != "" {
@@ -1859,6 +1924,14 @@ func (h *PagesHandler) MessagesPage(c *gin.Context) {
 			}
 		}
 	}
+
+	// Le formulaire repart sur l'adresse courante, paramètres compris : c'est
+	// la requête qui reconstruit le destinataire éphémère.
+	action := "/messages"
+	if q := c.Request.URL.RawQuery; q != "" {
+		action += "?" + q
+	}
+	data.FormAction = template.URL(action)
 
 	if b, err := json.Marshal(emailsByRecipient); err == nil {
 		data.RecipientEmailsJSON = template.JS(string(b))
@@ -1991,7 +2064,7 @@ func (h *PagesHandler) VendorViewPage(c *gin.Context) {
 	data := VendorViewData{PageData: pd, Vendor: vendor, Catalogs: catalogs}
 	data.Title = vendor.Name
 
-	t, err := loadTemplates("base.html", "design.html", "vendor_view.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "vendor_view.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return

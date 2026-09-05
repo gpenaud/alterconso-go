@@ -189,6 +189,27 @@ deployments:
         config:
           host: ${HOST}
 
+          # Responsable technique de l'instance locale.
+          #
+          # Sans cette clé, une instance fraîche n'a aucun administrateur : le
+          # rôle ne s'écrit pas en base, il se déduit de l'adresse configurée.
+          # Les comptes importés de production n'ont que leurs droits de
+          # groupe, et aucun d'eux n'ouvre l'administration complète — on se
+          # retrouve devant sa propre installation sans pouvoir y entrer.
+          #
+          # L'adresse est celle de la production ; le mot de passe, lui, ne
+          # figure pas ici et se pose en base sur l'instance locale.
+          technical_manager:
+            email: "guillaume.penaud@gmail.com"
+            first_name: Guillaume
+            last_name: Penaud
+
+          # TEST LOCAL — ne pas commiter. La base est une copie de la
+          # production : sans ces deux lignes, une notification de cycle
+          # partirait vers de vraies adresses.
+          debug: true
+          smtp_host: ""
+
           # Destinataires joignables par un adhérent sans droits. Sans au moins
           # une entrée ici, il ne voit que « Responsables du groupe » — c'est
           # de la configuration, pas un défaut de la page.

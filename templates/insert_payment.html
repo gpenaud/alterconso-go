@@ -1,23 +1,41 @@
 {{define "content"}}
-<div class="row">
-  <div class="col-md-6">
-    <div class="article">
-      <h3><i class="icon icon-payment-type"></i> Saisir un paiement</h3>
-      <p>
-        Membre : <b>{{.Member.FirstName}} {{.Member.LastName}}</b><br/>
-        Solde actuel :
-        <span style="font-weight:bold;color:{{if lt .Balance 0.0}}#C00{{else}}#080{{end}}">
-          {{price .Balance}} €
-        </span>
-      </p>
-      <form method="POST">
-        <div class="form-group">
-          <label>Montant (€)</label>
-          <input type="number" step="0.01" name="amount" class="form-control" required />
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <div class="cyc-panneau" style="max-width:640px;">
+
+    <div class="cyc-entete">
+      <div>
+        <h3>Saisir un paiement</h3>
+        <p class="cyc-chapeau">
+          Pour {{.Member.FirstName}} {{.Member.LastName}}.
+        </p>
+      </div>
+      <a href="/member/payments/{{.Member.ID}}" class="cyc-btn">
+        <i class="icon icon-chevron-left"></i> Retour aux paiements
+      </a>
+    </div>
+
+    {{/* Le solde avant la saisie : on saisit un règlement au regard de ce qui
+         est dû, pas dans le vide. */}}
+    <div class="cyc-solde {{if lt .Balance 0.0}}debiteur{{else}}crediteur{{end}}">
+      <span class="intitule">Solde avant ce paiement</span>
+      <span class="montant">{{price .Balance}} €</span>
+      <span class="cyc-note">
+        {{if lt .Balance 0.0}}Ce membre doit cette somme au groupe.
+        {{else if gt .Balance 0.0}}Le groupe doit cette somme à ce membre.
+        {{else}}Le compte est à l'équilibre.{{end}}
+      </span>
+    </div>
+
+    <form method="POST">
+      <div class="cyc-champs">
+        <div class="cyc-champ">
+          <label for="amount">Montant (€) *</label>
+          <input type="number" step="0.01" id="amount" name="amount" required />
         </div>
-        <div class="form-group">
-          <label>Mode de paiement</label>
-          <select name="paymentType" class="form-control">
+        <div class="cyc-champ">
+          <label for="paymentType">Mode de règlement</label>
+          <select id="paymentType" name="paymentType">
             <option value="Chèque">Chèque</option>
             <option value="Espèces">Espèces</option>
             <option value="Virement">Virement</option>
@@ -25,16 +43,21 @@
             <option value="Autre">Autre</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>Description (optionnel)</label>
-          <input type="text" name="description" class="form-control" />
+        <div class="cyc-champ large">
+          <label for="description">Description</label>
+          <input type="text" id="description" name="description"
+                 placeholder="Facultatif — numéro de chèque, motif…" />
         </div>
-        <a href="/member/view/{{.Member.ID}}" class="btn btn-default">Annuler</a>
-        <button type="submit" class="btn btn-primary">
-          <i class="icon icon-check"></i> Enregistrer
+      </div>
+
+      <div class="cyc-pied">
+        <a href="/member/payments/{{.Member.ID}}" class="cyc-btn">Annuler</a>
+        <button type="submit" class="cyc-btn cyc-btn-primaire">
+          <i class="icon icon-check"></i> Enregistrer le paiement
         </button>
-      </form>
-    </div>
+      </div>
+    </form>
+
   </div>
 </div>
 {{end}}

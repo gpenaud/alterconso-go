@@ -1,0 +1,232 @@
+{{define "content"}}
+{{template "cyclesStyle"}}
+<div class="cyc">
+<div class="col-md-8">
+
+  <div class="cyc-entete">
+    <div>
+      <h3>{{if .IsNew}}Nouveau cycle{{else}}{{.Cycle.Name}}{{end}}</h3>
+      <p class="cyc-chapeau">
+        {{if .IsNew}}
+        Programmez une série de distributions, et le rappel qui les annoncera.
+        {{else}}
+        {{.RhythmText}} — {{.NbDistribs}} distribution{{if ne .NbDistribs 1}}s{{end}} programmée{{if ne .NbDistribs 1}}s{{end}},
+        dont {{.NbUpcoming}} à venir.
+        {{end}}
+      </p>
+    </div>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data"
+        action="{{if .IsNew}}/distribution/cycles/new{{else}}/distribution/cycles/{{.Cycle.ID}}{{end}}">
+
+    <div class="cyc-carte">
+      <div class="cyc-section">
+        <h4>Identité</h4>
+        <div class="cyc-champs">
+          <div class="cyc-champ large">
+            <label for="name">Nom du cycle</label>
+            <input type="text" id="name" name="name" maxlength="64"
+                   value="{{.Cycle.Name}}" placeholder="Le jeudi à la salle des fêtes" />
+            <p class="cyc-note">Sert à le reconnaître dans la liste. À défaut, le nom du lieu est repris.</p>
+          </div>
+        </div>
+      </div>
+
+      {{if .IsNew}}
+      <div class="cyc-section">
+        <h4>Rythme</h4>
+        <div class="cyc-rythmes">
+          <input type="radio" id="r1" name="cycleType" value="Weekly" checked /><label for="r1">Chaque semaine</label>
+          <input type="radio" id="r2" name="cycleType" value="BiWeekly" /><label for="r2">Deux semaines</label>
+          <input type="radio" id="r3" name="cycleType" value="TriWeekly" /><label for="r3">Trois semaines</label>
+          <input type="radio" id="r4" name="cycleType" value="Monthly" /><label for="r4">Chaque mois</label>
+          <input type="radio" id="r5" name="cycleType" value="SemiAnnual" /><label for="r5">Six mois</label>
+          <input type="radio" id="r6" name="cycleType" value="Annual" /><label for="r6">Chaque année</label>
+        </div>
+      </div>
+
+      <div class="cyc-section">
+        <h4>Période et lieu</h4>
+        <div class="cyc-champs">
+          <div class="cyc-champ">
+            <label for="startDate">Début</label>
+            <input type="date" id="startDate" name="startDate" value="{{.DefaultStart}}" required />
+          </div>
+          <div class="cyc-champ">
+            <label for="endDate">Fin</label>
+            <input type="date" id="endDate" name="endDate" value="{{.DefaultEnd}}" required />
+          </div>
+          <div class="cyc-champ">
+            <label for="placeId">Lieu</label>
+            <select id="placeId" name="placeId" required>
+              {{range .Places}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+            </select>
+          </div>
+        </div>
+      </div>
+      {{else}}
+      <div class="cyc-section">
+        <h4>Prolonger</h4>
+        <p class="cyc-aide">
+          Ajoute des distributions au même rythme, sans toucher aux existantes.{{if .LastDate}}
+          La dernière est programmée le {{.LastDate}}.{{end}}
+        </p>
+        <div class="cyc-champs">
+          <div class="cyc-champ">
+            <label for="extendTo">Jusqu'au</label>
+            <input type="date" id="extendTo" name="extendTo" />
+            <p class="cyc-note">Laisser vide pour ne rien ajouter.</p>
+          </div>
+        </div>
+      </div>
+      {{end}}
+
+      <div class="cyc-section" style="margin-bottom:0;">
+        <h4>Horaires</h4>
+        <p class="cyc-aide">Appliqués à chaque distribution {{if .IsNew}}créée{{else}}ajoutée{{end}}.</p>
+        <div class="cyc-champs">
+          <div class="cyc-champ">
+            <label>Distribution</label>
+            <div class="cyc-ligne">
+              de <input type="time" name="startHour" value="19:00" required />
+              à <input type="time" name="endHour" value="20:00" required />
+            </div>
+          </div>
+          <div class="cyc-champ">
+            <label>Ouverture des commandes</label>
+            <div class="cyc-ligne">
+              <input type="number" name="daysBeforeOpen" value="10" min="0" required /> j. avant, à
+              <input type="time" name="openingHour" value="08:00" required />
+            </div>
+          </div>
+          <div class="cyc-champ">
+            <label>Fermeture des commandes</label>
+            <div class="cyc-ligne">
+              <input type="number" name="daysBeforeClose" value="2" min="0" required /> j. avant, à
+              <input type="time" name="closingHour" value="23:55" required />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cyc-carte">
+      <label class="cyc-bascule {{if .Message.Enabled}}actif{{end}}" id="bascule" for="enabledBox">
+        <input type="checkbox" id="enabledBox" name="enabled" value="1" {{if .Message.Enabled}}checked{{end}} />
+        <span>
+          <span class="titre">Envoyer un rappel à l'ouverture des commandes</span>
+          <span class="cyc-note">
+            Il remplace le message d'ouverture par défaut, pour les distributions de ce cycle.
+            Décoché, le texte est conservé mais rien ne part.
+          </span>
+        </span>
+      </label>
+
+      <div class="cyc-repli {{if .Message.Enabled}}ouvert{{end}}" id="messageBlock"><div>
+        <div class="cyc-champs">
+          <div class="cyc-champ large">
+            <label for="subject">Objet</label>
+            <input type="text" id="subject" name="subject" maxlength="128"
+                   value="{{.Message.Subject}}" placeholder="Les commandes sont ouvertes !" />
+          </div>
+          <div class="cyc-champ large">
+            <label for="body">Texte</label>
+            <textarea id="body" name="body" rows="8"
+                      placeholder="Ce que vous voulez dire aux adhérents…">{{.Message.Body}}</textarea>
+            <p class="cyc-note">Les retours à la ligne sont conservés. Le texte part tel quel.</p>
+          </div>
+          <div class="cyc-champ large">
+            <label for="image">Image d'en-tête</label>
+            {{if .ImageURL}}
+            <div style="margin-bottom:10px;display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
+              <img src="{{.ImageURL}}" alt=""
+                   style="max-width:260px;max-height:150px;border-radius:8px;border:1px solid #e7e3d9;" />
+              <button type="submit" name="removeImage" value="1" class="cyc-btn cyc-btn-danger"
+                      onclick="return confirm('Retirer cette image ?')">
+                <i class="icon icon-delete"></i> Retirer
+              </button>
+            </div>
+            {{end}}
+            <input type="file" id="image" name="image" accept=".png,.jpg,.jpeg,.gif,.webp" />
+            <p class="cyc-note">PNG, JPEG, GIF ou WebP, 5 Mo au plus.</p>
+          </div>
+          <div class="cyc-champ">
+            <label for="linkLabel">Libellé du bouton</label>
+            <input type="text" id="linkLabel" name="linkLabel" maxlength="64"
+                   value="{{.Message.LinkLabel}}" placeholder="Passer ma commande" />
+            <p class="cyc-note">Le bouton mène à la boutique de la distribution annoncée.</p>
+          </div>
+          <div class="cyc-champ">
+            <label for="recipientCategory">Destinataires</label>
+            <select id="recipientCategory" name="recipientCategory">
+              <option value="">Catégorie par défaut</option>
+              {{range .Categories}}
+              <option value="{{.}}" {{if eq . $.Message.RecipientCategory}}selected{{end}}>{{.}}</option>
+              {{end}}
+            </select>
+          </div>
+        </div>
+      </div></div>
+
+      <div class="cyc-pied">
+        <button type="submit" class="cyc-btn cyc-btn-primaire">
+          <i class="icon icon-check"></i> {{if .IsNew}}Créer le cycle{{else}}Enregistrer{{end}}
+        </button>
+        <a href="/distribution/cycles" class="cyc-btn">Annuler</a>
+      </div>
+    </div>
+  </form>
+
+  {{if not .IsNew}}
+  <div class="cyc-danger">
+    <h4>Supprimer ce cycle</h4>
+    <p class="cyc-note" style="margin-bottom:12px;">
+      Ses distributions sont retirées du calendrier — sauf celles où des adhérents
+      ont commandé, qui sont conservées et détachées du cycle.
+    </p>
+    <form method="POST" action="/distribution/cycles/{{.Cycle.ID}}/delete"
+          onsubmit="return confirm('Supprimer le cycle « {{.Cycle.Name}} » ? Ses {{.NbDistribs}} distribution(s) seront retirées du calendrier, sauf celles où des adhérents ont déjà commandé.')">
+      <button type="submit" class="cyc-btn cyc-btn-danger">
+        <i class="icon icon-delete"></i> Supprimer ce cycle
+      </button>
+    </form>
+  </div>
+  {{end}}
+</div>
+
+{{if not .IsNew}}
+<div class="col-md-4">
+  <div class="cyc-carte cyc-fiche">
+    <dl>
+      <dt>Lieu</dt><dd>{{.Cycle.Place.Name}}</dd>
+      <dt>Rythme</dt><dd>{{.RhythmText}}</dd>
+      <dt>Période</dt>
+      <dd>du {{.Cycle.StartDate.Format "02/01/2006"}} au {{.Cycle.EndDate.Format "02/01/2006"}}</dd>
+      <dt>Distributions</dt>
+      <dd><span class="cyc-chiffre">{{.NbDistribs}}</span> au total, dont {{.NbUpcoming}} à venir</dd>
+    </dl>
+    <p class="cyc-note" style="margin-top:16px;padding-top:14px;border-top:1px solid #e7e3d9;">
+      Le rythme et le lieu ne se modifient pas : les distributions déjà
+      programmées portent des commandes.
+    </p>
+  </div>
+</div>
+{{end}}
+</div>
+
+<script>
+(function () {
+  var box = document.getElementById('enabledBox');
+  var bloc = document.getElementById('messageBlock');
+  var bascule = document.getElementById('bascule');
+  if (!box || !bloc) return;
+  function sync() {
+    bloc.classList.toggle('ouvert', box.checked);
+    if (bascule) bascule.classList.toggle('actif', box.checked);
+  }
+  box.addEventListener('change', sync);
+  sync();
+})();
+</script>
+{{end}}

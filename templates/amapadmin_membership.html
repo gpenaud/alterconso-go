@@ -1,41 +1,51 @@
 {{define "content"}}
 {{template "amapadmin_nav" .}}
-<div class="col-md-9">
-  <h2>Adhésions</h2>
-  <div class="article" style="padding:32px 36px;">
-    <form method="POST" action="/amapadmin/membership" class="form-horizontal">
 
-      <div class="form-group" style="margin-bottom:20px;">
-        <label class="col-sm-5 control-label" style="text-align:left;padding-top:6px;">Gestion des adhésions</label>
-        <div class="col-sm-7" style="padding-top:8px;">
-          <input type="checkbox" name="hasMembership" value="1"
-            style="width:18px;height:18px;cursor:pointer;"
-            {{if .Group.HasMembership}}checked{{end}} />
-        </div>
-      </div>
+<form method="POST" action="/amapadmin/membership">
 
-      <div class="form-group" style="margin-bottom:20px;">
-        <label class="col-sm-5 control-label" style="text-align:left;padding-top:6px;">Montant de l'adhésion <span style="color:#888;font-weight:normal;">(laisser vide si variable)</span></label>
-        <div class="col-sm-7">
-          <input type="number" min="0" step="1" name="membershipFee" class="form-control"
-            value="{{derefInt .Group.MembershipFee}}" />
-        </div>
-      </div>
-
-      <div class="form-group" style="margin-bottom:28px;">
-        <label class="col-sm-5 control-label" style="text-align:left;padding-top:6px;">Date de renouvellement annuelle des adhésions</label>
-        <div class="col-sm-7">
-          <input type="date" name="membershipRenewalDate" class="form-control"
-            value="{{if .Group.MembershipRenewalDate}}{{.Group.MembershipRenewalDate.Format "2006-01-02"}}{{end}}" />
-        </div>
-      </div>
-
-      <div class="form-group" style="margin-bottom:0;">
-        <div class="col-sm-offset-5 col-sm-7">
-          <button type="submit" class="btn btn-success">OK</button>
-        </div>
-      </div>
-    </form>
+  <div class="cyc-section">
+    <label class="cyc-bascule {{if .Group.HasMembership}}actif{{end}}">
+      <input type="checkbox" name="hasMembership" value="1" {{if .Group.HasMembership}}checked{{end}} />
+      <span>
+        <span class="titre">Le groupe gère des adhésions</span>
+        <p class="cyc-note">
+          Une colonne « Adhésion » apparaît alors sur la liste des membres, et
+          chaque fiche permet d'enregistrer le règlement de l'année.
+        </p>
+      </span>
+    </label>
   </div>
-</div>
+
+  <div class="cyc-section">
+    <div class="cyc-champs">
+      <div class="cyc-champ">
+        <label for="membershipFee">Montant de l'adhésion</label>
+        <input type="number" id="membershipFee" name="membershipFee" min="0" step="1"
+               value="{{derefInt .Group.MembershipFee}}" placeholder="Variable" />
+        <p class="cyc-note">Laisser vide si le montant est libre.</p>
+      </div>
+      <div class="cyc-champ">
+        <label for="membershipRenewalDate">Date de renouvellement</label>
+        <input type="date" id="membershipRenewalDate" name="membershipRenewalDate"
+               value="{{if .Group.MembershipRenewalDate}}{{.Group.MembershipRenewalDate.Format "2006-01-02"}}{{end}}" />
+        <p class="cyc-note">Le jour où les adhésions de l'année précédente expirent.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="cyc-pied">
+    <button type="submit" class="cyc-btn cyc-btn-primaire">
+      <i class="icon icon-check"></i> Enregistrer
+    </button>
+  </div>
+</form>
+
+<script>
+document.addEventListener('change', function (e) {
+  var b = e.target.closest ? e.target.closest('.cyc-bascule') : null;
+  if (b && e.target.type === 'checkbox') b.classList.toggle('actif', e.target.checked);
+});
+</script>
+
+{{template "amapadmin_close" .}}
 {{end}}

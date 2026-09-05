@@ -1,7 +1,8 @@
 import type { ProductInfo } from "../../types/shop";
 import { useCartStore } from "../../store/cart";
 import { formatPrice, smartQty, pricePerUnit, formatNum } from "../../utils/format";
-import { COLORS } from "./theme";
+import { COLORS, FONTS, RADIUS } from "./theme";
+import { useEcranEtroit } from "../../utils/useEcranEtroit";
 import { QuantityInput } from "./QuantityInput";
 
 interface Props {
@@ -15,6 +16,10 @@ interface Props {
  * commander. Port de react.store.ProductActions (Haxe).
  */
 export function ProductActions({ product, displayVAT = false }: Props) {
+  // Conditionnement, prix et bouton se disputent la largeur d'une carte de
+  // 340 px : les deux premiers cèdent un peu de corps, le bouton garde sa
+  // surface — c'est lui qu'on vise du doigt.
+  const etroit = useEcranEtroit();
   const add = useCartStore((s) => s.add);
   const setQuantity = useCartStore((s) => s.setQuantity);
   const qty = useCartStore((s) => s.quantityOf(product.id));
@@ -38,8 +43,8 @@ export function ProductActions({ product, displayVAT = false }: Props) {
         <span
           style={{
             fontWeight: 400,
-            color: COLORS.darkGrey,
-            fontSize: 22,
+            color: COLORS.encre,
+            fontSize: etroit ? 18 : 22,
             lineHeight: 1.2,
             minHeight: "1.2em",
           }}
@@ -47,7 +52,7 @@ export function ProductActions({ product, displayVAT = false }: Props) {
           {qtyLabel}
         </span>
         <span
-          style={{ color: COLORS.mediumGrey, fontSize: 14, minHeight: "1.2em" }}
+          style={{ color: COLORS.gris, fontSize: 14, minHeight: "1.2em" }}
         >
           {unitPriceLabel}
         </span>
@@ -55,11 +60,18 @@ export function ProductActions({ product, displayVAT = false }: Props) {
 
       {/* Prix total + ligne TVA optionnelle (modale produit) */}
       <div className="text-center" style={{ flex: "0 0 auto", padding: "0 8px" }}>
-        <span style={{ fontWeight: 700, color: COLORS.third, fontSize: 22 }}>
+        <span
+          style={{
+            fontFamily: FONTS.titre,
+            fontWeight: 700,
+            color: COLORS.titre,
+            fontSize: etroit ? 19 : 22,
+          }}
+        >
           {formatPrice(product.price)}
         </span>
         {displayVAT && product.vat != null && product.vat !== 0 && (
-          <div style={{ color: COLORS.mediumGrey, fontSize: 12, marginTop: 2 }}>
+          <div style={{ color: COLORS.gris, fontSize: 12, marginTop: 2 }}>
             {formatNum(product.vat)} % de TVA inclue
           </div>
         )}
@@ -73,7 +85,7 @@ export function ProductActions({ product, displayVAT = false }: Props) {
       {product.stock != null && product.stock <= 0 ? (
         <span
           style={{
-            color: COLORS.third,
+            color: COLORS.danger,
             fontSize: 14,
             fontWeight: 700,
             textAlign: "right",
@@ -98,11 +110,11 @@ export function ProductActions({ product, displayVAT = false }: Props) {
           title="Ajouter au panier"
           className="flex items-center justify-center transition-colors"
           style={{
-            width: 64,
-            height: 40,
-            borderRadius: 6,
-            backgroundColor: COLORS.primary,
-            color: COLORS.white,
+            width: etroit ? 56 : 64,
+            height: etroit ? 44 : 40,
+            borderRadius: RADIUS.bouton,
+            backgroundColor: COLORS.vert,
+            color: COLORS.blanc,
             flexShrink: 0,
             border: "none",
             cursor: "pointer",

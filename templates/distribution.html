@@ -1,208 +1,264 @@
 {{define "content"}}
-<style>
-  .farmers-table > tbody > tr:nth-of-type(2n) { background: #fff; }
-  .farmers-table > tbody > tr:nth-of-type(2n+1) { background: #f4f1e8; }
-  /* le header "Commandes variables" garde son fond explicite */
-  .farmers-table > tbody > tr:first-child { background: #f0ece0 !important; }
-</style>
-<div class="col-md-12">
-  <h2 style="margin:0 0 12px;padding:0 4px;">Distributions</h2>
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <div class="cyc-panneau">
 
-  <div style="display:flex;align-items:center;margin-bottom:20px;gap:8px;flex-wrap:wrap;">
-    <a href="/distribution?offset={{.PrevOffset}}" class="btn btn-default btn-sm" title="Période précédente"><i class="icon icon-chevron-left"></i></a>
-    <span class="btn btn-default btn-sm" style="pointer-events:none;">{{.PeriodLabel}}</span>
-    <a href="/distribution?offset={{.NextOffset}}" class="btn btn-default btn-sm" title="Période suivante"><i class="icon icon-chevron-right"></i></a>
-    <div style="flex:1;"></div>
-    <a href="/distribution/insertMd" class="btn btn-default btn-sm"><i class="icon icon-plus"></i> Distribution ponctuelle</a>
-    <a href="/distribution/insertMdCycle" class="btn btn-default btn-sm"><i class="icon icon-plus"></i> Cycle de distributions</a>
-    <a href="/distribution/volunteersParticipation" class="btn btn-default btn-sm"><i class="icon icon-chevron-down"></i> Permanences</a>
-  </div>
-
-  {{if .AllDistribs}}
-  {{range .AllDistribs}}
-  <div class="distrib">
-
-    <!-- Date box -->
-    <div class="dateBoxOffset">
-      {{if .IsToday}}
-      <div style="width:90px;height:90px;background:#4CAF50;border-radius:8px;box-shadow:4px 4px 0px #292929;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;">
-        <img src="/img/go.png" style="width:48px;height:48px;object-fit:contain;margin-bottom:2px;" />
-        <div style="font-size:13px;font-weight:bold;line-height:1.2;">CET<br/>APRÈS-MIDI</div>
+    <div class="cyc-entete">
+      <div>
+        <h3>Distributions</h3>
+        <p class="cyc-chapeau">
+          Le calendrier du groupe : qui livre, qui tient la permanence, et où
+          en sont les commandes.
+        </p>
       </div>
-      {{else}}
-      <div class="dateBox">
-        <div class="box">
-          <div style="font-size:11px;line-height:1.4;padding:2px 6px 0;text-transform:capitalize;">{{.DayOfWeek}}</div>
-          <div style="font-size:26px;color:#990000;line-height:1;padding:0 6px;font-weight:bold;">{{.Day}}</div>
-          <div style="font-size:11px;line-height:1.4;padding:0 6px 2px;text-transform:capitalize;">{{.Month}}</div>
-        </div>
-      </div>
-      {{end}}
+      <a href="/distribution/insertMd" class="cyc-btn cyc-btn-primaire">
+        <i class="icon icon-plus"></i> Distribution ponctuelle
+      </a>
     </div>
 
-    <!-- Header bar -->
-    <div class="header" style="display:flex;align-items:flex-start;gap:16px;padding:10px 14px 10px 100px;min-height:72px;">
-      <!-- Horaires + commandes -->
-      <div style="flex:1;line-height:1.9;">
-        <div class="info"><i class="icon icon-clock"></i> Distribution de {{.StartHour}} à {{.EndHour}}</div>
-        {{if .OrderStartDate}}<div class="info"><i class="icon icon-calendar"></i> Ouverture des commandes : {{.OrderStartDate}}</div>{{end}}
-        {{if .OrderEndDate}}<div class="info"><i class="icon icon-calendar"></i> Clôture des commandes : {{.OrderEndDate}}</div>{{end}}
-      </div>
-      <!-- Lieu -->
-      <div style="flex:1;line-height:1.9;">
-        <div class="info"><i class="icon icon-map-marker"></i> <b>{{.Place}}</b></div>
-        {{if .PlaceAddress}}<div class="address">{{.PlaceAddress}}</div>{{end}}
-      </div>
-      <!-- Actions -->
-      <div style="flex-shrink:0;display:flex;gap:4px;align-items:flex-start;">
-        <a href="/distribution/editMd/{{.ID}}" class="btn btn-default" style="padding:5px 11px;"><i class="icon icon-edit"></i> Modifier</a>
-        <a href="/distribution/deleteMd/{{.ID}}" class="btn btn-danger" style="padding:5px 11px;" onclick="return confirm('Supprimer cette distribution ?')"><i class="icon icon-delete"></i> Suppr.</a>
-      </div>
-    </div>
-
-    <!-- 4 cards -->
-    <div class="content" style="display:flex;gap:12px;padding:12px;background:#fff;">
-
-      <!-- Card 1: État commande -->
-      <div style="flex:1;padding:16px 10px;border:2px solid #ddd;border-radius:6px;text-align:center;display:flex;align-items:center;justify-content:center;min-height:140px;">
-        {{if .IsOrderOpen}}
-        <div>
-          <div><i class="icon icon-basket" style="font-size:2.4em;color:#333;"></i></div>
-          <div style="margin-top:10px;font-size:1.05em;">Commande en cours</div>
-        </div>
-        {{else if .IsFuture}}
-        <div>
-          <div><i class="icon icon-clock" style="font-size:2.4em;color:#ccc;"></i></div>
-          <div style="margin-top:10px;color:#aaa;font-size:0.95em;">Commande pas encore ouverte</div>
-        </div>
-        {{else if and .Validated .IsPast}}
-        <div style="color:#555;font-size:1.05em;">Distribution faite</div>
-        {{else}}
-        <div>
-          <div><i class="icon icon-basket" style="font-size:2.4em;color:#bbb;"></i></div>
-          <div style="margin-top:10px;color:#999;font-size:1.05em;">Commande close</div>
-        </div>
-        {{end}}
-      </div>
-
-      <!-- Card 2: Producteurs -->
-      <div style="flex:1;padding:16px 10px;border:2px solid #ddd;border-radius:6px;text-align:center;">
-        <div style="color:#aaa;margin-bottom:6px;font-size:0.9em;"><i class="icon icon-farmer"></i> Producteurs</div>
-        <div style="font-size:2.8em;font-weight:300;color:#333;line-height:1.1;">{{len .Catalogs}}</div>
-        <div style="margin-top:14px;">
-          <button type="button" class="btn btn-default" style="padding:5px 11px;" onclick="toggleFarmers({{.ID}})"><i class="icon icon-chevron-down"></i> Producteurs participants</button>
-        </div>
-      </div>
-
-      <!-- Card 3: Permanences -->
-      <div style="flex:1;padding:16px 10px;border:2px solid #ddd;border-radius:6px;text-align:center;">
-        <div style="color:#aaa;margin-bottom:6px;font-size:0.9em;"><i class="icon icon-info"></i> Permanences</div>
-        <div style="font-size:2.8em;font-weight:300;color:#333;line-height:1.1;">{{.NbVolunteers}} / {{.NbVolunteersRequired}}</div>
-        <div style="color:#aaa;font-size:0.88em;margin-bottom:14px;">bénévoles inscrit(s)</div>
-        <div style="display:flex;flex-direction:column;gap:6px;align-items:center;">
-          <a href="/distribution/roles/{{.ID}}" class="btn btn-default" style="width:180px;padding:5px 11px;"><i class="icon icon-users"></i> Rôles de bénévoles</a>
-          <a href="/distribution/volunteersSummary/{{.ID}}" class="btn btn-default" style="width:180px;padding:5px 11px;"><i class="icon icon-users"></i> Bénévoles inscrits</a>
-        </div>
-      </div>
-
-      <!-- Card 4: Commandes -->
-      <div style="flex:1;padding:16px 10px;border:2px solid #ddd;border-radius:6px;text-align:center;">
-        <div style="color:#aaa;margin-bottom:6px;font-size:0.9em;"><i class="icon icon-basket"></i> Commandes</div>
-        <div style="font-size:2.8em;font-weight:300;color:#333;line-height:1.1;">{{.NbOrders}}</div>
-        <div style="color:#aaa;font-size:0.88em;margin-bottom:14px;">Commande(s)<br/>pour un total de <b style="color:#555;">{{price .TotalAmount}} €</b></div>
-        <a href="/contractAdmin/ordersByDate/{{.DateISO}}/{{$.Group.ID}}" class="btn btn-default" style="width:160px;padding:5px 11px;">
-          <i class="icon icon-basket"></i> Commandes
+    <div class="cyc-barre">
+      {{/* Les deux flèches et le libellé groupés en un seul contrôle : trois
+           boutons séparés se lisaient comme trois actions sans rapport. */}}
+      <div class="cyc-periode">
+        <a href="/distribution?offset={{.PrevOffset}}" title="Période précédente">
+          <i class="icon icon-chevron-left"></i><span class="sr-only">Période précédente</span>
+        </a>
+        <span class="libelle">{{.PeriodLabel}}</span>
+        <a href="/distribution?offset={{.NextOffset}}" title="Période suivante">
+          <i class="icon icon-chevron-right"></i><span class="sr-only">Période suivante</span>
         </a>
       </div>
 
-    </div>
-
-    <!-- Farmers panel (hidden by default) -->
-    {{/* Retenu ici pour les liens du tableau : sous {{range .DistribLinks}},
-         $ désigne la racine du template et non cette distribution. */}}
-    {{$mdID := .ID}}
-    <div id="farmers-{{.ID}}" style="display:none;background:#fff;border:1px solid #e5e5e5;border-top:none;border-radius:0 0 6px 6px;padding:16px;">
-      <div style="margin-bottom:14px;">
-        <a href="/distribution/inviteFarmers/{{.ID}}" class="btn btn-success" style="padding:8px 16px;">
-          <i class="icon icon-plus"></i> Ajouter / supprimer des producteurs
+      <div class="cyc-filtres">
+        <a href="/distribution/cycles" class="cyc-filtre">
+          <i class="icon icon-refresh"></i> Cycles de distribution
+        </a>
+        <a href="/distribution/volunteersParticipation" class="cyc-filtre">
+          <i class="icon icon-users"></i> Permanences
         </a>
       </div>
-      {{if .DistribLinks}}
-      <table class="table table-bordered farmers-table" style="margin-bottom:0;">
-        <tbody>
-          <tr><td colspan="3" style="background:#f0ece0;font-weight:bold;padding:8px 14px;">Commandes variables</td></tr>
-          {{range .DistribLinks}}
-          <tr>
-            <td style="padding:14px;vertical-align:middle;"><a href="/contractAdmin/view/{{.CatalogID}}" style="color:#5cb85c;">{{.CatalogName}}</a></td>
-            <td style="padding:14px;vertical-align:middle;">{{.VendorName}}</td>
-            <td style="padding:14px;vertical-align:middle;">
-              {{if .CustomOrderStart}}
-              <div style="background:#fdf6e3;color:#5a5a5a;padding:8px 12px;border-radius:4px;margin-bottom:8px;font-size:0.92em;">
-                <i class="icon icon-info" style="color:#d4a017;"></i>
-                La date d'ouverture des commandes est différente de celle de la distribution principale. : <b>{{.CustomOrderStart}}</b>
-              </div>
-              {{end}}
-              {{if .CustomOrderEnd}}
-              <div style="background:#fdf6e3;color:#5a5a5a;padding:8px 12px;border-radius:4px;margin-bottom:8px;font-size:0.92em;">
-                <i class="icon icon-info" style="color:#d4a017;"></i>
-                La date de fermeture des commandes est différente de celle de la distribution principale. : <b>{{.CustomOrderEnd}}</b>
-              </div>
-              {{end}}
-              <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                {{/* Lien direct, et non un menu déroulant : celui-ci ne
-                     s'ouvrait pas, et il ne restait de toute façon qu'une
-                     entrée — l'écran des dates permet aussi de reporter la
-                     livraison de ce producteur, ce que « Reporter la
-                     distribution » faisait à part.
+    </div>
 
-                     Même écran que depuis la fiche catalogue : livraison,
-                     ouverture et clôture pour ce seul producteur, avec les
-                     mêmes bornes. Le retour rouvre la liste d'où l'on vient. */}}
-                <a href="/contractAdmin/distributions/{{.CatalogID}}/dates/{{.DistribID}}?return={{printf "/distribution?open=%d" $mdID}}"
-                   class="btn btn-default" style="padding:5px 11px;">
-                  <i class="icon icon-calendar"></i> Dates
-                </a>
-                {{/* Formulaire, et non lien : ce retrait supprime des données,
-                     et un GET se déclenche au simple préchargement. */}}
-                <form method="POST" action="/distribution/notAttend/{{.DistribID}}" style="display:inline;">
-                  <button type="submit" class="btn btn-default" style="padding:5px 11px;"
-                          onclick="return confirm('Retirer ce producteur de la distribution ?')">
-                    <i class="icon icon-delete"></i> Ne participe plus
-                  </button>
-                </form>
-              </div>
-            </td>
-          </tr>
+    {{if .AllDistribs}}
+    {{/* Une liste dépliable plutôt que quatre cartes par distribution : sur
+         une période de plusieurs semaines, l'ancienne mise en page faisait
+         défiler des mètres de chiffres avant d'atteindre la date cherchée.
+         Ce qui compte se lit sur la ligne, le reste attend qu'on l'ouvre. */}}
+    <div class="cyc-liste" id="dst-liste">
+      {{range .AllDistribs}}
+      {{$mdID := .ID}}
+      <div class="cyc-bloc" id="distrib-{{.ID}}">
+        <button type="button" class="cyc-sommaire" aria-expanded="false">
+          <span class="cyc-date {{if .IsToday}}aujourdhui{{end}}">
+            <span class="jour">{{.DayOfWeek}}</span>
+            <span class="numero">{{.Day}}</span>
+            <span class="mois">{{.Month}}</span>
+          </span>
+          <span class="ident">
+            <span class="nom">{{.Place}}</span>
+            <span class="second">de {{.StartHour}} à {{.EndHour}}</span>
+          </span>
+
+          {{/* Trois états qui se lisent d'un coup : où en sont les commandes,
+               s'il manque des bénévoles, combien de commandes sont passées. */}}
+          {{if .IsOrderOpen}}
+          <span class="cyc-badge ok"><i class="icon icon-basket"></i> Commandes ouvertes</span>
+          {{else if .IsFuture}}
+          <span class="cyc-badge">Commandes à venir</span>
+          {{else if and .Validated .IsPast}}
+          <span class="cyc-badge ok"><i class="icon icon-check"></i> Faite</span>
+          {{else}}
+          <span class="cyc-badge">Commandes closes</span>
           {{end}}
-        </tbody>
-      </table>
+
+          {{if gt .NbVolunteersRequired 0}}
+          <span class="cyc-badge {{if ge .NbVolunteers .NbVolunteersRequired}}ok{{else}}attention{{end}}"
+                title="Bénévoles inscrits sur les postes à tenir">
+            <i class="icon icon-users"></i> {{.NbVolunteers}}/{{.NbVolunteersRequired}}
+          </span>
+          {{end}}
+
+          <span class="cyc-badge" title="Commandes passées">
+            <i class="icon icon-basket"></i> {{.NbOrders}}
+          </span>
+
+          <i class="icon icon-chevron-down chevron"></i>
+        </button>
+
+        <div class="cyc-repli"><div>
+          <dl class="cyc-detail">
+            <div>
+              <dt>Lieu</dt>
+              <dd>
+                {{.Place}}
+                {{if .PlaceAddress}}<br /><span class="cyc-note" style="margin:0;">{{.PlaceAddress}}</span>{{end}}
+              </dd>
+            </div>
+            <div>
+              <dt>Horaires</dt>
+              <dd>de {{.StartHour}} à {{.EndHour}}</dd>
+            </div>
+            <div>
+              <dt>Ouverture des commandes</dt>
+              <dd {{if not .OrderStartDate}}class="muet"{{end}}>{{if .OrderStartDate}}{{.OrderStartDate}}{{else}}Non fixée{{end}}</dd>
+            </div>
+            <div>
+              <dt>Clôture des commandes</dt>
+              <dd {{if not .OrderEndDate}}class="muet"{{end}}>{{if .OrderEndDate}}{{.OrderEndDate}}{{else}}Non fixée{{end}}</dd>
+            </div>
+            <div>
+              <dt>Commandes</dt>
+              <dd>{{.NbOrders}} pour {{price .TotalAmount}} €</dd>
+            </div>
+            <div>
+              <dt>Permanences</dt>
+              <dd {{if eq .NbVolunteersRequired 0}}class="muet"{{end}}>
+                {{if gt .NbVolunteersRequired 0}}{{.NbVolunteers}} inscrit{{if gt .NbVolunteers 1}}s{{end}} sur {{.NbVolunteersRequired}} poste{{if gt .NbVolunteersRequired 1}}s{{end}}
+                {{else}}Aucun poste défini{{end}}
+              </dd>
+            </div>
+          </dl>
+
+          <div class="cyc-actions-nommees">
+            <a href="/distribution/editMd/{{.ID}}" class="cyc-btn">
+              <i class="icon icon-edit"></i> Modifier
+            </a>
+            <a href="/contractAdmin/ordersByDate/{{.DateISO}}/{{$.Group.ID}}" class="cyc-btn">
+              <i class="icon icon-basket"></i> Voir les commandes
+            </a>
+            <a href="/distribution/roles/{{.ID}}" class="cyc-btn">
+              <i class="icon icon-users"></i> Postes de bénévoles
+            </a>
+            <a href="/distribution/volunteersSummary/{{.ID}}" class="cyc-btn">
+              <i class="icon icon-users"></i> Bénévoles inscrits
+            </a>
+            <a href="/distribution/inviteFarmers/{{.ID}}" class="cyc-btn">
+              <i class="icon icon-farmer"></i> Producteurs présents
+            </a>
+            <a href="/distribution/deleteMd/{{.ID}}" class="cyc-btn cyc-btn-danger"
+               onclick="return confirm('Supprimer la distribution du {{.Date}} ?')">
+              <i class="icon icon-delete"></i> Supprimer
+            </a>
+          </div>
+
+          {{if .DistribLinks}}
+          <div class="cyc-section" style="padding:0 8px 16px;margin:0;">
+            <h4>{{len .DistribLinks}} producteur{{if gt (len .DistribLinks) 1}}s{{end}} ce jour-là</h4>
+            <div class="cyc-deborde">
+              <table class="cyc-table">
+                <thead>
+                  <tr>
+                    <th>Catalogue</th>
+                    <th>Producteur</th>
+                    <th class="actions"><span class="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {{range .DistribLinks}}
+                  <tr>
+                    <td><a href="/contractAdmin/view/{{.CatalogID}}">{{.CatalogName}}</a></td>
+                    <td>
+                      {{.VendorName}}
+                      {{/* Les dates propres à ce producteur ne se signalent
+                           que lorsqu'elles s'écartent de la distribution :
+                           répétées à chaque ligne, elles ne diraient plus
+                           rien. */}}
+                      {{if or .CustomOrderStart .CustomOrderEnd}}
+                      <div class="cyc-note">
+                        <i class="icon icon-info"></i>
+                        Dates propres&nbsp;:
+                        {{if .CustomOrderStart}}ouverture {{.CustomOrderStart}}{{end}}
+                        {{if and .CustomOrderStart .CustomOrderEnd}}, {{end}}
+                        {{if .CustomOrderEnd}}clôture {{.CustomOrderEnd}}{{end}}
+                      </div>
+                      {{end}}
+                    </td>
+                    <td class="actions">
+                      <div class="cyc-actions">
+                        {{/* Même écran que depuis la fiche catalogue :
+                             livraison, ouverture et clôture pour ce seul
+                             producteur. Le retour rouvre la distribution d'où
+                             l'on vient. */}}
+                        <a href="/contractAdmin/distributions/{{.CatalogID}}/dates/{{.DistribID}}?return={{printf "/distribution?open=%d" $mdID}}"
+                           class="cyc-icone-btn" title="Dates de ce producteur">
+                          <i class="icon icon-calendar"></i><span class="sr-only">Dates</span>
+                        </a>
+                        {{/* Formulaire, et non lien : ce retrait supprime des
+                             données, et un GET se déclenche au simple
+                             préchargement. */}}
+                        <form method="POST" action="/distribution/notAttend/{{.DistribID}}">
+                          <button type="submit" class="cyc-icone-btn danger"
+                                  title="Retirer ce producteur de la distribution"
+                                  onclick="return confirm('Retirer ce producteur de la distribution ?')">
+                            <i class="icon icon-delete"></i><span class="sr-only">Retirer</span>
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                  {{end}}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {{end}}
+        </div></div>
+      </div>
       {{end}}
     </div>
 
-  </div>
-  {{end}}
-  {{else}}
-  <p class="text-muted">Aucune distribution planifiée.</p>
-  {{end}}
+    {{else}}
+    <div class="cyc-aucun">
+      <i class="icon icon-calendar icone"></i>
+      <p>Aucune distribution sur cette période.</p>
+      <a href="/distribution/insertMd" class="cyc-btn">
+        <i class="icon icon-plus"></i> Créer une distribution
+      </a>
+    </div>
+    {{end}}
 
+  </div>
 </div>
 
 <script>
-function toggleFarmers(id) {
-  var el = document.getElementById('farmers-' + id);
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
+(function () {
+  var liste = document.getElementById('dst-liste');
+  if (!liste) return;
 
-// ?open=<id> : rouvre la liste des producteurs de cette distribution. On
-// revient ici après avoir réglé des dates, et retomber sur une liste repliée
-// obligeait à rechercher la ligne qu'on venait de quitter.
-document.addEventListener('DOMContentLoaded', function () {
+  function ouvrir(bloc, ouvert) {
+    bloc.classList.toggle('deplie', ouvert);
+    bloc.querySelector('.cyc-repli').classList.toggle('ouvert', ouvert);
+    var tete = bloc.querySelector('.cyc-sommaire');
+    if (tete) tete.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+  }
+
+  liste.addEventListener('click', function (e) {
+    var tete = e.target.closest ? e.target.closest('.cyc-sommaire') : null;
+    if (!tete) return;
+    var bloc = tete.parentNode;
+    var ouvert = !bloc.classList.contains('deplie');
+    // Une seule ouverte à la fois : deux listes de producteurs dépliées et
+    // l'on ne sait plus laquelle appartient à quelle date.
+    var autres = liste.querySelectorAll('.cyc-bloc.deplie');
+    for (var i = 0; i < autres.length; i++) {
+      if (autres[i] !== bloc) ouvrir(autres[i], false);
+    }
+    ouvrir(bloc, ouvert);
+  });
+
+  // ?open=<id> : rouvre cette distribution. On revient ici après avoir réglé
+  // les dates d'un producteur, et retomber sur une liste repliée obligeait à
+  // rechercher la ligne qu'on venait de quitter.
   var id = new URLSearchParams(window.location.search).get('open');
   if (!id) return;
-  var el = document.getElementById('farmers-' + id);
-  if (!el) return;
-  el.style.display = 'block';
-  el.scrollIntoView({ block: 'center' });
-});
+  var bloc = document.getElementById('distrib-' + id);
+  if (!bloc) return;
+  ouvrir(bloc, true);
+  window.setTimeout(function () {
+    var haut = bloc.getBoundingClientRect().top
+      + (window.pageYOffset || document.documentElement.scrollTop) - 18;
+    window.scrollTo({top: haut < 0 ? 0 : haut, behavior: 'auto'});
+  }, 360);
+})();
 </script>
 {{end}}

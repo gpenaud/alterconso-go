@@ -1,0 +1,30 @@
+{{define "content"}}
+<div class="col-md-12 cyc">
+  <div class="cyc-entete">
+    <div>
+      <h3>Espace d'administration</h3>
+      <p class="cyc-chapeau">
+        Tout ce que vous pouvez gérer dans {{.Group.Name}}. Vous ne voyez ici
+        que les domaines dont vous avez la charge.
+      </p>
+    </div>
+  </div>
+
+  <div class="ac-tuiles">
+    {{range .Tiles}}
+    <div class="ac-tuile">
+      <a href="{{.Link}}" class="ac-tuile-lien">
+        <span class="ac-tuile-icone"><i class="icon {{.Icon}}"></i></span>
+        <span class="ac-tuile-titre">{{.Title}}</span>
+        <span class="ac-tuile-desc">{{.Desc}}</span>
+      </a>
+      {{if .Extras}}
+      <div class="ac-tuile-liens">
+        {{range .Extras}}<a href="{{.Link}}">{{.Name}}</a>{{end}}
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
+</div>
+{{end}}

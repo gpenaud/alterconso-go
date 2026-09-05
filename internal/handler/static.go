@@ -14,11 +14,11 @@ import (
 // StaticPrecompressed retourne un handler Gin qui sert un dossier statique
 // en privilégiant les variantes pré-compressées au build :
 //
-//   1. Si le client supporte brotli ET <fichier>.br existe → sert .br
-//      avec Content-Encoding: br
-//   2. Sinon si le client supporte gzip ET <fichier>.gz existe → sert .gz
-//      avec Content-Encoding: gzip
-//   3. Sinon sert <fichier> tel quel (404 s'il n'existe pas).
+//  1. Si le client supporte brotli ET <fichier>.br existe → sert .br
+//     avec Content-Encoding: br
+//  2. Sinon si le client supporte gzip ET <fichier>.gz existe → sert .gz
+//     avec Content-Encoding: gzip
+//  3. Sinon sert <fichier> tel quel (404 s'il n'existe pas).
 //
 // Le Content-Type est dérivé de l'extension du fichier ORIGINAL (sans
 // .br/.gz), pour que le browser interprète correctement la charge utile.

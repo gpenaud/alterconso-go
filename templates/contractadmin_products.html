@@ -1,88 +1,133 @@
 {{define "content"}}
 {{template "contractadmin_nav" .}}
 
-<h3 style="font-style:italic;">Produits</h3>
-
 <form method="POST" action="/contractAdmin/products/{{.Catalog.ID}}/bulkAction" id="productsForm">
 <input type="hidden" name="action" id="bulkActionInput" value="" />
 
-<div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;">
-  <a href="/contractAdmin/products/{{.Catalog.ID}}/new" class="btn btn-default btn-sm">
+<div class="cyc-barre">
+  <a href="/contractAdmin/products/{{.Catalog.ID}}/new" class="cyc-btn cyc-btn-primaire">
     <i class="icon icon-plus"></i> Nouveau produit
   </a>
-  <a href="/contractAdmin/products/{{.Catalog.ID}}/importcsv" class="btn btn-default btn-sm">
-    <i class="icon icon-file"></i> Import CSV
+  <a href="/contractAdmin/products/{{.Catalog.ID}}/importcsv" class="cyc-btn">
+    <i class="icon icon-file"></i> Importer un CSV
   </a>
-  <button type="button" class="btn btn-default btn-sm" id="toggleCheckBtn" onclick="toggleAll()">Tout cocher</button>
-  <button type="button" class="btn btn-default btn-sm" onclick="submitBulk('activate')"><i class="icon icon-check"></i> Activer</button>
-  <button type="button" class="btn btn-default btn-sm" onclick="submitBulk('deactivate')"><i class="icon icon-delete"></i> Désactiver</button>
+  {{/* Les actions groupées restent en retrait tant que rien n'est coché :
+       proposer « Activer » sans sélection promet une action qui n'aura pas
+       lieu. */}}
+  <div class="cyc-filtres" id="groupe-actions" hidden>
+    <button type="button" class="cyc-filtre" onclick="submitBulk('activate')">
+      <i class="icon icon-check"></i> Activer
+    </button>
+    <button type="button" class="cyc-filtre" onclick="submitBulk('deactivate')">
+      <i class="icon icon-delete"></i> Désactiver
+    </button>
+    <span class="cyc-note" id="compte-selection" style="margin:0;align-self:center;"></span>
+  </div>
 </div>
 
-<table class="table" style="border-top:1px solid #ddd;">
-  <thead>
-    <tr style="background:#f5f5f5;">
-      <th style="width:32px;"></th>
-      <th style="width:80px;"></th>
-      <th style="width:160px;">Référence</th>
-      <th>Nom</th>
-      <th style="width:70px;">Prix</th>
-      <th style="width:70px;">Stock</th>
-      <th style="width:200px;"></th>
-    </tr>
-  </thead>
-  <tbody>
-    {{range .ProductViews}}
-    <tr style="border-top:1px solid #eee;{{if not .Active}}opacity:0.4;{{end}}">
-      <td style="vertical-align:middle;">
-        <input type="checkbox" class="product-check" name="product_ids[]" value="{{.ID}}" />
-      </td>
-      <td style="vertical-align:middle;padding:6px;">
-        <img src="{{.ImageURL}}" style="width:64px;height:64px;object-fit:cover;border-radius:4px;" />
-      </td>
-      <td style="vertical-align:middle;color:#aaa;font-size:0.88em;font-family:monospace;">{{.Ref}}</td>
-      <td style="vertical-align:middle;">
-        <b>{{.Name}}</b> <span style="color:#888;font-size:0.9em;">{{.QtLabel}}</span>
-        {{if .Organic}}<br/><img src="/img/AB.png" style="height:16px;margin-top:2px;" alt="Bio" />{{end}}
-        {{if .VariablePrice}}<br/><span style="color:#888;font-size:0.85em;">prix variable</span>{{end}}
-      </td>
-      <td style="vertical-align:middle;white-space:nowrap;">{{.PriceLabel}}</td>
-      <td style="vertical-align:middle;">
-        {{if .HasStock}}{{printf "%.0f" .Stock}}{{else}}<span style="color:#aaa;">—</span>{{end}}
-      </td>
-      <td style="vertical-align:middle;text-align:right;white-space:nowrap;">
-        <a href="/contractAdmin/products/{{$.Catalog.ID}}/edit/{{.ID}}" class="btn btn-default btn-sm">
-          <i class="icon icon-edit"></i> Modifier
-        </a>
-        <a href="/contractAdmin/products/{{$.Catalog.ID}}/photo/{{.ID}}" class="btn btn-default btn-sm">
-          <i class="icon icon-image"></i> Photo
-        </a>
-        <a href="/contractAdmin/products/{{$.Catalog.ID}}/delete/{{.ID}}"
-           class="btn btn-danger btn-sm"
-           onclick="return confirm('Supprimer ce produit ?')">
-          <i class="icon icon-delete"></i> Suppr.
-        </a>
-      </td>
-    </tr>
-    {{else}}
-    <tr><td colspan="7" class="text-muted" style="padding:16px;">Aucun produit pour ce catalogue.</td></tr>
-    {{end}}
-  </tbody>
-</table>
+{{if .ProductViews}}
+<div class="cyc-deborde">
+  <table class="cyc-table">
+    <thead>
+      <tr>
+        <th class="serre">
+          <input type="checkbox" id="tout-cocher" aria-label="Tout sélectionner" />
+        </th>
+        <th class="serre"><span class="sr-only">Photo</span></th>
+        <th>Produit</th>
+        <th class="serre">Référence</th>
+        <th class="serre num">Prix</th>
+        <th class="serre num">Stock</th>
+        <th class="actions"><span class="sr-only">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .ProductViews}}
+      <tr {{if not .Active}}class="eteinte"{{end}}>
+        <td class="serre">
+          <input type="checkbox" class="product-check" name="product_ids[]" value="{{.ID}}"
+                 aria-label="Sélectionner {{.Name}}" />
+        </td>
+        <td class="serre"><img src="{{.ImageURL}}" alt="" class="cyc-vignette" /></td>
+        <td>
+          <span class="cyc-nom">{{.Name}}</span>
+          <span class="cyc-lieu">
+            {{.QtLabel}}
+            {{if .VariablePrice}} · prix variable{{end}}
+            {{if not .Active}} · désactivé{{end}}
+          </span>
+        </td>
+        <td class="serre"><code class="cyc-ref">{{if .Ref}}{{.Ref}}{{else}}—{{end}}</code></td>
+        <td class="serre num">
+          {{.PriceLabel}}
+          {{if .Organic}}<span class="cyc-badge ok" style="margin-left:6px;">Bio</span>{{end}}
+        </td>
+        <td class="serre num">{{if .HasStock}}{{printf "%.0f" .Stock}}{{else}}<span class="cyc-vide">—</span>{{end}}</td>
+        <td class="actions">
+          <div class="cyc-actions">
+            <a href="/contractAdmin/products/{{$.Catalog.ID}}/edit/{{.ID}}" class="cyc-icone-btn" title="Modifier">
+              <i class="icon icon-edit"></i><span class="sr-only">Modifier</span>
+            </a>
+            <a href="/contractAdmin/products/{{$.Catalog.ID}}/photo/{{.ID}}" class="cyc-icone-btn" title="Photo">
+              <i class="icon icon-image"></i><span class="sr-only">Photo</span>
+            </a>
+            <a href="/contractAdmin/products/{{$.Catalog.ID}}/delete/{{.ID}}" class="cyc-icone-btn danger"
+               title="Supprimer" onclick="return confirm('Supprimer « {{.Name}} » ?')">
+              <i class="icon icon-delete"></i><span class="sr-only">Supprimer</span>
+            </a>
+          </div>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{else}}
+<div class="cyc-aucun">
+  <i class="icon icon-products icone"></i>
+  <p>Aucun produit dans ce catalogue.</p>
+  <a href="/contractAdmin/products/{{.Catalog.ID}}/new" class="cyc-btn cyc-btn-primaire">
+    <i class="icon icon-plus"></i> Ajouter un premier produit
+  </a>
+</div>
+{{end}}
 </form>
 
 <script>
-function toggleAll() {
-  var cbs = document.querySelectorAll('.product-check');
-  var allChecked = Array.from(cbs).every(cb => cb.checked);
-  cbs.forEach(cb => cb.checked = !allChecked);
-  document.getElementById('toggleCheckBtn').textContent = allChecked ? 'Tout cocher' : 'Tout décocher';
-}
-function submitBulk(action) {
-  var checked = document.querySelectorAll('.product-check:checked');
-  if (checked.length === 0) { alert('Sélectionnez au moins un produit.'); return; }
-  document.getElementById('bulkActionInput').value = action;
-  document.getElementById('productsForm').submit();
-}
+(function () {
+  var tout = document.getElementById('tout-cocher');
+  var groupe = document.getElementById('groupe-actions');
+  var compte = document.getElementById('compte-selection');
+  function cases() { return document.querySelectorAll('.product-check'); }
+
+  // Les actions groupées n'apparaissent qu'une fois quelque chose de coché :
+  // sans sélection, elles ne feraient rien et il faudrait un message pour
+  // l'expliquer.
+  function sync() {
+    var n = document.querySelectorAll('.product-check:checked').length;
+    if (groupe) groupe.hidden = n === 0;
+    if (compte) compte.textContent = n + (n > 1 ? ' produits sélectionnés' : ' produit sélectionné');
+    if (tout) {
+      var total = cases().length;
+      tout.checked = n > 0 && n === total;
+      tout.indeterminate = n > 0 && n < total;
+    }
+  }
+  document.addEventListener('change', function (e) {
+    if (e.target === tout) {
+      var c = cases();
+      for (var i = 0; i < c.length; i++) c[i].checked = tout.checked;
+    }
+    if (e.target.classList.contains('product-check') || e.target === tout) sync();
+  });
+  sync();
+
+  window.submitBulk = function (action) {
+    if (document.querySelectorAll('.product-check:checked').length === 0) return;
+    document.getElementById('bulkActionInput').value = action;
+    document.getElementById('productsForm').submit();
+  };
+})();
 </script>
 
 {{template "contractadmin_close" .}}

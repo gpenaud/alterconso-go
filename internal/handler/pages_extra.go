@@ -7,9 +7,11 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gpenaud/alterconso/internal/middleware"
@@ -26,7 +28,10 @@ func (h *PagesHandler) AccountQuitPage(c *gin.Context) {
 		return
 	}
 
-	if c.Query("token") != "" {
+	// Le départ ne se joue qu'en POST : servi en GET, il suffisait de charger
+	// l'adresse — un lien, une image, un préchargeur de navigateur — pour être
+	// retiré du groupe sans l'avoir demandé.
+	if c.Request.Method == http.MethodPost {
 		// Confirm quit: remove from group
 		h.db.Where("user_id = ? AND group_id = ?", pd.User.ID, pd.Group.ID).
 			Delete(&model.UserGroup{})
@@ -44,8 +49,14 @@ func (h *PagesHandler) AccountQuitPage(c *gin.Context) {
 	}
 	data := QuitData{PageData: pd}
 	data.Title = "Quitter le groupe"
+	data.Category = "account"
+	data.Container = "container-fluid ac-accueil"
+	data.Breadcrumb = []BreadcrumbItem{
+		{Name: "Mon compte", Link: "/account"},
+		{Name: "Quitter le groupe", Link: ""},
+	}
 
-	t, err := loadTemplates("base.html", "design.html", "account_quit.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "account_quit.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -313,7 +324,9 @@ func (h *PagesHandler) VolunteersSummaryPage(c *gin.Context) {
 		data.RoleRows = append(data.RoleRows, row)
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "distribution_volunteers_summary.html")
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_volunteers_summary.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -357,6 +370,9 @@ type VolParticipationData struct {
 	From    string
 	To      string
 	Members []VolParticipationRow
+	// Tri : le classement demandé — "nom", "plus" ou "moins". Rendu au
+	// gabarit pour qu'il marque la colonne active et propose l'inverse.
+	Tri string
 }
 
 type VolParticipationRow struct {
@@ -364,6 +380,44 @@ type VolParticipationRow struct {
 	Name     string
 	Done     int
 	ToBeDone int
+}
+
+// trierParticipation classe les bénévoles.
+//
+// Par nom, c'est un annuaire : on y cherche quelqu'un. Par nombre de
+// permanences, c'est une répartition de l'effort : on y voit qui porte le
+// groupe et qui n'a pas encore eu l'occasion. Le nom départage les ex æquo,
+// sans quoi l'ordre changerait d'un affichage à l'autre pour les nombreux
+// bénévoles à zéro.
+func trierParticipation(lignes []VolParticipationRow, tri string) []VolParticipationRow {
+	out := make([]VolParticipationRow, len(lignes))
+	copy(out, lignes)
+	parNom := func(i, j int) bool {
+		a, b := strings.ToLower(out[i].Name), strings.ToLower(out[j].Name)
+		if a != b {
+			return a < b
+		}
+		return out[i].UserID < out[j].UserID
+	}
+	switch tri {
+	case "plus":
+		sort.SliceStable(out, func(i, j int) bool {
+			if out[i].Done != out[j].Done {
+				return out[i].Done > out[j].Done
+			}
+			return parNom(i, j)
+		})
+	case "moins":
+		sort.SliceStable(out, func(i, j int) bool {
+			if out[i].Done != out[j].Done {
+				return out[i].Done < out[j].Done
+			}
+			return parNom(i, j)
+		})
+	default:
+		sort.SliceStable(out, parNom)
+	}
+	return out
 }
 
 func (h *PagesHandler) VolunteersParticipationPage(c *gin.Context) {
@@ -416,7 +470,16 @@ func (h *PagesHandler) VolunteersParticipationPage(c *gin.Context) {
 		})
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "distribution_volunteers_participation.html")
+	tri := c.Query("tri")
+	if tri != "plus" && tri != "moins" {
+		tri = "nom"
+	}
+	data.Tri = tri
+	data.Members = trierParticipation(data.Members, tri)
+
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_volunteers_participation.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -962,6 +1025,39 @@ func transferQuery(transfers map[model.Right]string) string {
 type AmapAdminPageData struct {
 	PageData
 	AmapAdminTab string
+	// AmapAdminTitre et AmapAdminChapeau : le titre de l'onglet ouvert et sa
+	// phrase d'explication. Portés par la coquille commune plutôt que répétés
+	// dans chaque gabarit — la mise en page de l'en-tête ne s'écrit ainsi
+	// qu'une fois.
+	AmapAdminTitre   string
+	AmapAdminChapeau string
+}
+
+// amapAdminEntete : le titre et la phrase d'explication de chaque onglet des
+// paramètres. Une seule table, lue par la coquille et par le fil d'Ariane :
+// deux libellés tenus à la main auraient fini par se contredire.
+func amapAdminEntete(tab string) (titre, chapeau string, ok bool) {
+	switch tab {
+	case "rights":
+		return "Droits d'administration",
+			"Qui peut faire quoi dans le groupe. Chaque délégation ouvre un domaine, et lui seul.", true
+	case "vatRates":
+		return "Taux de TVA",
+			"Les taux proposés à la saisie d'un produit.", true
+	case "volunteers":
+		return "Permanences",
+			"Les postes que les adhérents peuvent tenir lors d'une distribution.", true
+	case "membership":
+		return "Adhésions",
+			"Le montant et le rythme de l'adhésion annuelle au groupe.", true
+	case "currency":
+		return "Monnaie",
+			"L'unité dans laquelle s'affichent les prix et les soldes.", true
+	case "documents":
+		return "Documents",
+			"Les fichiers mis à disposition des adhérents — statuts, charte, règlement.", true
+	}
+	return "", "", false
 }
 
 func (h *PagesHandler) buildAmapAdminData(c *gin.Context, tab string) (AmapAdminPageData, bool) {
@@ -974,7 +1070,16 @@ func (h *PagesHandler) buildAmapAdminData(c *gin.Context, tab string) (AmapAdmin
 	}
 	pd.Category = "amapadmin"
 	pd.Breadcrumb = []BreadcrumbItem{{Name: "Paramètres", Link: "/amapadmin"}}
-	return AmapAdminPageData{PageData: pd, AmapAdminTab: tab}, true
+	data := AmapAdminPageData{PageData: pd, AmapAdminTab: tab}
+	data.Category = "amapadmin"
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Paramètres", Link: "/amapadmin"}}
+	if titre, chapeau, ok := amapAdminEntete(tab); ok {
+		data.AmapAdminTitre, data.AmapAdminChapeau = titre, chapeau
+		data.Breadcrumb = append(data.Breadcrumb, BreadcrumbItem{Name: titre})
+	}
+	return data, true
 }
 
 // ---- GET /amapadmin/vatRates ----
@@ -1562,4 +1667,175 @@ func (h *PagesHandler) GroupPublicPage(c *gin.Context) {
 	if err := t.ExecuteTemplate(c.Writer, "base", data); err != nil {
 		c.String(http.StatusInternalServerError, "render error: %v", err)
 	}
+}
+
+// ---- Postes de bénévole : création, modification, suppression ----
+//
+// L'écran des permanences listait les postes et offrait trois liens — nouveau,
+// modifier, supprimer — dont aucun n'était servi : les trois répondaient 404.
+
+type VolunteerRoleFormData struct {
+	AmapAdminPageData
+	// Action : l'adresse du formulaire. Le même gabarit sert à créer et à
+	// modifier ; seule cette adresse les distingue.
+	Action    string
+	IsNew     bool
+	Name      string
+	CatalogID uint
+	Catalogs  []model.Catalog
+	Error     string
+}
+
+// volunteerRoleForm sert la création comme la modification. Le poste vaut nil
+// à la création.
+func (h *PagesHandler) volunteerRoleForm(c *gin.Context, role *model.VolunteerRole) {
+	base, ok := h.buildAmapAdminData(c, "volunteers")
+	if !ok {
+		return
+	}
+
+	data := VolunteerRoleFormData{AmapAdminPageData: base, IsNew: role == nil}
+	if role == nil {
+		data.Action = "/amapadmin/volunteers/new"
+		data.Title = "Nouveau poste"
+		data.AmapAdminTitre = "Nouveau poste"
+	} else {
+		data.Action = fmt.Sprintf("/amapadmin/volunteers/edit/%d", role.ID)
+		data.Title = "Modifier un poste"
+		data.AmapAdminTitre = "Modifier un poste"
+		data.Name = role.Name
+		if role.CatalogID != nil {
+			data.CatalogID = *role.CatalogID
+		}
+	}
+	data.AmapAdminChapeau = "Ce qu'il y a à tenir pendant une distribution, et " +
+		"les jours où le poste est proposé."
+	data.Breadcrumb = []BreadcrumbItem{
+		{Name: "Paramètres", Link: "/amapadmin"},
+		{Name: "Permanences", Link: "/amapadmin/volunteers"},
+		{Name: data.AmapAdminTitre},
+	}
+
+	// Les catalogues du groupe, pour rattacher le poste à un producteur.
+	h.db.Where("group_id = ?", base.Group.ID).Order("name ASC").Find(&data.Catalogs)
+
+	if c.Request.Method == http.MethodPost {
+		data.Name = strings.TrimSpace(c.PostForm("name"))
+		var catalogID *uint
+		if v := strings.TrimSpace(c.PostForm("catalog_id")); v != "" {
+			if id, err := strconv.ParseUint(v, 10, 64); err == nil && id > 0 {
+				// Le catalogue doit être de ce groupe : sans cette vérification,
+				// un identifiant posté à la main rattacherait le poste au
+				// catalogue d'une autre AMAP.
+				for _, cat := range data.Catalogs {
+					if cat.ID == uint(id) {
+						cid := cat.ID
+						catalogID = &cid
+						break
+					}
+				}
+				if catalogID == nil {
+					data.Error = "Ce catalogue n'appartient pas au groupe."
+				}
+			}
+		}
+		if data.Error == "" && data.Name == "" {
+			data.Error = "Le poste a besoin d'un nom."
+		}
+		if data.Error == "" && utf8.RuneCountInString(data.Name) > 128 {
+			data.Error = "Le nom du poste ne peut pas dépasser 128 caractères."
+		}
+
+		if data.Error == "" {
+			if role == nil {
+				h.db.Create(&model.VolunteerRole{
+					GroupID:   base.Group.ID,
+					Name:      data.Name,
+					CatalogID: catalogID,
+				})
+			} else {
+				h.db.Model(&model.VolunteerRole{}).Where("id = ?", role.ID).
+					Updates(map[string]interface{}{
+						"name":       data.Name,
+						"catalog_id": catalogID,
+					})
+			}
+			c.Redirect(http.StatusFound, "/amapadmin/volunteers")
+			return
+		}
+		if catalogID != nil {
+			data.CatalogID = *catalogID
+		}
+	}
+
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html",
+		"amapadmin_layout.html", "amapadmin_volunteer_form.html")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err)
+		return
+	}
+	if err := t.ExecuteTemplate(c.Writer, "base", data); err != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err)
+	}
+}
+
+// ---- GET|POST /amapadmin/volunteers/new ----
+
+func (h *PagesHandler) AmapAdminVolunteerNewPage(c *gin.Context) {
+	h.volunteerRoleForm(c, nil)
+}
+
+// roleDuGroupe retrouve un poste en le bornant au groupe courant : un
+// identifiant seul désignerait aussi bien le poste d'une autre AMAP.
+func (h *PagesHandler) roleDuGroupe(c *gin.Context, groupID uint) (*model.VolunteerRole, bool) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || id == 0 {
+		c.Redirect(http.StatusFound, "/amapadmin/volunteers")
+		return nil, false
+	}
+	var role model.VolunteerRole
+	if err := h.db.Where("id = ? AND group_id = ?", uint(id), groupID).
+		First(&role).Error; err != nil {
+		c.Redirect(http.StatusFound, "/amapadmin/volunteers")
+		return nil, false
+	}
+	return &role, true
+}
+
+// ---- GET|POST /amapadmin/volunteers/edit/:id ----
+
+func (h *PagesHandler) AmapAdminVolunteerEditPage(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil || !pd.HasParameters {
+		c.Redirect(http.StatusFound, "/home")
+		return
+	}
+	role, ok := h.roleDuGroupe(c, pd.Group.ID)
+	if !ok {
+		return
+	}
+	h.volunteerRoleForm(c, role)
+}
+
+// ---- POST /amapadmin/volunteers/delete/:id ----
+//
+// En POST : supprimer un poste efface aussi les inscriptions qui s'y
+// rattachent, et cela ne doit pas pouvoir arriver au simple chargement d'une
+// adresse.
+
+func (h *PagesHandler) AmapAdminVolunteerDelete(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil || !pd.HasParameters {
+		c.Redirect(http.StatusFound, "/home")
+		return
+	}
+	role, ok := h.roleDuGroupe(c, pd.Group.ID)
+	if !ok {
+		return
+	}
+	// Les inscriptions partent avec le poste : laissées derrière, elles
+	// désigneraient un rôle disparu sur les listes d'émargement.
+	h.db.Where("volunteer_role_id = ?", role.ID).Delete(&model.VolunteerRoleAssignment{})
+	h.db.Delete(&model.VolunteerRole{}, role.ID)
+	c.Redirect(http.StatusFound, "/amapadmin/volunteers")
 }

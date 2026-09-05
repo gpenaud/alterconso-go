@@ -77,7 +77,19 @@ func (s *CronService) sendOrderNotification(md model.MultiDistrib, notifType str
 	if md.Place.ID == 0 && md.PlaceID != 0 {
 		s.db.First(&md.Place, md.PlaceID)
 	}
-	users := s.eligibleUsers(md.GroupID, notifType)
+	// Le courrier configuré sur le cycle remplace le gabarit d'ouverture. Il
+	// ne vaut que pour l'ouverture : le rappel de clôture dit autre chose, et
+	// le texte d'accueil d'un cycle n'y aurait aucun sens.
+	var cycleMsg *CycleMessage
+	if notifType == model.NotifTypeOrderOpen {
+		cycleMsg = cycleMessageFor(s.db, md, s.cfg.Key, s.cfg.Host)
+	}
+
+	category := ""
+	if cycleMsg != nil {
+		category = cycleMsg.RecipientCategory
+	}
+	users := s.eligibleUsers(md.GroupID, notifType, category)
 	if len(users) == 0 {
 		log.Printf("[NOTIFY] no eligible users for distrib %d type=%s", md.ID, notifType)
 		s.markSent(md.ID, notifType)
@@ -85,6 +97,9 @@ func (s *CronService) sendOrderNotification(md model.MultiDistrib, notifType str
 	}
 
 	subject := emailSubject(md, notifType)
+	if cycleMsg != nil {
+		subject = cycleMsg.Subject
+	}
 	sent := 0
 	for _, u := range users {
 		if s.dryRun {
@@ -92,7 +107,13 @@ func (s *CronService) sendOrderNotification(md model.MultiDistrib, notifType str
 				u.FirstName, u.LastName, u.Email, subject)
 			continue
 		}
-		html, err := renderEmailTemplate(md, u, notifType, s.cfg.Host)
+		var html string
+		var err error
+		if cycleMsg != nil {
+			html, err = renderCycleEmail(md, u, *cycleMsg, s.cfg.Host)
+		} else {
+			html, err = renderEmailTemplate(md, u, notifType, s.cfg.Host)
+		}
 		if err != nil {
 			log.Printf("[NOTIFY] template error user %d: %v", u.ID, err)
 			continue
@@ -123,7 +144,7 @@ func (s *CronService) sendOrderNotification(md model.MultiDistrib, notifType str
 //  1. ont activé le flag de notification correspondant
 //  2. matchent le pattern de la catégorie référencée dans
 //     notifications.recipient_category (validée au boot, donc toujours présente).
-func (s *CronService) eligibleUsers(groupID uint, notifType string) []model.User {
+func (s *CronService) eligibleUsers(groupID uint, notifType, categoryOverride string) []model.User {
 	var flag model.UserFlag
 	switch notifType {
 	case model.NotifTypeOrderOpen:
@@ -134,11 +155,24 @@ func (s *CronService) eligibleUsers(groupID uint, notifType string) []model.User
 		return nil
 	}
 
-	cat := FindCategoryByName(s.cfg.Messages.RecipientCategories, s.cfg.Notifications.RecipientCategory)
+	// La catégorie du courrier de cycle l'emporte quand il en désigne une ;
+	// sinon celle des notifications, validée au démarrage.
+	wanted := s.cfg.Notifications.RecipientCategory
+	if categoryOverride != "" {
+		wanted = categoryOverride
+	}
+	cat := FindCategoryByName(s.cfg.Messages.RecipientCategories, wanted)
 	if cat == nil {
-		// Ne devrait jamais arriver : la config est validée au boot.
-		log.Printf("[NOTIFY] BUG: catégorie %q absente à l'exécution", s.cfg.Notifications.RecipientCategory)
-		return nil
+		// La catégorie des notifications est validée au boot ; celle d'un
+		// courrier de cycle a pu être supprimée de la configuration depuis
+		// qu'on l'y a choisie. On se rabat plutôt que de n'écrire à personne.
+		log.Printf("[NOTIFY] catégorie %q introuvable, repli sur %q",
+			wanted, s.cfg.Notifications.RecipientCategory)
+		cat = FindCategoryByName(s.cfg.Messages.RecipientCategories, s.cfg.Notifications.RecipientCategory)
+		if cat == nil {
+			log.Printf("[NOTIFY] BUG: catégorie %q absente à l'exécution", s.cfg.Notifications.RecipientCategory)
+			return nil
+		}
 	}
 
 	matchingIDs := EligibleUsersForCategory(s.db, groupID, time.Now(), s.cfg.Messages.RecipientCategories, *cat)

@@ -1,227 +1,245 @@
 {{define "content"}}
-<style>
-  @media (min-width:992px) { .messages-side-offset { padding-top:48px; } }
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
 
-  .recipient-count-wrap { position: relative; display: inline-block; cursor: help; }
-  /* Pont invisible qui couvre le gap entre le compteur et le tooltip,
-     pour ne pas perdre le :hover quand la souris se dirige vers le tooltip. */
-  .recipient-count-wrap::before {
-    content: '';
-    position: absolute;
-    right: 100%;
-    top: 0;
-    width: 12px;
-    height: 100%;
-  }
-  .recipient-count-wrap .recipient-tooltip {
-    display: none;
-    position: absolute;
-    right: 100%;
-    top: 0;
-    margin-right: 10px;
-    width: 280px;
-    max-height: 300px;
-    overflow-y: auto;
-    background: #fff;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
-    padding: 8px 12px;
-    z-index: 30;
-    text-align: left;
-  }
-  .recipient-count-wrap:hover .recipient-tooltip { display: block; }
-  .recipient-tooltip-title {
-    font-weight: bold;
-    color: #555;
-    font-size: 0.82em;
-    margin-bottom: 6px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid #eee;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .recipient-tooltip ul { margin: 0; padding: 0; list-style: none; font-size: 0.82em; }
-  .recipient-tooltip li {
-    padding: 2px 0;
-    color: #555;
-    word-break: break-all;
-    border-bottom: 1px solid #f5f5f5;
-  }
-  .recipient-tooltip li:last-child { border-bottom: none; }
-  .recipient-tooltip .empty { color: #aaa; font-style: italic; }
-</style>
-<div class="col-md-9">
-  <h2 style="margin:0 0 12px;padding:0 4px;">Envoyer un email</h2>
+  <div class="cyc-panneau">
+    <div class="cyc-entete">
+      <div>
+        <h3>Écrire au groupe</h3>
+        <p class="cyc-chapeau">
+          Le message part au nom {{if .Group}}de «&nbsp;{{.Group.Name}}&nbsp;»{{else}}du groupe{{end}} ;
+          votre nom et votre adresse figurent en signature et reçoivent les
+          réponses.
+        </p>
+      </div>
+      {{/* Le quota d'envoi : information d'exploitation, réservée à qui pilote
+           les envois de masse. Un adhérent qui écrit à son responsable n'a que
+           faire du solde du service d'envoi. */}}
+      {{if .ShowBrevo}}
+      <div class="cyc-contact">
+        <span class="intitule">Quota du jour</span>
+        {{if .BrevoError}}
+        <span style="color:#8f302e;">{{.BrevoError}}</span>
+        {{else}}
+        <span class="nom {{if lt .BrevoRemaining 50}}alerte{{end}}">
+          {{.BrevoRemaining}} <small>/ {{.BrevoLimit}}</small>
+        </span>
+        <span>courriels restants</span>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
 
-  {{if or .SendSuccess .SendFailed}}
-  <div style="background:{{if .SendFailed}}#fff3cd{{else}}#dff0d8{{end}};
-              border:1px solid {{if .SendFailed}}#f0ad4e{{else}}#5a8a00{{end}};
-              color:#3c3c3c;padding:10px 14px;border-radius:4px;margin:0 0 12px;">
-    <strong>{{.SendSuccess}}</strong> email(s) envoyé(s){{if .SendFailed}}, <strong style="color:#c0392b;">{{.SendFailed}}</strong> échec(s){{end}}.
-  </div>
-  {{end}}
-  {{if .SendNoRcpt}}
-  <div style="background:#f2dede;border:1px solid #c0392b;color:#a94442;padding:10px 14px;border-radius:4px;margin:0 0 12px;">
-    Aucun destinataire pour la catégorie sélectionnée — message non envoyé (mais enregistré dans les archives).
-  </div>
-  {{end}}
+    {{if or .SendSuccess .SendFailed}}
+    <div class="{{if .SendFailed}}cyc-danger{{else}}cyc-succes{{end}}">
+      <i class="icon icon-{{if .SendFailed}}alert{{else}}check{{end}}"></i>
+      <b>{{.SendSuccess}}</b> courriel{{if gt .SendSuccess 1}}s{{end}} envoyé{{if gt .SendSuccess 1}}s{{end}}{{if .SendFailed}},
+      <b>{{.SendFailed}}</b> échec{{if gt .SendFailed 1}}s{{end}}{{end}}.
+    </div>
+    {{end}}
+    {{if .SendNoRcpt}}
+    <div class="cyc-danger">
+      <i class="icon icon-alert"></i>
+      Aucun destinataire dans la catégorie choisie : le message n'a pas été
+      envoyé. Il est tout de même conservé dans les archives.
+    </div>
+    {{end}}
 
-  <div class="article" style="padding:24px 28px;">
     <form method="POST" action="/messages" id="msgForm">
-      <div class="form-group row">
-        <label class="col-sm-3 control-label">Nom expéditeur *</label>
-        <div class="col-sm-9">
-          <input type="text" name="senderName" class="form-control"
-            value="{{if .User}}{{.User.FirstName}} {{.User.LastName}}{{end}}" required />
-          <span style="font-size:0.85em;color:#999;">
-            Le message part au nom {{if .Group}}de « {{.Group.Name}} »{{else}}du groupe{{end}} ;
-            votre nom et votre adresse figurent en signature et reçoivent les réponses.
-          </span>
+
+      <div class="cyc-section">
+        <h4>À qui</h4>
+        <div class="cyc-champs">
+          <div class="cyc-champ large">
+            <label for="recipients">Destinataires *</label>
+            {{/* Liste filtrée côté serveur selon les droits : un adhérent n'y
+                 voit que les responsables et les contacts techniques. */}}
+            <select id="recipients" name="recipients">
+              {{if .TempRecipient}}
+              <option value="{{.TempRecipient.Value}}" data-count="{{.TempRecipient.Count}}" selected>{{.TempRecipient.Name}}</option>
+              {{end}}
+              {{range .Recipients}}
+              <option value="{{.Value}}" data-count="{{.Count}}">{{.Name}}</option>
+              {{end}}
+              {{range .ActivityCategories}}
+              <option value="{{.Value}}" data-count="{{.Count}}">{{.Name}}</option>
+              {{end}}
+            </select>
+          </div>
+        </div>
+
+        {{/* Le compte des destinataires, sous la liste et non dans une colonne
+             latérale : c'est la conséquence immédiate du choix qu'on vient de
+             faire, et il vaut mieux la lire là où l'on a cliqué. */}}
+        <div class="cyc-destinataires" id="recipientBox">
+          <div class="tete">
+            <span class="nombre" id="recipientCount">{{.CountAll}}</span>
+            <span class="mot">destinataires</span>
+            <button type="button" class="cyc-btn" id="recipientToggle">
+              <i class="icon icon-eye"></i> Voir la liste
+            </button>
+          </div>
+          <ul class="liste" id="recipientList" hidden></ul>
+          <p class="cyc-note" id="recipientEmpty" hidden>
+            Personne ne correspond à ce choix : le message ne partirait à personne.
+          </p>
         </div>
       </div>
-      <div class="form-group row">
-        <label class="col-sm-3 control-label">Email expéditeur *</label>
-        <div class="col-sm-9">
-          <input type="text" name="senderEmail" class="form-control"
-            value="{{if .User}}{{.User.Email}}{{end}}" required />
+
+      <div class="cyc-section">
+        <h4>Le message</h4>
+        <div class="cyc-champs">
+          <div class="cyc-champ large">
+            <label for="subject">Sujet</label>
+            <input type="text" id="subject" name="subject" />
+          </div>
+          <div class="cyc-champ large">
+            <label for="msgBody">Texte</label>
+            <textarea id="msgBody" name="body" rows="12"></textarea>
+          </div>
         </div>
       </div>
-      <div class="form-group row">
-        <label class="col-sm-3 control-label">Destinataires *</label>
-        <div class="col-sm-9">
-          <select name="recipients" class="form-control">
-            {{if .TempRecipient}}
-            <option value="{{.TempRecipient.Value}}" data-count="{{.TempRecipient.Count}}" title="{{.TempRecipient.Tooltip}}" selected>{{.TempRecipient.Name}}</option>
-            {{end}}
-            {{/* Destinataires filtrés côté Go selon les droits : un adhérent
-                 n'y voit que les responsables et les contacts techniques. */}}
-            {{range .Recipients}}
-            <option value="{{.Value}}" data-count="{{.Count}}" title="{{.Tooltip}}">{{.Name}}</option>
-            {{end}}
-            {{range .ActivityCategories}}
-            <option value="{{.Value}}" data-count="{{.Count}}" title="{{.Tooltip}}">{{.Name}}</option>
-            {{end}}
-          </select>
+
+      <div class="cyc-section">
+        <h4>Signature</h4>
+        <p class="cyc-aide">Ce que verront les destinataires, et à qui ils répondront.</p>
+        <div class="cyc-champs">
+          <div class="cyc-champ">
+            <label for="senderName">Votre nom *</label>
+            <input type="text" id="senderName" name="senderName"
+                   value="{{if .User}}{{.User.FirstName}} {{.User.LastName}}{{end}}" required />
+          </div>
+          <div class="cyc-champ">
+            <label for="senderEmail">Votre adresse *</label>
+            <input type="text" id="senderEmail" name="senderEmail"
+                   value="{{if .User}}{{.User.Email}}{{end}}" required />
+          </div>
         </div>
       </div>
-      <div class="form-group row">
-        <label class="col-sm-3 control-label">Sujet :</label>
-        <div class="col-sm-9">
-          <input type="text" name="subject" class="form-control" />
-        </div>
-      </div>
-      <div class="form-group row">
-        <label class="col-sm-3 control-label">Message :</label>
-        <div class="col-sm-9">
-          <textarea name="body" id="msgBody" class="form-control" rows="12"></textarea>
-        </div>
-      </div>
-      <div class="form-group row">
-        <div class="col-sm-9 col-sm-offset-3">
-          <button type="submit" class="btn btn-success">
-            <i class="icon icon-mail"></i> Envoyer
-          </button>
-        </div>
+
+      <div class="cyc-pied">
+        <span class="cyc-note" style="margin:0;">Envoyé le {{.Today}}</span>
+        <span class="cyc-espace"></span>
+        <button type="submit" class="cyc-btn cyc-btn-primaire">
+          <i class="icon icon-mail"></i> Envoyer
+        </button>
       </div>
     </form>
   </div>
 
-  {{range .SentMessages}}
-  <div class="article" id="msg-{{.ID}}" style="margin-top:12px;padding:18px 22px;">
-    <h4 style="margin-top:0;">{{.Title}}
-      <small style="color:#999;">{{.Date}}{{if .Sender}} — envoyé par {{.Sender}}{{end}}</small>
-    </h4>
-    <p style="margin-bottom:0;">{{nl2br .Body}}</p>
-  </div>
-  {{end}}
-</div>
-
-<div class="col-md-3 messages-side-offset">
-  <div class="article" style="padding:14px 16px;margin-bottom:16px;">
-    <div style="font-size:0.85em;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Aujourd'hui</div>
-    <div style="font-size:1em;color:#333;margin-bottom:12px;text-transform:capitalize;">{{.Today}}</div>
-
-    {{/* Quota d'envoi : information d'exploitation, réservée à qui pilote les
-         envois de masse. Un adhérent qui écrit à son responsable n'a que faire
-         du solde Brevo du groupe. */}}
-    {{if .ShowBrevo}}
-    <div style="font-size:0.85em;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Quota Brevo</div>
-    {{if .BrevoError}}
-    <div style="font-size:0.88em;color:#c0392b;margin-bottom:12px;">{{.BrevoError}}</div>
-    {{else}}
-    <div style="margin-bottom:12px;">
-      <span style="font-size:1.4em;font-weight:bold;color:{{if lt .BrevoRemaining 50}}#c0392b{{else}}#5a8a00{{end}};">{{.BrevoRemaining}}</span>
-      <span style="color:#888;"> / {{.BrevoLimit}}</span>
-      <div style="font-size:0.82em;color:#aaa;">emails restants aujourd'hui</div>
-    </div>
-    {{end}}
-    {{end}}
-
-    <div style="font-size:0.85em;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Sera envoyé à</div>
-    <div class="recipient-count-wrap">
-      <div id="recipientCount">
-        <span style="font-size:1.4em;font-weight:bold;color:#5a8a00;">{{.CountAll}}</span>
-        <span style="color:#888;"> destinataire(s)</span>
-      </div>
-      <div class="recipient-tooltip" id="recipientTooltip">
-        <div class="recipient-tooltip-title">Destinataires</div>
-        <ul id="recipientTooltipList"></ul>
-        <div class="empty" id="recipientTooltipEmpty" style="display:none;">Aucun destinataire</div>
+  <div class="cyc-panneau">
+    <div class="cyc-entete">
+      <div>
+        <h3>Messages envoyés</h3>
+        <p class="cyc-chapeau">
+          Ce que le groupe a déjà écrit. Cliquez pour relire un message.
+        </p>
       </div>
     </div>
-  </div>
 
-  <h2 style="margin:0 0 12px;padding:0 4px;">Archivés</h2>
-  <div class="article" style="padding:14px 16px;">
     {{if .SentMessages}}
-    <div style="overflow-y:auto;max-height:700px;">
+    {{/* Une liste dépliable : les messages étaient tous déroulés à la suite,
+         et une colonne d'ancres à droite servait à les retrouver. */}}
+    <div class="cyc-liste" id="msg-liste">
       {{range .SentMessages}}
-      <a href="#msg-{{.ID}}" style="display:block;padding:8px 0;border-bottom:1px solid #eee;color:#5a8a00;text-decoration:none;">
-        {{.Title}}
-        <div style="color:#888;font-size:11px;">{{.Date}}{{if .Sender}} — {{.Sender}}{{end}}</div>
-      </a>
+      <div class="cyc-bloc" id="msg-{{.ID}}">
+        <button type="button" class="cyc-sommaire" aria-expanded="false">
+          <span class="cyc-initiales"><i class="icon icon-mail"></i></span>
+          <span class="ident">
+            <span class="nom">{{if .Title}}{{.Title}}{{else}}(sans sujet){{end}}</span>
+            <span class="second">{{if .Sender}}par {{.Sender}}{{end}}</span>
+          </span>
+          <span class="cyc-badge">{{.Date}}</span>
+          <i class="icon icon-chevron-down chevron"></i>
+        </button>
+        <div class="cyc-repli"><div>
+          <div class="cyc-message">
+            <p>{{nl2br .Body}}</p>
+          </div>
+        </div></div>
+      </div>
       {{end}}
     </div>
     {{else}}
-    <p style="color:#999;font-size:13px;margin:0;">Aucun message.</p>
+    <div class="cyc-aucun">
+      <i class="icon icon-mail icone"></i>
+      <p>Aucun message envoyé pour l'instant.</p>
+    </div>
     {{end}}
   </div>
+
 </div>
 
 <script>
 (function () {
-  var sel = document.querySelector('select[name="recipients"]');
-  var box = document.getElementById('recipientCount');
-  var ttList = document.getElementById('recipientTooltipList');
-  var ttEmpty = document.getElementById('recipientTooltipEmpty');
-  if (!sel || !box || !ttList || !ttEmpty) return;
+  // ── Le compte des destinataires, et leur liste sur demande ──────────────
+  var sel = document.getElementById('recipients');
+  var compte = document.getElementById('recipientCount');
+  var liste = document.getElementById('recipientList');
+  var vide = document.getElementById('recipientEmpty');
+  var bouton = document.getElementById('recipientToggle');
+  var boite = document.getElementById('recipientBox');
 
-  var emailsByRecipient = {{.RecipientEmailsJSON}};
+  if (sel && compte && liste && vide && bouton && boite) {
+    var adressesPar = {{.RecipientEmailsJSON}};
 
-  function refresh() {
-    var opt = sel.options[sel.selectedIndex];
-    var n = opt ? (parseInt(opt.dataset.count, 10) || 0) : 0;
-    box.innerHTML = '<span style="font-size:1.4em;font-weight:bold;color:#5a8a00;">' + n +
-      '</span> <span style="color:#888;"> destinataire(s)</span>';
+    function rafraichir() {
+      var opt = sel.options[sel.selectedIndex];
+      var n = opt ? (parseInt(opt.dataset.count, 10) || 0) : 0;
+      compte.textContent = n;
+      // Zéro destinataire n'est pas un détail : la boîte le dit en couleur,
+      // avant l'envoi plutôt qu'après.
+      boite.classList.toggle('vide', n === 0);
+      vide.hidden = n !== 0;
+      bouton.hidden = n === 0;
 
-    var key = opt ? opt.value : '';
-    var emails = emailsByRecipient[key] || [];
-    ttList.innerHTML = '';
-    if (emails.length === 0) {
-      ttEmpty.style.display = '';
-    } else {
-      ttEmpty.style.display = 'none';
+      var emails = adressesPar[opt ? opt.value : ''] || [];
+      liste.innerHTML = '';
       emails.forEach(function (e) {
         var li = document.createElement('li');
         li.textContent = e;
-        ttList.appendChild(li);
+        liste.appendChild(li);
       });
     }
+
+    // Un bouton plutôt qu'une infobulle au survol : la liste peut compter
+    // deux cents adresses, et on veut pouvoir la parcourir sans que le
+    // moindre écart de souris la fasse disparaître.
+    bouton.addEventListener('click', function () {
+      liste.hidden = !liste.hidden;
+      bouton.innerHTML = liste.hidden
+        ? '<i class="icon icon-eye"></i> Voir la liste'
+        : '<i class="icon icon-chevron-up"></i> Masquer la liste';
+    });
+
+    sel.addEventListener('change', function () {
+      liste.hidden = true;
+      bouton.innerHTML = '<i class="icon icon-eye"></i> Voir la liste';
+      rafraichir();
+    });
+    rafraichir();
   }
 
-  sel.addEventListener('change', refresh);
-  refresh(); // état initial (= "all")
+  // ── Dépliage des messages archivés ──────────────────────────────────────
+  var archives = document.getElementById('msg-liste');
+  if (!archives) return;
+  archives.addEventListener('click', function (e) {
+    var tete = e.target.closest ? e.target.closest('.cyc-sommaire') : null;
+    if (!tete) return;
+    var bloc = tete.parentNode;
+    var ouvert = !bloc.classList.contains('deplie');
+    var autres = archives.querySelectorAll('.cyc-bloc.deplie');
+    for (var i = 0; i < autres.length; i++) {
+      if (autres[i] === bloc) continue;
+      autres[i].classList.remove('deplie');
+      autres[i].querySelector('.cyc-repli').classList.remove('ouvert');
+      var precedent = autres[i].querySelector('.cyc-sommaire');
+      if (precedent) precedent.setAttribute('aria-expanded', 'false');
+    }
+    bloc.classList.toggle('deplie', ouvert);
+    bloc.querySelector('.cyc-repli').classList.toggle('ouvert', ouvert);
+    tete.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+  });
 })();
 </script>
 {{end}}

@@ -1,52 +1,74 @@
 {{define "content"}}
 {{template "amapadmin_nav" .}}
-<div class="col-md-9">
-  <h2>Droits d'administration</h2>
-  <div class="article">
-    {{if .Transfert}}
-    <div class="alert alert-info" style="margin-bottom:12px;">{{.Transfert}}</div>
-    {{end}}
-    <a href="/amapadmin/rights/add" class="btn btn-default btn-sm" style="margin-bottom:12px;"><i class="icon icon-plus"></i> Ajouter un droit</a>
 
-    {{if .RightUsers}}
-    <table class="table table-bordered table-hover table-condensed">
-      <thead>
-        <tr>
-          <th>Nom</th>
-          <th>Droits</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .RightUsers}}
-        <tr>
-          <td>{{.Name}}</td>
-          <td>
-            <ul style="margin:0;padding-left:18px;">
-              {{range .Rights}}
-              <li>{{.}}</li>
+{{if .Transfert}}
+<div class="cyc-succes"><i class="icon icon-info"></i> {{.Transfert}}</div>
+{{end}}
+
+<div class="cyc-barre">
+  <a href="/amapadmin/rights/add" class="cyc-btn cyc-btn-primaire">
+    <i class="icon icon-plus"></i> Confier un droit
+  </a>
+</div>
+
+{{if .RightUsers}}
+<div class="cyc-deborde">
+  <table class="cyc-table">
+    <thead>
+      <tr>
+        <th>Personne</th>
+        <th>Ce qu'elle peut faire</th>
+        <th class="actions"><span class="sr-only">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .RightUsers}}
+      <tr>
+        <td>
+          <div class="cyc-identite">
+            <span class="cyc-initiales">{{initialesDe .Name}}</span>
+            <span>
+              <span class="nom">{{.Name}}</span>
+              {{if .IsTechnicalManager}}
+              <span class="second">Responsable technique</span>
               {{end}}
-            </ul>
-          </td>
-          <td>
+            </span>
+          </div>
+        </td>
+        <td>
+          <div class="cyc-droits">
+            {{range .Rights}}<span class="cyc-badge">{{.}}</span>{{end}}
+          </div>
+        </td>
+        <td class="actions">
+          <div class="cyc-actions">
             {{if .IsTechnicalManager}}
-            <button type="button" class="btn btn-default btn-xs" disabled
-                    title="Le responsable technique tient son rôle de la configuration : ses droits ne se modifient pas ici">
-              <i class="icon icon-lock"></i> Verrouillé
-            </button>
+            {{/* Ses droits viennent de la configuration du serveur, pas de la
+                 base : les modifier ici n'aurait aucun effet. */}}
+            <span class="cyc-badge" title="Le responsable technique tient son rôle de la configuration : ses droits ne se règlent pas ici">
+              Fixé par la configuration
+            </span>
             {{else}}
-            <a href="/amapadmin/rights/edit/{{.UserID}}" class="btn btn-default btn-xs">
-              <i class="icon icon-edit"></i> Modifier
+            <a href="/amapadmin/rights/edit/{{.UserID}}" class="cyc-icone-btn" title="Modifier ses droits">
+              <i class="icon icon-edit"></i><span class="sr-only">Modifier</span>
             </a>
             {{end}}
-          </td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
-    {{else}}
-    <p class="text-muted">Aucun administrateur défini.</p>
-    {{end}}
-  </div>
+          </div>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
 </div>
+{{else}}
+<div class="cyc-aucun">
+  <i class="icon icon-user icone"></i>
+  <p>Personne ne détient de droit d'administration.</p>
+  <a href="/amapadmin/rights/add" class="cyc-btn cyc-btn-primaire">
+    <i class="icon icon-plus"></i> Confier un premier droit
+  </a>
+</div>
+{{end}}
+
+{{template "amapadmin_close" .}}
 {{end}}

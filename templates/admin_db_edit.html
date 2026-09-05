@@ -1,54 +1,75 @@
 {{define "content"}}
 {{template "admin_db_nav" .}}
-<div class="col-md-9">
-  <div class="article admin-db-form">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-      <h3 style="margin:0;">
-        {{if .IsNew}}Nouveau — {{.Model.Label}}{{else}}{{.Model.Label}} <span style="color:#888;font-family:monospace;font-style:normal;font-size:0.7em;">#{{.ID}}</span>{{end}}
-      </h3>
-      <a href="/admin/db/{{.Model.Slug}}" class="btn btn-default btn-sm">
-        <i class="icon icon-chevron-left"></i> Retour à la liste
-      </a>
-    </div>
 
-    {{if .ErrorMsg}}
-    <div class="admin-db-warn" style="background:#fdecea;color:#c0392b;">
-      <i class="icon icon-alert"></i> {{.ErrorMsg}}
-    </div>
-    {{end}}
+<div class="cyc-barre">
+  <div>
+    <h4 style="margin:0 0 3px;">
+      {{if .IsNew}}Nouvel enregistrement{{else}}{{.Model.Label}}{{end}}
+    </h4>
+    <p class="cyc-note" style="margin:0;">
+      {{.Model.Label}}{{if not .IsNew}} · <code class="cyc-ref">#{{.ID}}</code>{{end}}
+    </p>
+  </div>
+  <a href="/admin/db/{{.Model.Slug}}" class="cyc-btn" style="margin-left:auto;">
+    <i class="icon icon-chevron-left"></i> Retour à la liste
+  </a>
+</div>
 
-    <form method="POST" action="{{if .IsNew}}/admin/db/{{.Model.Slug}}/new{{else}}/admin/db/{{.Model.Slug}}/edit/{{.ID}}{{end}}">
-      {{range .Fields}}
-      <div class="form-group">
-        <label for="f-{{.Name}}">{{.Label}}{{if .IsNullable}} <span style="font-weight:normal;color:#aaa;font-size:0.85em;">(optionnel)</span>{{end}}</label>
-        {{if eq .InputType "checkbox"}}
-          <div>
-            <input type="checkbox" id="f-{{.Name}}" name="{{.Name}}" value="1" {{if .IsChecked}}checked{{end}} />
-          </div>
-        {{else if eq .InputType "textarea"}}
-          <textarea id="f-{{.Name}}" name="{{.Name}}" class="form-control">{{.StringValue}}</textarea>
-        {{else if eq .InputType "datetime-local"}}
-          <input type="datetime-local" id="f-{{.Name}}" name="{{.Name}}" class="form-control" value="{{.StringValue}}" />
-        {{else if eq .InputType "number"}}
-          <input type="number" step="any" id="f-{{.Name}}" name="{{.Name}}" class="form-control" value="{{.StringValue}}" />
-        {{else}}
-          <input type="text" id="f-{{.Name}}" name="{{.Name}}" class="form-control" value="{{.StringValue}}" />
-        {{end}}
-      </div>
+{{if .ErrorMsg}}
+<div class="cyc-danger"><i class="icon icon-alert"></i> {{.ErrorMsg}}</div>
+{{end}}
+
+<form method="POST" action="{{if .IsNew}}/admin/db/{{.Model.Slug}}/new{{else}}/admin/db/{{.Model.Slug}}/edit/{{.ID}}{{end}}">
+  <div class="cyc-champs">
+    {{range .Fields}}
+    <div class="cyc-champ{{if eq .InputType "textarea"}} large{{end}}">
+      <label for="f-{{.Name}}">
+        {{.Label}}{{if .IsNullable}} <span class="cyc-vide">(facultatif)</span>{{end}}
+      </label>
+      {{if eq .InputType "checkbox"}}
+        <input type="checkbox" id="f-{{.Name}}" name="{{.Name}}" value="1"
+               style="width:20px;height:20px;" {{if .IsChecked}}checked{{end}} />
+      {{else if eq .InputType "textarea"}}
+        <textarea id="f-{{.Name}}" name="{{.Name}}" rows="4">{{.StringValue}}</textarea>
+      {{else if eq .InputType "datetime-local"}}
+        <input type="datetime-local" id="f-{{.Name}}" name="{{.Name}}" value="{{.StringValue}}" />
+      {{else if eq .InputType "number"}}
+        <input type="number" step="any" id="f-{{.Name}}" name="{{.Name}}" value="{{.StringValue}}" />
+      {{else}}
+        <input type="text" id="f-{{.Name}}" name="{{.Name}}" value="{{.StringValue}}" />
       {{end}}
-
-      <div style="display:flex;gap:8px;align-items:center;margin-top:20px;">
-        <button type="submit" class="btn btn-success"><i class="icon icon-check"></i> Enregistrer</button>
-        <a href="/admin/db/{{.Model.Slug}}" class="btn btn-default">Annuler</a>
-      </div>
-    </form>
-
-    {{if not .IsNew}}
-    <form method="POST" action="/admin/db/{{.Model.Slug}}/delete/{{.ID}}" style="margin-top:24px;border-top:1px solid #eee;padding-top:16px;"
-          onsubmit="return confirm('Supprimer définitivement cet enregistrement ?');">
-      <button type="submit" class="btn btn-danger"><i class="icon icon-delete"></i> Supprimer cet enregistrement</button>
-    </form>
+    </div>
     {{end}}
   </div>
+
+  <div class="cyc-pied">
+    <a href="/admin/db/{{.Model.Slug}}" class="cyc-btn">Annuler</a>
+    <button type="submit" class="cyc-btn cyc-btn-primaire">
+      <i class="icon icon-check"></i> Enregistrer
+    </button>
+  </div>
+</form>
+
+{{if not .IsNew}}
+{{/* La suppression vit à part, sous son propre avertissement : c'est le geste
+     qu'on ne défait pas. */}}
+<div class="cyc-panneau cyc-zone-danger" style="margin-top:24px;">
+  <div class="cyc-entete">
+    <div>
+      <h3>Supprimer cet enregistrement</h3>
+      <p class="cyc-chapeau">
+        Définitif, et sans vérification de ce qui en dépend ailleurs.
+      </p>
+    </div>
+    <form method="POST" action="/admin/db/{{.Model.Slug}}/delete/{{.ID}}"
+          onsubmit="return confirm('Supprimer définitivement cet enregistrement ? Cette action ne se défait pas.');">
+      <button type="submit" class="cyc-btn cyc-btn-danger">
+        <i class="icon icon-delete"></i> Supprimer
+      </button>
+    </form>
+  </div>
 </div>
+{{end}}
+
+{{template "admin_db_close" .}}
 {{end}}

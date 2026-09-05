@@ -1,5 +1,6 @@
 import type { CategoryInfo } from "../../types/shop";
-import { COLORS } from "./theme";
+import { COLORS, FONTS } from "./theme";
+import { useEcranEtroit } from "../../utils/useEcranEtroit";
 
 interface Props {
   categories: CategoryInfo[];
@@ -19,6 +20,12 @@ const ALL_IMAGE = "/img/taxo/allProducts.png";
  * react.store.HeaderCategories (Haxe) : utilise les illustrations couleur.
  */
 export function CategoryNav({ categories, activeId, onSelect, compact = false }: Props) {
+  // Douze catégories partagées à parts égales sur 375 px, cela fait trente
+  // pixels chacune : ni l'image ni le mot n'étaient lisibles. Sur petit écran
+  // la barre défile horizontalement, chaque catégorie gardant une largeur
+  // qu'on peut viser du doigt.
+  const etroit = useEcranEtroit();
+
   const items = [
     { id: ALL_ID, name: ALL_LABEL, image: ALL_IMAGE },
     ...categories.map((c) => ({
@@ -31,7 +38,8 @@ export function CategoryNav({ categories, activeId, onSelect, compact = false }:
   return (
     <nav
       style={{
-        backgroundColor: COLORS.bg2,
+        backgroundColor: COLORS.creme,
+        borderBottom: `1px solid ${COLORS.trait}`,
         textAlign: "center",
         textTransform: "uppercase",
         fontSize: "0.7rem",
@@ -43,9 +51,14 @@ export function CategoryNav({ categories, activeId, onSelect, compact = false }:
         style={{
           maxWidth: 1240,
           margin: "auto",
-          padding: "0 10px",
-          height: compact ? "5em" : "9em",
+          padding: etroit ? "0 8px" : "0 10px",
+          height: etroit ? (compact ? "3.6em" : "5.4em") : compact ? "5em" : "9em",
           transition: "height 0.2s",
+          // Le défilement horizontal, sans barre visible : sur un téléphone
+          // c'est le doigt qui fait défiler, et une barre grise mangerait une
+          // hauteur déjà comptée.
+          overflowX: etroit ? "auto" : undefined,
+          scrollbarWidth: etroit ? "none" : undefined,
         }}
       >
         {items.map((item) => {
@@ -57,17 +70,28 @@ export function CategoryNav({ categories, activeId, onSelect, compact = false }:
               type="button"
               onClick={() => onSelect(item.id === ALL_ID ? null : item.id)}
               className="flex flex-col items-center justify-center transition-colors"
+              // La catégorie retenue se signale par un trait vert sous
+              // elle, et non par un simple aplat un peu plus foncé que le
+              // fond : on ne voyait pas laquelle était active.
               style={{
-                flex: "1 1 0",
+                // Largeur fixe et défilement sur petit écran ; partage à parts
+                // égales sur grand, où tout tient de front.
+                flex: etroit ? "0 0 auto" : "1 1 0",
+                width: etroit ? 74 : undefined,
                 minWidth: 0,
-                background: isActive ? COLORS.bg3 : "transparent",
-                border: "none",
+                background: isActive ? COLORS.vertPale : "transparent",
+                borderTop: "none",
+                borderLeft: "none",
+                borderRight: "none",
+                borderBottom: `3px solid ${isActive ? COLORS.vert : "transparent"}`,
                 padding: 4,
                 cursor: "pointer",
-                color: COLORS.darkGrey,
+                color: isActive ? COLORS.vertFonce : COLORS.gris,
+                fontFamily: FONTS.texte,
                 textTransform: "uppercase",
-                fontSize: "0.7rem",
-                lineHeight: "0.9rem",
+                fontSize: etroit ? "0.62rem" : "0.7rem",
+                lineHeight: etroit ? "0.78rem" : "0.9rem",
+                transition: "background .13s ease, color .13s ease",
               }}
             >
               {item.image && (
@@ -76,10 +100,10 @@ export function CategoryNav({ categories, activeId, onSelect, compact = false }:
                   alt={item.name}
                   title={compact ? item.name : undefined}
                   style={{
-                    height: compact ? "80%" : "50%",
+                    height: compact ? "80%" : etroit ? "44%" : "50%",
                     width: "auto",
                     objectFit: "contain",
-                    marginBottom: compact ? 0 : 6,
+                    marginBottom: compact ? 0 : etroit ? 4 : 6,
                   }}
                 />
               )}
@@ -91,7 +115,7 @@ export function CategoryNav({ categories, activeId, onSelect, compact = false }:
                   style={{
                     position: "relative",
                     display: "block",
-                    height: "1.8rem",
+                    height: etroit ? "1.6rem" : "1.8rem",
                     width: "100%",
                     textAlign: "center",
                   }}
