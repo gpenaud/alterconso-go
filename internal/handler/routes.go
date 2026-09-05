@@ -210,12 +210,19 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/distribution/deleteMd/:id", pageAuth, reqDistributions, pagesH.DistributionDeleteMdPage)
 	r.GET("/distribution/insertMd", pageAuth, reqDistributions, pagesH.DistributionInsertMdPage)
 	r.POST("/distribution/insertMd", pageAuth, reqDistributions, pagesH.DistributionInsertMdPage)
+	// Les cycles de distribution : la liste, la creation et la modification.
+	r.GET("/distribution/cycles", pageAuth, reqDistributions, pagesH.DistributionCyclesPage)
+	r.GET("/distribution/cycles/new", pageAuth, reqDistributions, pagesH.CycleNewPage)
+	r.POST("/distribution/cycles/new", pageAuth, reqDistributions, pagesH.CycleNewPage)
+	r.GET("/distribution/cycles/:id", pageAuth, reqDistributions, pagesH.CycleEditPage)
+	r.POST("/distribution/cycles/:id", pageAuth, reqDistributions, pagesH.CycleEditPage)
 	// L'ancienne adresse de programmation mene desormais a l'ecran dedie, qui
 	// liste, cree et modifie. Conservee en redirection : un signet ou un lien
 	// garde ailleurs ne doit pas tomber sur une page morte.
 	r.GET("/distribution/insertMdCycle", pageAuth, reqDistributions, func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/distribution/cycles/new")
 	})
+	r.GET("/apropos", pageAuth, pagesH.AboutPage)
 	r.GET("/distribution/validate/:id", pageAuth, reqDistributions, pagesH.DistributionValidatePage)
 	r.GET("/distribution/inviteFarmers/:id", pageAuth, reqDistributions, pagesH.DistributionInviteFarmersPage)
 	// La page listait les producteurs sans permettre d'en ajouter ni d'en
