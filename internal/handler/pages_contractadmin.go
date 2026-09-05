@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1318,10 +1319,11 @@ func (h *PagesHandler) DistributionListByDatePrintPage(c *gin.Context) {
 
 	// Collect orders
 	type userEntry struct {
-		name  string
-		phone string
-		lines []EmargementLine
-		total float64
+		name    string
+		sortKey string
+		phone   string
+		lines   []EmargementLine
+		total   float64
 	}
 	userMap := make(map[uint]*userEntry)
 	userOrder := []uint{}
@@ -1346,8 +1348,9 @@ func (h *PagesHandler) DistributionListByDatePrintPage(c *gin.Context) {
 					phone = *o.User.Phone
 				}
 				userMap[o.UserID] = &userEntry{
-					name:  o.User.FirstName + " " + o.User.LastName,
-					phone: phone,
+					name:    o.User.FirstName + " " + o.User.LastName,
+					sortKey: memberSortKey(o.User.FirstName, o.User.LastName),
+					phone:   phone,
 				}
 				userOrder = append(userOrder, o.UserID)
 			}
@@ -1381,6 +1384,12 @@ func (h *PagesHandler) DistributionListByDatePrintPage(c *gin.Context) {
 		data.Place = md.Place.Name
 	}
 	data.Title = "Liste d'émargement — " + data.DayLabel
+
+	// La liste sert à émarger : on la trie sur le nom de famille pour que
+	// l'adhérent qui se présente soit retrouvé sans parcourir toute la page.
+	sort.SliceStable(userOrder, func(i, j int) bool {
+		return userMap[userOrder[i]].sortKey < userMap[userOrder[j]].sortKey
+	})
 
 	for i, uid := range userOrder {
 		u := userMap[uid]

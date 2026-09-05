@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -448,6 +449,7 @@ func (h *PagesHandler) DistributionListPage(c *gin.Context) {
 		Find(&orders)
 
 	userMap := make(map[uint]*DistribListUserBlock)
+	userSortKey := make(map[uint]string)
 	userOrder := []uint{}
 	var grandTotal float64
 
@@ -461,6 +463,7 @@ func (h *PagesHandler) DistributionListPage(c *gin.Context) {
 				UserName:  o.User.FirstName + " " + o.User.LastName,
 				UserPhone: phone,
 			}
+			userSortKey[o.UserID] = memberSortKey(o.User.FirstName, o.User.LastName)
 			userOrder = append(userOrder, o.UserID)
 		}
 		fees := o.TotalPrice() - o.Quantity*o.ProductPrice
@@ -476,6 +479,12 @@ func (h *PagesHandler) DistributionListPage(c *gin.Context) {
 		userMap[o.UserID].UserTotal += o.TotalPrice()
 		grandTotal += o.TotalPrice()
 	}
+
+	// La liste porte une colonne Signature et sert donc à émarger : on la trie
+	// sur le nom de famille pour retrouver l'adhérent qui se présente.
+	sort.SliceStable(userOrder, func(i, j int) bool {
+		return userSortKey[userOrder[i]] < userSortKey[userOrder[j]]
+	})
 
 	userBlocks := make([]DistribListUserBlock, 0, len(userOrder))
 	for _, uid := range userOrder {
