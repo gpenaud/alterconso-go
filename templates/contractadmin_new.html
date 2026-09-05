@@ -1,0 +1,206 @@
+{{define "content"}}
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <form method="POST" action="/contractAdmin/new">
+
+    <div class="cyc-panneau">
+      <div class="cyc-entete">
+        <div>
+          <h3>Nouveau catalogue</h3>
+          <p class="cyc-chapeau">
+            Un catalogue, c'est ce qu'un producteur propose au groupe sur une
+            période. Une fois ouvert, on y ajoute ses produits, puis ses dates
+            de livraison.
+          </p>
+        </div>
+        <a href="/contractAdmin" class="cyc-btn">
+          <i class="icon icon-chevron-left"></i> Tous les catalogues
+        </a>
+      </div>
+
+      {{if .Erreur}}
+      <div class="cyc-danger" style="margin:0 0 20px;">
+        <i class="icon icon-alert" aria-hidden="true"></i>
+        <span>{{.Erreur}}</span>
+      </div>
+      {{end}}
+
+      <div class="cyc-section">
+        <h4>Identité</h4>
+        <div class="cyc-champs">
+          <div class="cyc-champ large">
+            <label for="name">Nom du catalogue *</label>
+            <input type="text" id="name" name="name" value="{{.Catalog.Name}}" required
+                   placeholder="Légumes de saison" />
+          </div>
+          <div class="cyc-champ">
+            <label for="vendor_id">Producteur *</label>
+            <select id="vendor_id" name="vendor_id" required>
+              {{/* Aucun présélectionné : à l'ouverture d'un catalogue, le
+                   premier de la liste alphabétique serait un choix par
+                   défaut que personne n'a fait. */}}
+              <option value="">— choisir —</option>
+              {{range .Vendors}}
+              <option value="{{.ID}}" {{if eq $.Catalog.VendorID .ID}}selected{{end}}>{{.Name}}</option>
+              {{end}}
+            </select>
+            <p class="cyc-note">
+              Absent de la liste ? <a href="/vendor/insert">Créez sa fiche</a> d'abord.
+            </p>
+          </div>
+          <div class="cyc-champ">
+            <label for="contact_id">Responsable du contrat</label>
+            <select id="contact_id" name="contact_id">
+              <option value="">— aucun —</option>
+              {{range .Members}}
+              <option value="{{.ID}}" {{if $.Catalog.ContactID}}{{if eq (derefUint $.Catalog.ContactID) (printf "%d" .ID)}}selected{{end}}{{end}}>
+                {{.LastName}} {{.FirstName}}
+              </option>
+              {{end}}
+            </select>
+            <p class="cyc-note">L'adhérent qui fait le lien avec ce producteur.</p>
+          </div>
+        </div>
+      </div>
+
+      {{/* Le type ne se règle qu'ici : l'écran des réglages ne le propose
+           pas, parce qu'en changer une fois des commandes passées les
+           relirait autrement. */}}
+      <div class="cyc-section">
+        <h4>Forme des commandes</h4>
+        <p class="cyc-aide">
+          Ce choix ne se reprend pas ensuite&nbsp;: les commandes déjà passées
+          se liraient autrement.
+        </p>
+        <div class="cyc-champs">
+          <div class="cyc-champ large">
+            <label for="type">Type de contrat</label>
+            <select id="type" name="type">
+              <option value="0" {{if eq (printf "%d" .Catalog.Type) "0"}}selected{{end}}>
+                Commandes variables — l'adhérent choisit ce qu'il prend, à chaque distribution
+              </option>
+              <option value="1" {{if eq (printf "%d" .Catalog.Type) "1"}}selected{{end}}>
+                Commandes fixes — un engagement sur la saison, identique à chaque distribution
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="cyc-section">
+        <h4>Période</h4>
+        <p class="cyc-aide">
+          Facultative. Hors de ces dates, le catalogue n'est plus proposé aux
+          commandes.
+        </p>
+        <div class="cyc-champs">
+          <div class="cyc-champ">
+            <label for="start_date">Début</label>
+            <input type="date" id="start_date" name="start_date"
+                   value="{{if .Catalog.StartDate}}{{.Catalog.StartDate.Format "2006-01-02"}}{{end}}" />
+          </div>
+          <div class="cyc-champ">
+            <label for="end_date">Fin</label>
+            <input type="date" id="end_date" name="end_date"
+                   value="{{if .Catalog.EndDate}}{{.Catalog.EndDate.Format "2006-01-02"}}{{end}}" />
+          </div>
+        </div>
+      </div>
+
+      {{if .PeutMettreEnAvant}}
+      <div class="cyc-section">
+        <h4>Mise en avant</h4>
+        <p class="cyc-aide">
+          Quelques mots signalés sur l'accueil, à côté de la date — par exemple
+          «&nbsp;Agrumes de Sicile&nbsp;». Réservez-la aux campagnes rares&nbsp;:
+          signalée partout, elle ne signale plus rien.
+        </p>
+        <div class="cyc-champs">
+          <div class="cyc-champ large">
+            <label for="highlight_label">Libellé</label>
+            <input type="text" id="highlight_label" name="highlight_label" maxlength="48"
+                   placeholder="Laisser vide pour aucune mise en avant"
+                   value="{{.Catalog.Highlight}}" />
+          </div>
+        </div>
+      </div>
+      {{end}}
+
+      <div class="cyc-section">
+        <h4>Fonctionnement</h4>
+        <label class="cyc-bascule {{if hasFlag .Catalog.Flags 1}}actif{{end}}">
+          <input type="checkbox" name="users_can_order" value="1" {{if hasFlag .Catalog.Flags 1}}checked{{end}} />
+          <span>
+            <span class="titre">Les adhérents commandent eux-mêmes</span>
+            <p class="cyc-note">Sans cela, seuls les gestionnaires saisissent les commandes.</p>
+          </span>
+        </label>
+        <label class="cyc-bascule {{if hasFlag .Catalog.Flags 2}}actif{{end}}">
+          <input type="checkbox" name="stock_management" value="1" {{if hasFlag .Catalog.Flags 2}}checked{{end}} />
+          <span>
+            <span class="titre">Gérer les stocks</span>
+            <p class="cyc-note">Chaque produit porte une quantité disponible, décomptée à la commande.</p>
+          </span>
+        </label>
+        <label class="cyc-bascule {{if hasFlag .Catalog.Flags 8}}actif{{end}}" id="bascule-frais">
+          <input type="checkbox" name="percentage_fees" value="1" id="case-frais"
+                 {{if hasFlag .Catalog.Flags 8}}checked{{end}} />
+          <span>
+            <span class="titre">Ajouter des frais en pourcentage</span>
+            <p class="cyc-note">Une part prélevée sur chaque commande, au profit du groupe.</p>
+          </span>
+        </label>
+
+        <div class="cyc-repli {{if hasFlag .Catalog.Flags 8}}ouvert{{end}}" id="bloc-frais"><div>
+          <div class="cyc-champs">
+            <div class="cyc-champ">
+              <label for="percentage_fees_value">Pourcentage</label>
+              <input type="text" id="percentage_fees_value" name="percentage_fees_value"
+                     value="{{if .Catalog.PercentageFees}}{{deref64 .Catalog.PercentageFees}}{{end}}"
+                     placeholder="par exemple 5" />
+            </div>
+            <div class="cyc-champ">
+              <label for="percentage_name">Libellé de ces frais</label>
+              <input type="text" id="percentage_name" name="percentage_name"
+                     value="{{if .Catalog.PercentageName}}{{deref .Catalog.PercentageName}}{{end}}"
+                     placeholder="Frais de fonctionnement" />
+              <p class="cyc-note">Ce que l'adhérent lira sur sa commande.</p>
+            </div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="cyc-pied">
+        <a href="/contractAdmin" class="cyc-btn">Annuler</a>
+        <button type="submit" class="cyc-btn cyc-btn-primaire">
+          <i class="icon icon-check"></i> Ouvrir le catalogue
+        </button>
+      </div>
+    </div>
+
+  </form>
+</div>
+
+<script>
+(function () {
+  var caseFrais = document.getElementById('case-frais');
+  var bloc = document.getElementById('bloc-frais');
+  var bascule = document.getElementById('bascule-frais');
+  if (!caseFrais || !bloc) return;
+  function sync() {
+    bloc.classList.toggle('ouvert', caseFrais.checked);
+    if (bascule) bascule.classList.toggle('actif', caseFrais.checked);
+  }
+  caseFrais.addEventListener('change', sync);
+
+  // Les autres bascules se teintent aussi : sur trois lignes, seule la case
+  // qui change ne se voit pas.
+  document.addEventListener('change', function (e) {
+    var b = e.target.closest ? e.target.closest('.cyc-bascule') : null;
+    if (b && e.target.type === 'checkbox' && e.target !== caseFrais) {
+      b.classList.toggle('actif', e.target.checked);
+    }
+  });
+})();
+</script>
+{{end}}

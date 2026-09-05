@@ -184,6 +184,17 @@ func TestCommonLayoutRendersFullyForDerivedData(t *testing.T) {
 	}{
 		"PageData nu":      {"member_requests.html", JoinRequestsData{PageData: pd}},
 		"données de cycle": {"distribution_cycles.html", CyclesData{PageData: pd}},
+		// Les trois écrans d'écriture ouverts avec l'ébauche qu'ils
+		// rendent avant toute saisie : c'est l'état le plus nu, celui où
+		// un champ lu sur un pointeur nil arrêterait la page au milieu.
+		"fiche producteur neuve": {"vendor_edit.html",
+			VendorFormData{PageData: pd, Creation: true, Statuts: vendorLegalStatuses}},
+		"fiche producteur reprise": {"vendor_edit.html",
+			VendorFormData{PageData: pd, Statuts: vendorLegalStatuses,
+				Vendor: model.Vendor{ID: 4, Name: "Ferme des Trois Chênes", Email: "f@ex.fr"}}},
+		"catalogue neuf": {"contractadmin_new.html",
+			CatalogNewData{PageData: pd, PeutMettreEnAvant: true,
+				Vendors: []model.Vendor{{ID: 4, Name: "Ferme des Trois Chênes"}}}},
 	}
 
 	for nom, tc := range cas {

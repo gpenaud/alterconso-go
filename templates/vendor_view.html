@@ -72,6 +72,13 @@
       {{else}}
       <p class="cyc-note">Aucun catalogue pour ce producteur.</p>
       {{end}}
+      {{if .IsGroupManager}}
+      <div class="cyc-actions-nommees" style="margin-top:14px;">
+        <a href="/contractAdmin/new?vendor={{.Vendor.ID}}" class="cyc-btn">
+          <i class="icon icon-plus"></i> Ouvrir un catalogue avec ce producteur
+        </a>
+      </div>
+      {{end}}
     </div>
 
   </div>

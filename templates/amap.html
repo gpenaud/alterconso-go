@@ -97,7 +97,8 @@
           {{end}}
           {{else}}
           <p class="cyc-note" style="padding:0 8px 16px;">
-            Ce producteur n'a aucun catalogue dans le groupe.
+            Ce producteur n'a aucun catalogue dans le groupe : il ne fournit
+            donc rien pour l'instant.
           </p>
           {{end}}
 
@@ -108,6 +109,14 @@
             {{if $.CanEditVendors}}
             <a href="/vendor/edit/{{.ID}}" class="cyc-btn">
               <i class="icon icon-edit"></i> Modifier la fiche
+            </a>
+            {{end}}
+            {{/* Le producteur est saisi mais ne fournit rien tant qu'un
+                 catalogue ne le rattache pas : le lien est ici, ou l'on
+                 constate qu'il en manque un. */}}
+            {{if $.IsGroupManager}}
+            <a href="/contractAdmin/new?vendor={{.ID}}" class="cyc-btn">
+              <i class="icon icon-products"></i> Ouvrir un catalogue
             </a>
             {{end}}
           </div>

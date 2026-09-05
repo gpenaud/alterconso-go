@@ -12,6 +12,13 @@
           commandes.
         </p>
       </div>
+      {{if .IsGroupManager}}
+      <div class="cyc-actions-nommees serrees">
+        <a href="/contractAdmin/new" class="cyc-btn cyc-btn-primaire">
+          <i class="icon icon-plus"></i> Nouveau catalogue
+        </a>
+      </div>
+      {{end}}
     </div>
 
     {{if .AdminCatalogs}}
@@ -96,6 +103,11 @@
     <div class="cyc-aucun">
       <i class="icon icon-products icone"></i>
       <p>Aucun catalogue pour ce groupe.</p>
+      {{if .IsGroupManager}}
+      <a href="/contractAdmin/new" class="cyc-btn cyc-btn-primaire">
+        <i class="icon icon-plus"></i> Ouvrir le premier catalogue
+      </a>
+      {{end}}
     </div>
     {{end}}
 

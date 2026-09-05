@@ -181,6 +181,10 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/contractAdmin/ordersByDate/:date/:groupId", pageAuth, reqCatalog, pagesH.ContractAdminOrdersByDatePage)
 	r.GET("/contractAdmin/vendorsByDate/:date/:groupId", pageAuth, reqCatalog, pagesH.ContractAdminVendorsByDatePage)
 	r.GET("/contractAdmin/ordersByDate/:date/:groupId/csv", pageAuth, reqCatalog, pagesH.ContractAdminOrdersByDateCSV)
+	// L'ouverture d'un catalogue. Elle precede « /view/:id » dans le fichier
+	// comme dans l'usage : c'est par la qu'un catalogue commence a exister.
+	r.GET("/contractAdmin/new", pageAuth, reqCatalog, pagesH.CatalogAdminNewPage)
+	r.POST("/contractAdmin/new", pageAuth, reqCatalog, pagesH.CatalogAdminNewPage)
 	r.GET("/contractAdmin/view/:id", pageAuth, reqCatalog, pagesH.CatalogAdminViewPage)
 	r.GET("/contractAdmin/edit/:id", pageAuth, reqCatalog, pagesH.CatalogAdminEditPage)
 	r.POST("/contractAdmin/edit/:id", pageAuth, reqCatalog, pagesH.CatalogAdminEditPage)

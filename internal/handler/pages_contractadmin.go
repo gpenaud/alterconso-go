@@ -175,6 +175,80 @@ func peutMettreEnAvant(pd PageData) bool {
 	return pd.HasDistributions
 }
 
+// catalogDepuisFormulaire lit dans le catalogue donne les champs postes par
+// l'ecran de reglages, qui est le meme a l'ouverture d'un catalogue et a sa
+// reprise. Partagee pour cette raison : deux lectures separees auraient
+// diverge des la premiere option ajoutee, et un catalogue neuf n'aurait pas
+// obei aux memes regles que le catalogue d'a cote.
+//
+// « miseEnAvant » dit si le visiteur a le droit d'y toucher. Faux, le champ
+// n'est pas meme lu : l'appelant garde alors la valeur en place.
+func catalogDepuisFormulaire(c *gin.Context, cat *model.Catalog, miseEnAvant bool) {
+	cat.Name = strings.TrimSpace(c.PostForm("name"))
+
+	if sd := c.PostForm("start_date"); sd != "" {
+		if t, err := time.Parse("2006-01-02", sd); err == nil {
+			cat.StartDate = &t
+		}
+	} else {
+		cat.StartDate = nil
+	}
+	if ed := c.PostForm("end_date"); ed != "" {
+		if t, err := time.Parse("2006-01-02", ed); err == nil {
+			cat.EndDate = &t
+		}
+	} else {
+		cat.EndDate = nil
+	}
+
+	cat.Flags = 0
+	if c.PostForm("users_can_order") == "1" {
+		cat.SetFlag(model.CatalogFlagUsersCanOrder)
+	}
+	if c.PostForm("stock_management") == "1" {
+		cat.SetFlag(model.CatalogFlagStockManagement)
+	}
+	if c.PostForm("percentage_fees") == "1" {
+		cat.SetFlag(model.CatalogFlagHasPercentageFees)
+		if pf := c.PostForm("percentage_fees_value"); pf != "" {
+			if v, err := strconv.ParseFloat(pf, 64); err == nil {
+				cat.PercentageFees = &v
+			}
+		}
+		if pn := c.PostForm("percentage_name"); pn != "" {
+			cat.PercentageName = &pn
+		}
+	} else {
+		cat.PercentageFees = nil
+		cat.PercentageName = nil
+	}
+
+	// Un champ vide efface la mise en avant : c'est le seul geste dont on
+	// dispose pour l'annuler.
+	if miseEnAvant {
+		if hl := strings.TrimSpace(c.PostForm("highlight_label")); hl != "" {
+			if len([]rune(hl)) > 48 {
+				hl = string([]rune(hl)[:48])
+			}
+			cat.HighlightLabel = &hl
+		} else {
+			cat.HighlightLabel = nil
+		}
+	}
+
+	if vid, err := strconv.ParseUint(c.PostForm("vendor_id"), 10, 64); err == nil {
+		cat.VendorID = uint(vid)
+	}
+	if cid := c.PostForm("contact_id"); cid != "" {
+		if v, err := strconv.ParseUint(cid, 10, 64); err == nil {
+			uid := uint(v)
+			cat.ContactID = &uid
+		}
+	} else {
+		cat.ContactID = nil
+	}
+}
+
 func (h *PagesHandler) CatalogAdminEditPage(c *gin.Context) {
 	data, ok := h.loadCatalogAdmin(c, "view")
 	if !ok {
@@ -183,69 +257,11 @@ func (h *PagesHandler) CatalogAdminEditPage(c *gin.Context) {
 
 	if c.Request.Method == "POST" {
 		cat := &data.Catalog
-		cat.Name = c.PostForm("name")
-		if sd := c.PostForm("start_date"); sd != "" {
-			if t, err := time.Parse("2006-01-02", sd); err == nil {
-				cat.StartDate = &t
-			}
-		} else {
-			cat.StartDate = nil
-		}
-		if ed := c.PostForm("end_date"); ed != "" {
-			if t, err := time.Parse("2006-01-02", ed); err == nil {
-				cat.EndDate = &t
-			}
-		} else {
-			cat.EndDate = nil
-		}
-		// Flags
-		cat.Flags = 0
-		if c.PostForm("users_can_order") == "1" {
-			cat.SetFlag(model.CatalogFlagUsersCanOrder)
-		}
-		if c.PostForm("stock_management") == "1" {
-			cat.SetFlag(model.CatalogFlagStockManagement)
-		}
-		if c.PostForm("percentage_fees") == "1" {
-			cat.SetFlag(model.CatalogFlagHasPercentageFees)
-			if pf := c.PostForm("percentage_fees_value"); pf != "" {
-				if v, err := strconv.ParseFloat(pf, 64); err == nil {
-					cat.PercentageFees = &v
-				}
-			}
-			if pn := c.PostForm("percentage_name"); pn != "" {
-				cat.PercentageName = &pn
-			}
-		} else {
-			cat.PercentageFees = nil
-			cat.PercentageName = nil
-		}
-		// Mise en avant : un champ vide l'efface, c'est le seul geste dont on
-		// dispose pour l'annuler. Sans le droit « distributions », le champ
-		// n'est ni lu ni écrit — un formulaire forgé ne doit pas suffire là où
-		// l'écran n'affiche rien.
+		// Mise en avant : sans le droit « distributions », le champ n'est ni
+		// lu ni écrit — un formulaire forgé ne doit pas suffire là où l'écran
+		// n'affiche rien.
 		miseEnAvant := peutMettreEnAvant(data.PageData)
-		if miseEnAvant {
-			if hl := strings.TrimSpace(c.PostForm("highlight_label")); hl != "" {
-				if len([]rune(hl)) > 48 {
-					hl = string([]rune(hl)[:48])
-				}
-				cat.HighlightLabel = &hl
-			} else {
-				cat.HighlightLabel = nil
-			}
-		}
-		if vid, err := strconv.ParseUint(c.PostForm("vendor_id"), 10, 64); err == nil {
-			cat.VendorID = uint(vid)
-		}
-		if cid := c.PostForm("contact_id"); cid != "" {
-			if v, err := strconv.ParseUint(cid, 10, 64); err == nil {
-				uid := uint(v)
-				cat.ContactID = &uid
-			}
-		} else {
-			cat.ContactID = nil
-		}
+		catalogDepuisFormulaire(c, cat, miseEnAvant)
 		updates := map[string]interface{}{
 			"name":            cat.Name,
 			"flags":           cat.Flags,
@@ -297,6 +313,121 @@ func (h *PagesHandler) CatalogAdminEditPage(c *gin.Context) {
 }
 
 // ---- /contractAdmin/products/:id ----
+
+// CatalogNewData : l'ouverture d'un catalogue. Un ecran a part, et non le
+// gabarit des reglages : celui-la vit dans la mise en page a onglets d'un
+// catalogue — produits, commandes, distributions — dont aucun n'a de sens
+// avant que le catalogue existe.
+type CatalogNewData struct {
+	PageData
+	Catalog           model.Catalog
+	Vendors           []model.Vendor
+	Members           []model.User
+	PeutMettreEnAvant bool
+	// Erreur : reaffichee au-dessus du formulaire, la saisie conservee.
+	Erreur string
+}
+
+// ---- GET/POST /contractAdmin/new ----
+//
+// Un catalogue ne s'ouvrait que par duplication d'un autre. Le premier
+// catalogue d'un producteur nouvellement arrive n'avait donc aucun moyen
+// d'exister : il fallait copier celui d'un voisin puis tout reprendre, ou
+// passer par la base.
+func (h *PagesHandler) CatalogAdminNewPage(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil || !pd.IsGroupManager {
+		c.String(http.StatusForbidden, "accès refusé")
+		return
+	}
+
+	data := CatalogNewData{PageData: pd, PeutMettreEnAvant: peutMettreEnAvant(pd)}
+	// Le catalogue s'ouvre commandable en ligne : c'est ce que le groupe
+	// vient y chercher, et l'oubli de la case laissait un catalogue que
+	// personne ne voyait dans la boutique.
+	data.Catalog.SetFlag(model.CatalogFlagUsersCanOrder)
+
+	if c.Request.Method == http.MethodPost {
+		catalogDepuisFormulaire(c, &data.Catalog, data.PeutMettreEnAvant)
+		if t, err := strconv.Atoi(c.PostForm("type")); err == nil && t == int(model.CatalogTypeConstOrder) {
+			data.Catalog.Type = model.CatalogTypeConstOrder
+		}
+		data.Catalog.GroupID = pd.Group.ID
+
+		data.Erreur = h.catalogNouveauRefus(pd, data.Catalog)
+		if data.Erreur == "" {
+			if err := h.db.Create(&data.Catalog).Error; err != nil {
+				data.Erreur = "L'enregistrement a échoué : " + err.Error()
+			} else {
+				// Vers les produits, et non vers le récapitulatif : un
+				// catalogue vide n'a rien à récapituler, et c'est la
+				// première chose qu'il reste à faire.
+				c.Redirect(http.StatusFound, fmt.Sprintf("/contractAdmin/products/%d", data.Catalog.ID))
+				return
+			}
+		}
+	} else if v := c.Query("vendor"); v != "" {
+		// Ouvert depuis la fiche d'un producteur : son nom est déjà choisi.
+		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
+			data.Catalog.VendorID = uint(id)
+		}
+	}
+
+	h.db.Order("name").Find(&data.Vendors)
+	h.db.Joins("JOIN user_groups ON user_groups.user_id = users.id").
+		Where("user_groups.group_id = ? AND user_groups.rights LIKE ?", pd.Group.ID, "%GroupAdmin%").
+		Order("users.last_name").Find(&data.Members)
+
+	data.Title = "Nouveau catalogue"
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"},
+		{Name: "Nouveau catalogue", Link: ""}}
+	data.Category = "contract"
+	data.Container = "container-fluid ac-accueil"
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_new.html")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err)
+		return
+	}
+	if err := t.ExecuteTemplate(c.Writer, "base", data); err != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err)
+	}
+}
+
+// catalogNouveauRefus dit ce qui empeche d'ouvrir ce catalogue, ou rien.
+func (h *PagesHandler) catalogNouveauRefus(pd PageData, cat model.Catalog) string {
+	if cat.Name == "" {
+		return "Le nom du catalogue est obligatoire."
+	}
+	if cat.VendorID == 0 {
+		return "Un catalogue est le contrat passé avec un producteur : il faut en choisir un."
+	}
+	// Un intervalle a l'envers ferme le catalogue avant de l'ouvrir : il
+	// n'apparaitrait jamais, sans que rien ne le dise. Verifie avant les
+	// requetes, comme les deux refus precedents : rien ne sert d'interroger
+	// la base pour une saisie qu'on refuse de toute facon.
+	if cat.StartDate != nil && cat.EndDate != nil && cat.EndDate.Before(*cat.StartDate) {
+		return "La date de fin précède la date de début."
+	}
+	// Le producteur est lu en base plutot que cru sur parole : la liste
+	// deroulante n'est qu'un ecran, et un identifiant forge y designerait
+	// une ferme que personne n'a saisie.
+	var n int64
+	h.db.Model(&model.Vendor{}).Where("id = ?", cat.VendorID).Count(&n)
+	if n == 0 {
+		return "Ce producteur n'existe pas."
+	}
+	// Le responsable, de meme, doit etre du groupe : sans quoi le catalogue
+	// afficherait aux adherents le nom de quelqu'un qui n'en fait pas partie.
+	if cat.ContactID != nil {
+		var m int64
+		h.db.Model(&model.UserGroup{}).
+			Where("user_id = ? AND group_id = ?", *cat.ContactID, pd.Group.ID).Count(&m)
+		if m == 0 {
+			return "Le responsable choisi n'appartient pas à ce groupe."
+		}
+	}
+	return ""
+}
 
 func (h *PagesHandler) CatalogAdminProductsPage(c *gin.Context) {
 	data, ok := h.loadCatalogAdmin(c, "products")
