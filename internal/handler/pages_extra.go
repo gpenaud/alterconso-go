@@ -1835,7 +1835,7 @@ func (h *PagesHandler) AmapAdminVolunteerDelete(c *gin.Context) {
 	}
 	// Les inscriptions partent avec le poste : laissées derrière, elles
 	// désigneraient un rôle disparu sur les listes d'émargement.
-	h.db.Where("volunteer_role_id = ?", role.ID).Delete(&model.VolunteerRoleAssignment{})
+	h.db.Where("volunteer_role_id = ?", role.ID).Delete(&model.MultiDistribRole{})
 	h.db.Delete(&model.VolunteerRole{}, role.ID)
 	c.Redirect(http.StatusFound, "/amapadmin/volunteers")
 }

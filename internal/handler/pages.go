@@ -257,9 +257,15 @@ type PageData struct {
 	PrevOffset int
 	NextOffset int
 	// amapadmin page
-	Places           []model.Place
-	Admins           []model.User
-	AmapAdminTab     string
+	Places       []model.Place
+	Admins       []model.User
+	AmapAdminTab string
+	// AmapAdminTitre et AmapAdminChapeau : le titre de l'onglet ouvert et sa
+	// phrase d'explication. Portés par la coquille commune plutôt que répétés
+	// dans chaque gabarit — la mise en page de l'en-tête ne s'écrit ainsi
+	// qu'une fois.
+	AmapAdminTitre   string
+	AmapAdminChapeau string
 	NbMembers        int
 	NbActiveCatalogs int
 	PublicGroupURL   string
@@ -355,6 +361,11 @@ type MultiDistribView struct {
 	// deux pastilles côte à côte se neutralisent, et il n'y a plus d'exception.
 	Highlight       string `json:"highlight,omitempty"`
 	VolunteerNeeded int    `json:"volunteerNeeded"`
+	// VolunteerTotal et VolunteerFilled : les postes à tenir et ceux qui le
+	// sont. Le seul écart ne suffisait pas à colorer la pastille — « il en
+	// manque un » ne dit pas s'il en manque un sur deux ou un sur dix.
+	VolunteerTotal  int `json:"volunteerTotal"`
+	VolunteerFilled int `json:"volunteerFilled"`
 	// UserIsVolunteer : le lecteur s'est inscrit pour tenir une permanence ce
 	// jour-là. On le remercie au lieu de lui réclamer ce qu'il a déjà donné.
 	UserIsVolunteer   bool     `json:"userIsVolunteer"`
@@ -808,20 +819,23 @@ func chooseDestination(c *gin.Context) string {
 // fois plutôt que deux.
 const homePeriodDays = 21
 
-func (h *PagesHandler) HomePage(c *gin.Context) {
+// homePeriodData rassemble ce que l'accueil montre pour une période donnée.
+//
+// Extraite de HomePage pour que le défilement continu s'en serve : le fragment
+// qui ajoute la période suivante doit produire exactement les mêmes vues, et
+// une seconde implémentation aurait divergé au premier ajustement.
+//
+// Retourne nil quand il n'y a pas de quoi composer un accueil — ni compte, ni
+// groupe courant. L'appelant décide alors où renvoyer le visiteur.
+func (h *PagesHandler) homePeriodData(c *gin.Context, offsetWeeks int) *PageData {
 	pd := h.buildPageData(c)
 	// L'accueil prend toute la largeur : c'est l'écran où l'on choisit sa
 	// distribution et où l'on commande, et les cartes y gagnent à s'étaler.
 	// La feuille borne cette largeur pour que les lignes restent lisibles sur
 	// un grand écran.
 	pd.Container = "container-fluid ac-large"
-	if pd.User == nil {
-		c.Redirect(http.StatusFound, "/user/login?__redirect=/home")
-		return
-	}
-	if pd.Group == nil {
-		c.Redirect(http.StatusFound, "/user/choose")
-		return
+	if pd.User == nil || pd.Group == nil {
+		return nil
 	}
 	pd.Title = "Accueil"
 	pd.Category = "home"
@@ -830,8 +844,6 @@ func (h *PagesHandler) HomePage(c *gin.Context) {
 	claims := middleware.GetClaims(c)
 
 	// Period navigation
-	offsetStr := c.DefaultQuery("offset", "0")
-	offsetWeeks, _ := strconv.Atoi(offsetStr)
 	// Les flèches se déplacent depuis la période affichée, et non depuis
 	// l'origine : avec un offset fixe, la seconde pression rejouait le même
 	// lien et la page ne bougeait plus.
@@ -1117,12 +1129,30 @@ func (h *PagesHandler) HomePage(c *gin.Context) {
 		}
 	}
 
+	return &pd
+}
+
+func (h *PagesHandler) HomePage(c *gin.Context) {
+	offsetWeeks, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	pd := h.homePeriodData(c, offsetWeeks)
+	if pd == nil {
+		// La distinction se fait ici : pas de compte, on demande à se
+		// connecter ; pas de groupe courant, on demande lequel.
+		if middleware.GetClaims(c) == nil {
+			c.Redirect(http.StatusFound, "/user/login?__redirect=/home")
+		} else {
+			c.Redirect(http.StatusFound, "/user/choose")
+		}
+		return
+	}
+
 	t, err := loadTemplates("base.html", "design.html", "home.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
 	}
-	if err := t.ExecuteTemplate(c.Writer, "base", pd); err != nil {
+	if err := t.ExecuteTemplate(c.Writer, "base", *pd); err != nil {
 		c.String(http.StatusInternalServerError, "render error: %v", err)
 	}
 }
@@ -1861,7 +1891,6 @@ func (h *PagesHandler) ContractAdminPage(c *gin.Context) {
 		return
 	}
 
-	frDays := [...]string{"Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"}
 	frMonths := [...]string{"", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"}
 	// La date seule, avec son année : la ligne d'un catalogue en côtoie
 	// d'autres qui courent sur plusieurs saisons, et « Lundi 21 Novembre » ne
