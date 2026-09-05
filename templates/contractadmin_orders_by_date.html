@@ -41,7 +41,7 @@
 <div style="margin-bottom:24px;border:1px solid #ddd;border-radius:4px;">
   <div style="background:#555;color:#fff;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;border-radius:4px 4px 0 0;">
     <span>
-      <span style="background:#333;padding:2px 8px;border-radius:3px;margin-right:8px;font-size:0.9em;font-weight:bold;">N°{{.BasketNum}}</span>
+      {{if .BasketNum}}<span style="background:#333;padding:2px 8px;border-radius:3px;margin-right:8px;font-size:0.9em;font-weight:bold;">N°{{.BasketNum}}</span>{{end}}
       <b>{{.UserName}}</b>
     </span>
     <span style="display:flex;gap:6px;">

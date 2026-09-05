@@ -132,7 +132,7 @@ tr.member-total td {
     {{range $li, $line := $m.Lines}}
     <tr>
       {{if eq $li 0}}
-      <td class="member-name" rowspan="{{len $m.Lines}}">N°{{$m.BasketNum}}<br>{{$m.UserName}}</td>
+      <td class="member-name" rowspan="{{len $m.Lines}}">{{if $m.BasketNum}}N°{{$m.BasketNum}}<br>{{end}}{{$m.UserName}}</td>
       <td class="member-phone" rowspan="{{len $m.Lines}}">{{telephone $m.Phone}}</td>
       {{end}}
       <td style="text-align:right;white-space:nowrap;">{{$line.Qty}}</td>

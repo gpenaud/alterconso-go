@@ -334,18 +334,11 @@ func (s *OrderService) applyStock(product *model.Product, qty float64) (float64,
 }
 
 // getOrCreateBasket trouve ou crée le panier d'un utilisateur pour un MultiDistrib.
+//
+// L'attribution du numéro de panier vit dans model.EnsureBasket, pour que ce
+// chemin-ci et celui des commandes saisies par un responsable en donnent le
+// même : un panier créé ici sans numéro laisserait l'adhérent absent des listes
+// numérotées, alors qu'il a bien commandé.
 func (s *OrderService) getOrCreateBasket(userID, multiDistribID uint) (*model.Basket, error) {
-	var basket model.Basket
-	err := s.db.Where("user_id = ? AND multi_distrib_id = ?", userID, multiDistribID).First(&basket).Error
-	if err == nil {
-		return &basket, nil
-	}
-	basket = model.Basket{
-		UserID:         userID,
-		MultiDistribID: multiDistribID,
-	}
-	if err := s.db.Create(&basket).Error; err != nil {
-		return nil, err
-	}
-	return &basket, nil
+	return model.EnsureBasket(s.db, userID, multiDistribID)
 }

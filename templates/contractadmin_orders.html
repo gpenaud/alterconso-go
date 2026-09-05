@@ -17,7 +17,7 @@
 {{range .Orders}}
 <div class="cyc-section">
   <h4>
-    <a href="/member/view/{{.UserID}}" target="_blank" rel="noopener">{{.UserName}}</a>
+    {{if .BasketNum}}<span class="cyc-badge">N°{{.BasketNum}}</span> {{end}}<a href="/member/view/{{.UserID}}" target="_blank" rel="noopener">{{.UserName}}</a>
   </h4>
   <div class="cyc-deborde">
     <table class="cyc-table">
