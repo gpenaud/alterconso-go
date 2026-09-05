@@ -23,6 +23,11 @@
         <a href="/amap" class="cyc-btn">
           <i class="icon icon-chevron-left"></i> Tous les producteurs
         </a>
+        {{if .Modifiable}}
+        <a href="/vendor/edit/{{.Vendor.ID}}" class="cyc-btn cyc-btn-primaire">
+          <i class="icon icon-edit"></i> Modifier
+        </a>
+        {{end}}
       </div>
     </div>
 

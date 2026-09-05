@@ -1,0 +1,145 @@
+{{define "content"}}
+{{template "cyclesStyle"}}
+<div class="col-md-12 cyc">
+  <form method="POST">
+
+    <div class="cyc-panneau">
+      <div class="cyc-entete">
+        <div>
+          <h3>{{if .Creation}}Nouveau producteur{{else}}Modifier {{.Vendor.Name}}{{end}}</h3>
+          <p class="cyc-chapeau">
+            {{if .Creation}}
+            La ferme ou l'artisan, ses coordonnées et sa présentation. Il
+            faudra ensuite lui ouvrir un catalogue pour qu'il fournisse le
+            groupe.
+            {{else}}
+            Coordonnées et présentation. Plusieurs groupes peuvent commander
+            chez ce producteur : la fiche vaut pour tous.
+            {{end}}
+          </p>
+        </div>
+        <a href="{{if .Creation}}/amap{{else}}/vendor/view/{{.Vendor.ID}}{{end}}" class="cyc-btn">
+          <i class="icon icon-chevron-left"></i>
+          {{if .Creation}}Tous les producteurs{{else}}Retour à la fiche{{end}}
+        </a>
+      </div>
+
+      {{/* Ce qui a empêché l'enregistrement, au-dessus du formulaire et non
+           à la place : la saisie reste, il n'y a qu'un champ à reprendre. */}}
+      {{if .Erreur}}
+      <div class="cyc-danger" style="margin:0 0 20px;">
+        <i class="icon icon-alert" aria-hidden="true"></i>
+        <span>{{.Erreur}}</span>
+      </div>
+      {{end}}
+
+      <div class="cyc-section">
+        <h4>Identité</h4>
+        <div class="cyc-champs">
+          <div class="cyc-champ">
+            <label for="name">Nom *</label>
+            <input type="text" id="name" name="name" value="{{.Vendor.Name}}"
+                   required autocomplete="organization" />
+          </div>
+          <div class="cyc-champ">
+            <label for="email">Courriel *</label>
+            <input type="email" id="email" name="email" value="{{.Vendor.Email}}"
+                   required autocomplete="email" />
+            <p class="cyc-note">C'est par là que le groupe joint la ferme.</p>
+          </div>
+          <div class="cyc-champ">
+            <label for="phone">Téléphone</label>
+            <input type="text" id="phone" name="phone"
+                   value="{{if .Vendor.Phone}}{{deref .Vendor.Phone}}{{end}}"
+                   autocomplete="tel" />
+          </div>
+          <div class="cyc-champ">
+            <label for="legalStatus">Statut juridique</label>
+            <select id="legalStatus" name="legalStatus">
+              <option value="">—</option>
+              {{range .Statuts}}
+              <option value="{{.Code}}"
+                {{if $.Vendor.LegalStatus}}{{if eq (deref $.Vendor.LegalStatus) .Code}}selected{{end}}{{end}}>{{.Label}}</option>
+              {{end}}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="cyc-section">
+        <h4>Où il produit</h4>
+        <div class="cyc-champs">
+          <div class="cyc-champ">
+            <label for="address1">Adresse</label>
+            <input type="text" id="address1" name="address1"
+                   value="{{if .Vendor.Address1}}{{deref .Vendor.Address1}}{{end}}" />
+          </div>
+          <div class="cyc-champ">
+            <label for="zipCode">Code postal</label>
+            <input type="text" id="zipCode" name="zipCode"
+                   value="{{if .Vendor.ZipCode}}{{deref .Vendor.ZipCode}}{{end}}" />
+          </div>
+          <div class="cyc-champ">
+            <label for="city">Commune</label>
+            <input type="text" id="city" name="city"
+                   value="{{if .Vendor.City}}{{deref .Vendor.City}}{{end}}" />
+            <p class="cyc-note">Affichée sous son nom dans la liste des producteurs.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="cyc-section">
+        <h4>Présentation</h4>
+        <p class="cyc-aide">
+          Ce que les adhérents lisent sur sa fiche et au-dessus de ses
+          produits, au moment de commander.
+        </p>
+        <div class="cyc-champs">
+          <div class="cyc-champ" style="flex:1 1 100%;">
+            <label for="description">Texte de présentation</label>
+            <textarea id="description" name="description" rows="6">{{if .Vendor.Description}}{{deref .Vendor.Description}}{{end}}</textarea>
+          </div>
+        </div>
+        <label class="cyc-bascule {{if .Vendor.Organic}}actif{{end}}">
+          <input type="checkbox" name="organic" value="1" {{if .Vendor.Organic}}checked{{end}} />
+          <span>
+            <span class="titre">Agriculture biologique</span>
+            <p class="cyc-note">Une pastille « Bio » accompagne alors ses produits.</p>
+          </span>
+        </label>
+      </div>
+
+      <div class="cyc-pied">
+        <a href="{{if .Creation}}/amap{{else}}/vendor/view/{{.Vendor.ID}}{{end}}" class="cyc-btn">Annuler</a>
+        <button type="submit" class="cyc-btn cyc-btn-primaire">
+          <i class="icon icon-check"></i>
+          {{if .Creation}}Créer le producteur{{else}}Enregistrer{{end}}
+        </button>
+      </div>
+    </div>
+
+  </form>
+
+  {{/* La suppression hors du formulaire principal : son bouton, dans le même
+       pied, aurait voisiné « Enregistrer » et se serait cliqué à sa place.
+       Elle ne s'offre que sur une fiche sans catalogue — sinon le serveur la
+       refuse, et l'écran n'a pas à conduire à un refus. */}}
+  {{if and (not .Creation) (not .Catalogs)}}
+  <div class="cyc-panneau" style="margin-top:18px;">
+    <div class="cyc-section">
+      <h4>Supprimer cette fiche</h4>
+      <p class="cyc-aide">
+        Aucun catalogue ne s'y rattache : elle peut partir. La suppression est
+        définitive.
+      </p>
+      <form method="POST" action="/vendor/delete/{{.Vendor.ID}}"
+            onsubmit="return confirm('Supprimer définitivement la fiche de {{.Vendor.Name}} ?');">
+        <button type="submit" class="cyc-btn cyc-btn-danger">
+          <i class="icon icon-delete"></i> Supprimer {{.Vendor.Name}}
+        </button>
+      </form>
+    </div>
+  </div>
+  {{end}}
+</div>
+{{end}}

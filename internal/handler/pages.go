@@ -357,6 +357,15 @@ type PageData struct {
 	// une fonction dans le groupe, et pour tous si la configuration rouvre
 	// l'onglet (ui.vendors_tab_for_members).
 	ShowVendorsTab bool
+	// CanEditVendors : peut creer, modifier et supprimer une fiche
+	// producteur. Plus etroit que ShowVendorsTab, qui n'ouvre qu'une
+	// lecture : une fiche ne porte pas de groupe, plusieurs peuvent
+	// commander chez le meme producteur, et la corriger d'un cote la change
+	// pour tous. Le responsable de groupe en repond, personne d'autre — le
+	// responsable de catalogue tient ses produits, pas l'identite de la
+	// ferme. C'est aussi la regle que l'API applique deja a POST
+	// /api/groups/:id/vendors.
+	CanEditVendors bool
 	// CanManageRights : peut attribuer les droits — le responsable de groupe et
 	// le responsable technique, personne d'autre.
 	CanManageRights   bool
@@ -794,6 +803,7 @@ func (h *PagesHandler) buildPageData(c *gin.Context) PageData {
 			pd.ShowVendorsTab = h.cfg.UI.VendorsTabForMembers ||
 				pd.IsGroupManager || pd.HasCatalogAdmin ||
 				pd.HasDistributions || pd.HasParameters || pd.HasMembership
+			pd.CanEditVendors = pd.IsGroupManager
 			pd.HasDatabaseAdmin = ug.CanAdminDatabase()
 			pd.CanManageRights = ug.CanManageRights()
 			// Composées ici pour que le menu latéral et l'écran d'accueil de
@@ -2127,6 +2137,30 @@ func (h *PagesHandler) AmapPage(c *gin.Context) {
 	}
 	for _, id := range vendorOrder {
 		pd.AmapVendors = append(pd.AmapVendors, *vendorMap[id])
+	}
+
+	// Les fiches que ce groupe a saisies et auxquelles aucun catalogue ne
+	// repond encore. La liste se construit par jointure sur les catalogues :
+	// sans ce rattrapage, un producteur tout juste cree disparaitrait de
+	// l'ecran ou on vient de le saisir, et il faudrait connaitre son
+	// adresse pour le retrouver. Ils ferment la liste, apres ceux qui
+	// fournissent : c'est un debut de fiche, pas un fournisseur.
+	var orphelins []model.Vendor
+	h.db.Where("group_id = ?", pd.Group.ID).Order("name").Find(&orphelins)
+	for _, v := range orphelins {
+		if _, deja := vendorMap[v.ID]; deja {
+			continue
+		}
+		city, zip := "", ""
+		if v.City != nil {
+			city = *v.City
+		}
+		if v.ZipCode != nil {
+			zip = *v.ZipCode
+		}
+		pd.AmapVendors = append(pd.AmapVendors, AmapVendorView{
+			ID: v.ID, Name: v.Name, City: city, ZipCode: zip,
+		})
 	}
 
 	// Group contact principal

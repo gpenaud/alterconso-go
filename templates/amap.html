@@ -11,6 +11,15 @@
           catalogues et les adhérents qui font le lien avec eux.
         </p>
       </div>
+      {{/* La creation ouvre la rubrique : c'est la seule action que l'ecran
+           porte pour lui-meme, les autres tiennent a un producteur. */}}
+      {{if .CanEditVendors}}
+      <div class="cyc-actions-nommees serrees">
+        <a href="/vendor/insert" class="cyc-btn cyc-btn-primaire">
+          <i class="icon icon-plus"></i> Nouveau producteur
+        </a>
+      </div>
+      {{end}}
       {{if .Contact}}
       {{/* Le contact du groupe à portée : c'est vers lui qu'on se tourne quand
            un catalogue n'a pas de coordinateur. */}}
@@ -96,6 +105,11 @@
             <a href="/vendor/view/{{.ID}}" class="cyc-btn">
               <i class="icon icon-eye"></i> Fiche du producteur
             </a>
+            {{if $.CanEditVendors}}
+            <a href="/vendor/edit/{{.ID}}" class="cyc-btn">
+              <i class="icon icon-edit"></i> Modifier la fiche
+            </a>
+            {{end}}
           </div>
         </div></div>
       </div>
@@ -106,6 +120,11 @@
     <div class="cyc-aucun">
       <i class="icon icon-farmer icone"></i>
       <p>Aucun producteur n'est associé à ce groupe.</p>
+      {{if .CanEditVendors}}
+      <a href="/vendor/insert" class="cyc-btn cyc-btn-primaire">
+        <i class="icon icon-plus"></i> Ajouter un producteur
+      </a>
+      {{end}}
       <a href="/contractAdmin" class="cyc-btn">
         <i class="icon icon-products"></i> Voir les catalogues
       </a>

@@ -2066,6 +2066,10 @@ type VendorViewData struct {
 	PageData
 	Vendor   model.Vendor
 	Catalogs []model.Catalog
+	// Modifiable : le droit reel sur cette fiche-ci, rattachement compris.
+	// « CanEditVendors » seul afficherait le bouton sur la ferme du groupe
+	// voisin, que le serveur renverrait ensuite d'ou elle vient.
+	Modifiable bool
 }
 
 func (h *PagesHandler) VendorViewPage(c *gin.Context) {
@@ -2091,6 +2095,7 @@ func (h *PagesHandler) VendorViewPage(c *gin.Context) {
 	h.db.Where("vendor_id = ? AND group_id = ?", id, pd.Group.ID).Find(&catalogs)
 
 	data := VendorViewData{PageData: pd, Vendor: vendor, Catalogs: catalogs}
+	data.Modifiable = h.vendorEcrivable(pd, uint(id))
 	data.Title = vendor.Name
 
 	// Rubrique et largeur : cet écran appartient à l'espace

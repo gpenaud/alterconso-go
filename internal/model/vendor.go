@@ -30,6 +30,18 @@ type Vendor struct {
 	// Image (chemin vers le fichier uploadé)
 	ImagePath *string `gorm:"size:255" json:"image,omitempty"`
 
+	// Le groupe qui a saisi cette fiche. Un producteur n'appartient a
+	// personne — plusieurs groupes commandent chez le meme — et c'est un
+	// catalogue qui le rattache reellement. Mais un producteur tout juste
+	// cree n'en a pas encore : sans cette trace, il n'apparaitrait sur
+	// l'ecran d'aucun groupe, et celui qui vient de le saisir ne pourrait
+	// plus le retrouver pour lui ouvrir un catalogue.
+	//
+	// Nullable, et pour de bon : les fiches anterieures n'ont pas de groupe
+	// createur, et leur en attribuer un au hasard d'une migration donnerait
+	// pour un fait ce qui ne serait qu'une supposition.
+	GroupID *uint `gorm:"index" json:"-"`
+
 	Catalogs []Catalog `gorm:"foreignKey:VendorID" json:"-"`
 }
 

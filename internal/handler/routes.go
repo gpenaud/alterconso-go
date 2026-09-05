@@ -269,6 +269,17 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 
 	// Vendor
 	r.GET("/vendor/view/:id", pageAuth, pagesH.VendorViewPage)
+	// Ecriture des fiches producteurs. Aucun middleware de droit ici : la
+	// fiche n'appartient a aucun groupe, et c'est le handler qui verifie le
+	// rattachement en plus du droit — un « reqManager » laisserait un
+	// responsable reecrire la ferme du groupe voisin.
+	r.GET("/vendor/insert", pageAuth, pagesH.VendorInsertPage)
+	r.POST("/vendor/insert", pageAuth, pagesH.VendorInsertPage)
+	r.GET("/vendor/edit/:id", pageAuth, pagesH.VendorEditPage)
+	r.POST("/vendor/edit/:id", pageAuth, pagesH.VendorEditPage)
+	// En POST : un lien preleve par un antivirus de messagerie ou preparé
+	// par le navigateur effacerait la fiche sans que personne ait clique.
+	r.POST("/vendor/delete/:id", pageAuth, pagesH.VendorDelete)
 
 	// Messages
 	// Ouverte à tout membre connecté : le handler restreint les destinataires
