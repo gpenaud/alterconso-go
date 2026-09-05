@@ -1,71 +1,128 @@
 {{define "content"}}
 {{template "amapadmin_nav" .}}
-<div class="col-md-9">
-  <h2>Modifier les droits — {{.Member.User.FirstName}} {{.Member.User.LastName}}</h2>
-  <div class="article">
-    {{if .Error}}<div class="alert alert-danger">{{.Error}}</div>{{end}}
 
-    <form method="POST" action="/amapadmin/rights/edit/{{.Member.UserID}}">
-      <div class="form-group">
-        <label>Droits</label><br>
-        {{/* Rôles à titulaire unique : les accorder ici les retire à leur
-             détenteur actuel, d'où le rappel de son nom. */}}
-        {{if .CanAssignGroupHead}}
-        <label style="font-weight:normal;">
-          <input type="checkbox" name="right_group_admin" {{if .HasGroupAdmin}}checked{{end}}> Responsable de groupe
-          {{if .GroupAdminHolder}}<span style="color:#999;">— actuellement {{.GroupAdminHolder}}, qui le perdra</span>{{end}}
-        </label><br>
-        {{else}}
-        <div style="color:#999;margin-bottom:6px;">
-          {{if .HasGroupAdmin}}Responsable de groupe{{else}}N'est pas responsable de groupe{{end}}
-          — ce rôle est attribué par le responsable technique.
-        </div>
-        {{end}}
-        {{/* Délégations : cumulables, elles n'ouvrent qu'un écran chacune et
-             ne font pas de leur porteur un responsable du groupe — ces derniers
-             seuls reçoivent les messages qui leur sont adressés. */}}
-        <label style="font-weight:normal;">
-          <input type="checkbox" name="right_distributions" {{if .HasDistributions}}checked{{end}}> Gestion des distributions
-          <span style="color:#999;">— le calendrier et les producteurs qui y participent</span>
-        </label><br>
-        <label style="font-weight:normal;">
-          <input type="checkbox" name="right_parameters" {{if .HasParameters}}checked{{end}}> Gestion des paramètres
-          <span style="color:#999;">— identité du groupe, adhésions, devise, documents</span>
-        </label><br>
-        <label style="font-weight:normal;">
-          <input type="checkbox" name="right_membership" {{if .HasMembership}}checked{{end}}> Gestion des membres
-        </label><br>
-        <label style="font-weight:normal;">
-          <input type="checkbox" name="right_messages" {{if .HasMessages}}checked{{end}}> Messages
-        </label><br>
-      </div>
+<form method="POST" action="/amapadmin/rights/edit/{{.Member.UserID}}">
 
-      <div class="form-group">
-        <label>Gestion des catalogues</label><br>
-        <label style="font-weight:normal;">
-          <input type="checkbox" name="catalog_all" id="catalog_all" {{if .HasAllCatalogs}}checked{{end}} onclick="toggleCatalogs(this)"> Tous les catalogues
-        </label><br>
-        {{range .Catalogs}}
-        {{$id := printf "%d" .ID}}
-        <label style="font-weight:normal;" class="catalog-item">
-          <input type="checkbox" name="catalog_{{.ID}}" {{if index $.CatalogRights $id}}checked{{end}} {{if $.HasAllCatalogs}}disabled{{end}}> {{.Name}}
-        </label><br>
-        {{end}}
-      </div>
+  {{if .Error}}<div class="cyc-danger"><i class="icon icon-alert"></i> {{.Error}}</div>{{end}}
 
-      <hr>
-      <button type="submit" class="btn btn-primary">Enregistrer</button>
-      <a href="/amapadmin/rights" class="btn btn-default" style="margin-left:8px;">Annuler</a>
-    </form>
+  <div class="cyc-fiche-tete">
+    <span class="cyc-initiales grande">{{initials .Member.User.FirstName .Member.User.LastName}}</span>
+    <div class="ident">
+      <h3>{{.Member.User.FirstName}} {{.Member.User.LastName}}</h3>
+      <p class="cyc-chapeau">Ce que cette personne peut faire dans le groupe.</p>
+    </div>
   </div>
-</div>
+
+  <div class="cyc-section">
+    <h4>Responsable du groupe</h4>
+    {{if .CanAssignGroupHead}}
+    <label class="cyc-bascule {{if .HasGroupAdmin}}actif{{end}}">
+      <input type="checkbox" name="right_group_admin" {{if .HasGroupAdmin}}checked{{end}} />
+      <span>
+        <span class="titre">Responsable de groupe</span>
+        <p class="cyc-note">
+          Tous les droits, et destinataire des messages adressés aux
+          responsables.{{if .GroupAdminHolder}} Ce rôle appartient aujourd'hui à
+          {{.GroupAdminHolder}}, qui le perdra.{{end}}
+        </p>
+      </span>
+    </label>
+    {{else}}
+    <p class="cyc-note">
+      Responsable actuel : {{if .GroupAdminHolder}}{{.GroupAdminHolder}}{{else}}personne{{end}}.
+      Ce rôle est attribué par le responsable technique.
+    </p>
+    {{end}}
+  </div>
+
+      <div class="cyc-section">
+        <h4>Délégations</h4>
+        <p class="cyc-aide">
+          Cumulables. Chacune ouvre un domaine, et lui seul — elle ne fait pas
+          de son porteur un responsable du groupe.
+        </p>
+        <label class="cyc-bascule {{if .HasDistributions}}actif{{end}}">
+          <input type="checkbox" name="right_distributions" {{if .HasDistributions}}checked{{end}} />
+          <span>
+            <span class="titre">Gestion des distributions</span>
+            <p class="cyc-note">Le calendrier, les cycles, les producteurs qui y participent et les permanences.</p>
+          </span>
+        </label>
+        <label class="cyc-bascule {{if .HasParameters}}actif{{end}}">
+          <input type="checkbox" name="right_parameters" {{if .HasParameters}}checked{{end}} />
+          <span>
+            <span class="titre">Gestion des paramètres</span>
+            <p class="cyc-note">L'identité du groupe, ses adhésions, sa monnaie, ses documents.</p>
+          </span>
+        </label>
+        <label class="cyc-bascule {{if .HasMembership}}actif{{end}}">
+          <input type="checkbox" name="right_membership" {{if .HasMembership}}checked{{end}} />
+          <span>
+            <span class="titre">Gestion des membres</span>
+            <p class="cyc-note">Les fiches, les adhésions, les paiements et les demandes d'entrée.</p>
+          </span>
+        </label>
+        <label class="cyc-bascule {{if .HasMessages}}actif{{end}}">
+          <input type="checkbox" name="right_messages" {{if .HasMessages}}checked{{end}} />
+          <span>
+            <span class="titre">Messages</span>
+            <p class="cyc-note">Écrire aux membres du groupe depuis la messagerie.</p>
+          </span>
+        </label>
+      </div>
+      <div class="cyc-section">
+        <h4>Catalogues</h4>
+        <p class="cyc-aide">
+          Un producteur ne tient que les siens. « Tous les catalogues » est un
+          rôle d'administration : il ouvre aussi l'espace d'administration.
+        </p>
+        <label class="cyc-bascule {{if .HasAllCatalogs}}actif{{end}}">
+          <input type="checkbox" name="catalog_all" id="catalog_all" {{if .HasAllCatalogs}}checked{{end}} />
+          <span>
+            <span class="titre">Tous les catalogues</span>
+            <p class="cyc-note">Présents et à venir.</p>
+          </span>
+        </label>
+        <div class="cyc-filtres" style="margin-top:12px;">
+          {{range .Catalogs}}
+          <label class="cyc-filtre catalog-item">
+            <input type="checkbox" name="catalog_{{.ID}}"{{$id := printf "%d" .ID}} {{if index $.CatalogRights $id}}checked{{end}} {{if $.HasAllCatalogs}}disabled{{end}} />
+            {{.Name}}
+          </label>
+          {{end}}
+        </div>
+      </div>
+
+  <div class="cyc-pied">
+    <a href="/amapadmin/rights" class="cyc-btn">Annuler</a>
+    <button type="submit" class="cyc-btn cyc-btn-primaire">
+      <i class="icon icon-check"></i> Enregistrer
+    </button>
+  </div>
+</form>
 
 <script>
-function toggleCatalogs(cb) {
-  document.querySelectorAll('.catalog-item input').forEach(function(el) {
-    el.disabled = cb.checked;
-    if (cb.checked) el.checked = false;
+// « Tous les catalogues » rend le détail sans objet : on le désactive plutôt
+// que de laisser croire qu'il compte encore.
+(function () {
+  var tous = document.getElementById('catalog_all');
+  function sync() {
+    var items = document.querySelectorAll('.catalog-item input[type=checkbox]');
+    for (var i = 0; i < items.length; i++) {
+      items[i].disabled = tous.checked;
+      items[i].closest('.cyc-filtre').classList.toggle('eteint', tous.checked);
+    }
+  }
+  if (tous) { tous.addEventListener('change', sync); sync(); }
+
+  document.addEventListener('change', function (e) {
+    var b = e.target.closest ? e.target.closest('.cyc-bascule') : null;
+    if (b && e.target.type === 'checkbox') b.classList.toggle('actif', e.target.checked);
+    var f = e.target.closest ? e.target.closest('.cyc-filtre') : null;
+    if (f && e.target.type === 'checkbox') f.classList.toggle('actif', e.target.checked);
   });
-}
+})();
 </script>
+
+{{template "amapadmin_close" .}}
 {{end}}

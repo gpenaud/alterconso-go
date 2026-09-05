@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -28,7 +30,7 @@ func TestQuitterLeGroupePasseParUnPost(t *testing.T) {
 		t.Error("POST /account/quit n'est pas enregistrée : le départ resterait en GET")
 	}
 
-	tpl, err := loadTemplatesFromRoot(t, "account_quit.html")
+	tpl, err := loadTemplatesFromRoot(t, "cycles_style.html", "account_quit.html")
 	if err != nil {
 		t.Fatalf("gabarit : %v", err)
 	}
@@ -154,7 +156,10 @@ func TestLaCaseDeRecalageEstLuePourCeQueLeGabaritEnvoie(t *testing.T) {
 		}
 	}
 
-	source, err := os.ReadFile("../../templates/distribution_edit_md.html")
+	// Le répertoire courant dépend des tests déjà passés : on se replace à la
+	// racine, comme le font ceux qui chargent des gabarits.
+	chdirRepoRoot(t)
+	source, err := os.ReadFile("templates/distribution_edit_md.html")
 	if err != nil {
 		t.Fatalf("lecture du gabarit : %v", err)
 	}

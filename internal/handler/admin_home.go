@@ -16,6 +16,17 @@ type AdminTile struct {
 	// Ils évitent d'imposer un détour par l'écran principal pour une action
 	// qu'on vient précisément faire.
 	Extras []AdminLink
+	// Danger : ce domaine touche aux données sans garde-fou. La tuile s'en
+	// distingue à l'œil, parmi d'autres qui se ressemblent toutes.
+	Danger bool
+	// Avertissement : ce qui peut mal tourner, écrit en toutes lettres. Une
+	// couleur seule ne dit pas quoi, et ne se voit pas de tous.
+	Avertissement string
+	// HorsMenu : la tuile paraît sur la vue d'ensemble mais pas dans le menu
+	// latéral. Pour les domaines qui vivent à l'intérieur d'un autre — les
+	// droits sont un onglet des paramètres, une entrée de premier rang les
+	// donnerait pour une rubrique à part.
+	HorsMenu bool
 }
 
 type AdminLink struct {
@@ -48,7 +59,7 @@ func (h *PagesHandler) AdminHomePage(c *gin.Context) {
 	data.Title = "Espace d'administration"
 	data.Category = "admin"
 	data.Container = "container-fluid ac-large"
-	data.Tiles = adminTilesFor(pd)
+	data.Tiles = pd.AdminTiles
 
 	// Aucun droit : l'écran n'aurait rien à montrer, et son lien n'aurait pas
 	// dû s'afficher. On renvoie à l'accueil plutôt que d'exposer une page vide.
@@ -120,12 +131,13 @@ func adminTilesFor(pd PageData) []AdminTile {
 	}
 	if pd.HasParameters {
 		tiles = append(tiles, AdminTile{
-			Title: "Paramètres du groupe",
-			Desc:  "Identité, adhésions, devise, documents et taux de TVA.",
+			Title: "Paramètres",
+			Desc:  "L'identité du groupe, ses adhésions, sa monnaie et ses documents.",
 			Icon:  "icon-cog",
 			Link:  "/amapadmin",
 			Extras: []AdminLink{
 				{Name: "Adhésions", Link: "/amapadmin/membership"},
+				{Name: "Taux de TVA", Link: "/amapadmin/vatRates"},
 				{Name: "Documents", Link: "/amapadmin/documents"},
 			},
 		})
@@ -134,16 +146,30 @@ func adminTilesFor(pd PageData) []AdminTile {
 		tiles = append(tiles, AdminTile{
 			Title: "Droits",
 			Desc:  "Qui administre quoi dans le groupe.",
-			Icon:  "icon-key",
-			Link:  "/amapadmin/rights",
+			// La case cochée dit l'autorisation accordée. « icon-key »
+			// n'existe pas dans la fonte du site : la tuile s'affichait sans
+			// icône, et rien ne le signalait.
+			Icon:     "icon-square-check",
+			Link:     "/amapadmin/rights",
+			HorsMenu: true,
 		})
 	}
 	if pd.HasDatabaseAdmin {
 		tiles = append(tiles, AdminTile{
 			Title: "Base de données",
-			Desc:  "L'édition directe des tables. À manier avec précaution.",
-			Icon:  "icon-cog",
-			Link:  "/admin/db",
+			Desc:  "L'édition directe des tables, sans les contrôles de l'application.",
+			// La fonte du site n'a ni clé plate ni boîte à outils : l'engrenage
+			// est ce qu'elle offre de plus proche d'un outil technique. Le
+			// danger, lui, est porté par la couleur et par l'avertissement.
+			Icon:   "icon-cog",
+			Link:   "/admin/db",
+			Danger: true,
+			// Onglet des paramètres, comme les droits : pas d'entrée de
+			// premier rang dans le menu latéral.
+			HorsMenu: true,
+			Avertissement: "Une modification faite ici ne se défait pas et " +
+				"n'est vérifiée par rien : une commande, une adhésion ou un " +
+				"compte peuvent disparaître sans avertissement.",
 		})
 	}
 	return tiles

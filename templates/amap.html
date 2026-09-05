@@ -21,7 +21,7 @@
         <a href="mailto:{{.Contact.Email}}"><i class="icon icon-mail"></i> {{.Contact.Email}}</a>
         {{end}}
         {{if .Contact.Phone}}
-        <span><i class="icon icon-phone"></i> {{deref .Contact.Phone}}</span>
+        <span><i class="icon icon-phone"></i> {{telephone .Contact.Phone}}</span>
         {{end}}
       </div>
       {{end}}
@@ -68,7 +68,7 @@
               {{if .Coordinator.Email}}
               · <a href="mailto:{{.Coordinator.Email}}">{{.Coordinator.Email}}</a>
               {{end}}
-              {{if .Coordinator.Phone}} · {{deref .Coordinator.Phone}}{{end}}
+              {{if .Coordinator.Phone}} · {{telephone .Coordinator.Phone}}{{end}}
             </p>
             {{else}}
             <p class="cyc-note">Aucun coordinateur désigné pour ce catalogue.</p>

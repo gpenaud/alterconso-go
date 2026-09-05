@@ -15,7 +15,7 @@ const maxMembresPages = 200
 
 // MemberMoreFragment rend une fournée de membres pour le défilement continu.
 //
-// Il produit le même balisage que l'écran — le gabarit « blocsMembres » leur
+// Il produit le même balisage que l'écran — le gabarit « lignesMembres » leur
 // est commun — et répond 204 quand il n'y a plus personne : le script s'arrête
 // alors sans avoir eu à connaître d'avance le nombre de fournées.
 func (h *PagesHandler) MemberMoreFragment(c *gin.Context) {
@@ -42,13 +42,13 @@ func (h *PagesHandler) MemberMoreFragment(c *gin.Context) {
 	}
 	pd.AnneeCourante = anneeCourante()
 
-	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "member.html")
+	t, err := loadTemplates("member.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
 	}
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := t.ExecuteTemplate(c.Writer, "blocsMembres", pd); err != nil {
+	if err := t.ExecuteTemplate(c.Writer, "lignesMembres", pd); err != nil {
 		c.String(http.StatusInternalServerError, "render error: %v", err)
 	}
 }

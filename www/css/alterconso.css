@@ -34,6 +34,38 @@
 body { font-family:var(--ac-police); color:var(--ac-encre);
        -webkit-font-smoothing:antialiased; }
 
+/* ─── Emprunt d'identité ──────────────────────────────────────────────────
+   Un bandeau collé en haut de la fenêtre, présent sur toutes les pages tant
+   que dure l'emprunt : c'est une situation qu'on oublie, et dont chaque geste
+   est porté au compte d'un autre. Rayé plutôt qu'uniformément rouge — la
+   rayure est le signe convenu de « ceci n'est pas l'état normal ». */
+.ac-emprunt { position:sticky; top:0; z-index:60;
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  margin:0 -26px 14px; padding:11px 26px;
+  background:repeating-linear-gradient(135deg,
+    #8f302e 0 14px, #7d2a28 14px 28px);
+  color:#fff; box-shadow:0 2px 10px rgba(0,0,0,.18); }
+.ac-emprunt-pastille { flex:none; width:36px; height:36px; border-radius:50%;
+  background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.45);
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:.8em; font-weight:700; letter-spacing:.02em; }
+.ac-emprunt-texte { flex:1 1 260px; min-width:0; font-size:.9em;
+  line-height:1.45; color:rgba(255,255,255,.92); }
+.ac-emprunt-texte b { color:#fff; }
+/* La sortie est un bouton plein : c'est le seul geste que le bandeau propose,
+   et un lien souligné se perdait au milieu du texte. */
+.ac-emprunt-sortie { flex:none; display:inline-flex; align-items:center; gap:7px;
+  padding:9px 16px; border-radius:8px; background:#fff; color:#8f302e;
+  font-size:.88em; font-weight:700; text-decoration:none;
+  transition:background .12s ease; }
+.ac-emprunt-sortie:hover { background:#ffeceb; color:#7d2a28;
+  text-decoration:none; }
+
+@media (max-width:768px) {
+  .ac-emprunt { margin:0 -12px 12px; padding:10px 14px; gap:10px; }
+  .ac-emprunt-sortie { flex:1 1 100%; justify-content:center; min-height:44px; }
+}
+
 /* ─── Titres ─────────────────────────────────────────────────────────────── */
 /* L'italique disparaît : à ces tailles il gêne la lecture et date la page.
    Le brun remplace le noir, et rend au vert son rôle de signal — il ne dit
@@ -46,6 +78,10 @@ h1, h2, h3, h4, h5 {
   letter-spacing:-.01em;
 }
 h1 { font-size:1.9em; margin:4px 0 14px !important; }
+/* La barre de titre se détache de ce qui suit. Le dégagement lui appartient
+   plutôt qu'au fil d'Ariane : celui-ci disparaît sur certains écrans, et le
+   contenu s'y collerait alors au nom du groupe. */
+.row.header { margin-bottom:20px; }
 
 /* Contextes où le fond n'est pas clair : le brun y serait illisible, parfois
    invisible. .modal.help est posée sur #583816 — exactement notre brun.
@@ -63,15 +99,23 @@ h4 { font-size:1.1em; margin:0 0 10px; }
 
 /* ─── Fil d'Ariane ───────────────────────────────────────────────────────── */
 /* Il touchait le titre. Discret, mais il lui faut de l'air pour cesser d'être
-   lu comme la première ligne de la page. */
-.breadcrumb {
-  background:transparent; padding:0; margin:6px 0 20px;
-  font-size:.87em; color:var(--ac-gris-clair);
-}
-.breadcrumb > li + li:before { color:var(--ac-gris-clair); padding:0 7px; }
+   lu comme la première ligne de la page.
+   Sans fond ni cadre : ce n'est pas un bloc mais une ligne de repère, et le
+   souligner l'aurait mis au niveau du titre qu'il précède. Sa marge basse est
+   la respiration qui sépare l'en-tête du contenu. */
+.breadcrumb { background:none; padding:0; margin:18px 0 24px; font-size:.86em; }
+.breadcrumb > li + li:before { content:"\203A"; color:var(--ac-gris-clair);
+  padding:0 8px; }
 .breadcrumb a { color:var(--ac-gris); }
-.breadcrumb a:hover { color:var(--ac-vert-fonce); }
-.breadcrumb > .active { color:var(--ac-gris-clair); }
+/* La racine : une maison, à la taille du texte qu'elle précède. */
+.ac-fil-racine a { display:inline-flex; align-items:center; }
+.ac-fil-racine i.icon { font-size:1.05em; color:var(--ac-gris-clair); }
+.ac-fil-racine a:hover i.icon { color:var(--ac-vert-fonce); }
+.breadcrumb a:hover { color:var(--ac-vert-fonce); text-decoration:none; }
+/* Le dernier cran est l'endroit où l'on se trouve : il se lit, il ne mène
+   nulle part. */
+.breadcrumb > li:last-child a { color:var(--ac-gris-clair);
+  pointer-events:none; cursor:default; }
 
 /* ─── Cartes ─────────────────────────────────────────────────────────────── */
 /* .article était à 8px de padding : le contenu touchait les bords. */
@@ -144,6 +188,764 @@ label { font-weight:600; color:#4a4a4a; }
 .alert-danger  { background:#fdf1f0; border-color:#e8c4c2; color:#8f302e; }
 .alert-info    { background:#f3f6fa; border-color:#cfdbe8; color:#3d5a75; }
 
+/* ─── Barre de compte ────────────────────────────────────────────────────── */
+/* Le compte quitte le menu principal pour une pastille à droite, comme le font
+   la plupart des sites : on y va rarement, et on sait l'y chercher.
+   La messagerie l'accompagne en icône distincte — elle est ouverte à tout
+   membre, et l'enfouir sous le nom de l'utilisateur l'aurait rendue
+   introuvable à qui cherche à joindre un responsable. */
+.ac-barre-compte { display:flex; align-items:center; justify-content:flex-end;
+                   gap:6px; padding-top:6px; }
+.ac-lien-discret { color:var(--ac-gris-clair); font-size:.86em; padding:8px 10px;
+                   border-radius:6px; white-space:nowrap; }
+.ac-lien-discret:hover { color:var(--ac-vert-fonce); background:var(--ac-creme);
+                         text-decoration:none; }
+
+/* Les raccourcis de l'en-tête, à gauche du profil : « Gérer mes produits »
+   pour le producteur, « Espace d'administration » pour qui administre. Un même
+   habillage, parce qu'ils occupent la même place et rendent le même service —
+   mener ailleurs, en un clic, depuis n'importe quelle page. Discrets par
+   défaut : ils voisinent la pastille du compte, et deux éléments qui crient
+   côte à côte se nuisent. Ils s'affirment au survol. */
+.ac-btn-entete { display:inline-flex; align-items:center; gap:8px;
+  padding:8px 15px; border:1px solid var(--ac-trait); border-radius:999px;
+  background:#fff; color:var(--ac-titre); font-size:.87em; font-weight:600;
+  white-space:nowrap; text-decoration:none; transition:all .13s ease; }
+.ac-btn-entete:hover { border-color:#b8d18d; background:var(--ac-vert-pale);
+  color:var(--ac-vert-fonce); text-decoration:none; }
+.ac-btn-entete i.icon { color:var(--ac-gris-clair); flex:none; }
+.ac-btn-entete:hover i.icon { color:var(--ac-vert-fonce); }
+/* Sur son propre écran, le bouton le dit plutôt que de proposer d'y aller. */
+.ac-btn-entete.actif { background:var(--ac-vert-pale); border-color:#b8d18d;
+  color:var(--ac-vert-fonce); }
+.ac-btn-entete.actif i.icon { color:var(--ac-vert-fonce); }
+
+.ac-icone-lien { display:inline-flex; align-items:center; justify-content:center;
+                 width:38px; height:38px; border-radius:50%; color:var(--ac-gris);
+                 font-size:1.1em; transition:all .13s ease; }
+.ac-icone-lien:hover { background:var(--ac-creme); color:var(--ac-vert-fonce);
+                       text-decoration:none; }
+.ac-icone-lien.actif { background:var(--ac-vert-pale); color:var(--ac-vert-fonce); }
+
+.ac-compte .ac-declencheur { display:inline-flex; align-items:center; gap:8px;
+  padding:4px 10px 4px 4px; border-radius:999px; color:var(--ac-encre);
+  text-decoration:none; transition:background .13s ease; }
+.ac-compte .ac-declencheur:hover,
+.ac-compte.open .ac-declencheur { background:var(--ac-creme); text-decoration:none; }
+.ac-pastille { display:inline-flex; align-items:center; justify-content:center;
+  width:34px; height:34px; border-radius:50%; background:var(--ac-vert);
+  color:#fff; font-family:var(--ac-police-titre); font-weight:700;
+  font-size:.82em; letter-spacing:.02em; flex:none; }
+.ac-prenom { font-size:.9em; font-weight:600; max-width:130px; overflow:hidden;
+             text-overflow:ellipsis; white-space:nowrap; }
+
+.ac-fleche { font-size:.62em; color:var(--ac-gris-clair); transition:transform .13s ease; }
+.ac-compte.open .ac-fleche { transform:rotate(180deg); }
+
+.ac-menu-compte { border-radius:12px; border-color:var(--ac-trait); padding:6px;
+  box-shadow:0 10px 32px rgba(0,0,0,.13); min-width:268px; margin-top:8px; }
+.ac-menu-compte > li > a { border-radius:7px; padding:8px 12px; color:#4a4a4a;
+  display:flex; align-items:center; gap:10px; font-size:.93em; }
+.ac-menu-compte > li > a > .icon { width:17px; text-align:center; flex:none;
+  color:var(--ac-gris-clair); font-size:1.04em; }
+.ac-menu-compte > li > a:hover { background:var(--ac-creme); color:var(--ac-vert-fonce); }
+.ac-menu-compte > li > a:hover > .icon { color:var(--ac-vert); }
+
+/* L'en-tête reprend la pastille du déclencheur, en grand : on retrouve sous le
+   curseur ce sur quoi on vient de cliquer. */
+.ac-menu-entete { display:flex; align-items:center; gap:11px; padding:10px 12px 12px; }
+.ac-menu-entete .qui { min-width:0; }
+.ac-pastille.grande { width:42px; height:42px; font-size:.95em; }
+.ac-menu-entete .nom { display:block; font-family:var(--ac-police-titre);
+  font-weight:700; color:var(--ac-titre); }
+.ac-menu-entete .courriel { display:block; font-size:.8em; color:var(--ac-gris-clair);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* Le groupe courant : un encart, pas une entrée de menu — on le lit, on ne
+   clique dessus que pour en changer. */
+.ac-menu-groupe { display:flex; align-items:center; gap:9px; margin:0 6px 6px;
+  padding:8px 11px; border-radius:8px; background:var(--ac-vert-pale);
+  font-size:.87em; color:var(--ac-vert-fonce); }
+.ac-menu-groupe > .icon { flex:none; }
+.ac-menu-groupe .nom { flex:1; min-width:0; font-weight:700;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ac-menu-groupe > a { flex:none; font-size:.92em; font-weight:600;
+  color:var(--ac-vert-fonce); text-decoration:underline; }
+
+.ac-menu-titre { padding:9px 12px 4px; font-size:.72em; font-weight:700;
+  letter-spacing:.07em; text-transform:uppercase; color:var(--ac-gris-clair); }
+
+.ac-menu-compte .divider { margin:6px 0; background:var(--ac-trait); }
+/* Sortir n'est pas naviguer : l'entrée se distingue de celles du dessus. */
+.ac-menu-compte > li > a.sortie { color:#8f302e; }
+.ac-menu-compte > li > a.sortie > .icon { color:#b46b69; }
+.ac-menu-compte > li > a.sortie:hover { background:#fbeceb; color:#8f302e; }
+.ac-menu-compte > li > a.sortie:hover > .icon { color:#8f302e; }
+
+@media (max-width:991px) {
+  /* Le prénom disparaît, la pastille suffit : la place manque, et l'avatar
+     reste reconnaissable. Les cibles gardent 44 px. */
+  .ac-prenom { display:none; }
+  .ac-barre-compte { padding-top:0; margin-bottom:6px; }
+  /* Écran étroit : le libellé cède la place, l'icône suffit à retrouver le
+     raccourci — l'entrée du menu du compte le nomme en toutes lettres. */
+  .ac-btn-entete { padding:0; width:44px; height:44px; border-radius:50%;
+    justify-content:center; }
+  .ac-btn-entete-texte { display:none; }
+  .ac-icone-lien { width:44px; height:44px; }
+  .ac-compte .ac-declencheur { padding:5px; }
+  .ac-pastille { width:38px; height:38px; }
+}
+
+/* ─── Distributions à venir (accueil) ────────────────────────────────────── */
+/* La prochaine occupe la place, les suivantes se résument à une ligne : on
+   vient commander maintenant, pas comparer six jeudis. */
+/* ─── Bandeau d'accueil ───────────────────────────────────────────────────
+   L'image passe en fond plutôt qu'en <img> : elle est décorative, et le texte
+   qu'elle porte doit rester du texte. Un dégradé sombre part de la gauche pour
+   que la phrase se détache quelle que soit la photo — sur les feuillages
+   clairs de celle-ci, du blanc nu tomberait sous le seuil de lisibilité.
+   Le dégradé est déclaré sous l'image : si le fichier manque, il reste un
+   fond digne au lieu d'un rectangle blanc. */
+.ac-banniere { position:relative; border-radius:16px; overflow:hidden;
+  margin-bottom:26px; min-height:250px; display:flex; align-items:flex-end;
+  background-color:#3d4a25;
+  background-image:url("/img/default-banner.jpg");
+  background-size:cover; background-position:center 62%; }
+.ac-banniere-voile { width:100%; padding:60px 32px 28px;
+  background:linear-gradient(to top,
+    rgba(28,34,16,.86) 0%, rgba(28,34,16,.62) 45%, rgba(28,34,16,0) 100%); }
+.ac-banniere-titre { font-family:var(--ac-police-titre); font-size:2.05em;
+  font-weight:700; line-height:1.15; letter-spacing:-.02em; color:#fff;
+  margin:0 0 8px; text-shadow:0 1px 12px rgba(0,0,0,.35); }
+.ac-banniere-texte { margin:0; max-width:52ch; color:#f2efe6; font-size:1.02em;
+  line-height:1.5; text-shadow:0 1px 10px rgba(0,0,0,.35); }
+
+@media (max-width:768px) {
+  .ac-banniere { min-height:190px; margin-bottom:20px; }
+  .ac-banniere-voile { padding:44px 18px 20px; }
+  .ac-banniere-titre { font-size:1.5em; }
+  .ac-banniere-texte { font-size:.95em; }
+}
+
+.ac-prochaine { background:#fff; border-radius:16px; overflow:hidden;
+  box-shadow:0 1px 2px rgba(0,0,0,.05), 0 4px 24px rgba(0,0,0,.05);
+  margin-bottom:26px; border-top:4px solid var(--ac-trait);
+  scroll-margin-top:18px; }
+.ac-prochaine.ouverte { border-top-color:var(--ac-vert); }
+.ac-prochaine-corps { padding:26px 30px 28px; }
+/* Étiquette d'état et mise en avant partagent une ligne : la seconde dit
+   autre chose que la première, et l'empiler dessous l'aurait fait passer pour
+   un sous-titre du lieu. */
+.ac-prochaine-etats { display:flex; align-items:center; gap:10px;
+  flex-wrap:wrap; margin-bottom:8px; }
+.ac-prochaine-etats .ac-prochaine-etiquette { margin-bottom:0; }
+
+/* Terracotta : le vert est pris — il signale « commandes ouvertes ». Une
+   campagne rare doit se distinguer d'un état de commande, pas s'y fondre.
+   Contraste mesuré à 5,1:1 sur son fond. */
+.ac-mise-en-avant { display:inline-flex; align-items:center; gap:6px;
+  padding:4px 11px; border-radius:999px; background:#f7e6d8;
+  border:1px solid #e2c3a6; color:#8c4a1e; font-size:.78em; font-weight:700;
+  letter-spacing:.02em; white-space:nowrap; max-width:100%;
+  overflow:hidden; text-overflow:ellipsis; }
+.ac-mise-en-avant i.icon { flex:none; font-size:.95em; }
+/* Sur une ligne repliée, elle partage la place avec le lieu et l'état : elle
+   s'efface d'un cran plutôt que de les repousser. */
+.ac-mise-en-avant.petite { font-size:.74em; padding:3px 9px; flex:none;
+  max-width:22ch; }
+
+.ac-prochaine-etiquette { display:inline-block; font-size:.72em; font-weight:700;
+  letter-spacing:.11em; text-transform:uppercase; color:var(--ac-gris-clair);
+  margin-bottom:8px; }
+.ac-prochaine-etiquette.ouvert { color:var(--ac-vert-fonce); }
+/* Le gris clair passait à 2,6:1 sur le bandeau brun pâle — illisible. Cette
+   teinte atteint 4,75:1, et l'étiquette reste discrète face au titre. */
+.ac-prochaine-etiquette.ferme { color:var(--ac-gris); }
+.ac-prochaine-date { font-family:var(--ac-police-titre); font-size:2em;
+  font-weight:700; color:var(--ac-titre); margin:0 0 12px;
+  letter-spacing:-.02em; line-height:1.15; }
+/* Tête de carte sur fond blanc : un aplat pâle n'a pas assez de contraste pour
+   hiérarchiser, et empilé avec le crème du volet il ternissait la carte sans
+   l'organiser. C'est la pastille de date qui donne l'ancrage, et un filet qui
+   sépare. */
+.ac-prochaine-entete { border-bottom:1px solid var(--ac-trait);
+  padding-bottom:20px; margin-bottom:22px; }
+
+/* La pastille de date, à la manière d'un feuillet de calendrier.
+   Assez large pour porter un mois entier — « Septembre » ne doit ni se couper
+   ni rétrécir jusqu'à l'illisible. */
+.ac-pastille-date { flex:none; width:116px; border-radius:14px; overflow:hidden;
+  text-align:center; background:#f0ece2; color:var(--ac-gris);
+  border:1px solid var(--ac-trait); }
+.ac-pastille-date .jour { display:block; font-size:.72em; font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase; padding:8px 6px 7px;
+  background:#e3ddd0; color:#6b6459; }
+.ac-pastille-date .numero { display:block; font-family:var(--ac-police-titre);
+  font-size:3.1em; font-weight:700; line-height:1; padding:10px 6px 2px;
+  color:var(--ac-titre); }
+.ac-pastille-date .mois { display:block; font-size:.8em; font-weight:600;
+  text-transform:uppercase; letter-spacing:.05em; padding:0 6px 12px; }
+/* Ouverte : la pastille prend le vert de l'action. */
+.ac-pastille-date.ouverte { background:var(--ac-vert-pale); border-color:#b8d18d;
+  color:var(--ac-vert-fonce); }
+.ac-pastille-date.ouverte .jour { background:var(--ac-vert); color:#fff; }
+.ac-pastille-date.ouverte .numero { color:var(--ac-vert-fonce); }
+
+.ac-prochaine-titres { flex:1 1 auto; min-width:0; display:flex;
+  flex-direction:column; padding-top:6px; }
+/* L'en-tête devient une grille : pastille à gauche sur deux rangs, titre et
+   horaires en haut, barre des producteurs en bas — elle comble ainsi le vide
+   que la hauteur de la pastille laissait à sa droite. */
+/* Deux colonnes, et la droite s'étire à la hauteur de la pastille pour
+   répartir son contenu : titre en haut, barre des producteurs en bas. Leurs
+   bases s'alignent donc quelle que soit la longueur du titre ou de l'adresse.
+   Une grille ne le garantissait pas : ses deux rangs mesuraient presque
+   exactement la pastille, si bien qu'il ne restait rien à répartir. */
+.ac-prochaine-entete { display:flex; align-items:stretch; gap:20px; }
+.ac-pastille-date { flex:none; }
+.ac-prochaine-droite { flex:1 1 auto; min-width:0; display:flex;
+  flex-direction:column; justify-content:space-between; gap:14px; }
+.ac-prochaine-haut { display:flex; align-items:flex-start;
+  justify-content:space-between; gap:20px; }
+/* Le titre porte le lieu : la date vit dans la pastille, et la répéter
+   n'ajoutait rien. */
+
+
+/* La date à gauche, le lieu et l'heure à droite : deux informations de nature
+   différente, qui n'ont pas à se suivre sur une même colonne.
+   Pas de flex-wrap ici : une adresse complète suffisait à faire déborder la
+   ligne, et la colonne de droite retombait sous le titre — c'est-à-dire
+   exactement la disposition qu'on voulait quitter. Elle se replie donc sur
+   elle-même, et ne passe dessous que sur petit écran. */
+/* Horaire et adresse à droite : l'œil les y cherche, et ils ne disputent pas
+   au titre le début de la ligne. Bornés en largeur, ils se replient sur
+   plusieurs lignes plutôt que de repousser le lieu. */
+/* Pas de max-width ici : la grille attribue déjà sa colonne, et une borne en
+   pourcentage la comprimait jusqu'à couper l'adresse sur trois lignes. */
+.ac-prochaine-infos { display:flex; flex-direction:column; align-items:flex-end;
+  gap:6px; text-align:right; color:var(--ac-gris); font-size:.95em;
+  padding-top:6px; white-space:nowrap; }
+/* L'adresse peut être longue : elle seule s'autorise à revenir à la ligne. */
+.ac-prochaine-infos > span:last-child { white-space:normal; max-width:34ch; }
+.ac-prochaine-infos > span { display:block; }
+.ac-prochaine-infos i.icon { opacity:.6; margin-right:5px; }
+
+/* ─── Volet « producteurs » ──────────────────────────────────────────────── */
+/* Replié par défaut : les noms suffisent à savoir qui sera là, et la
+   présentation ne s'impose qu'à qui la demande. Même structure dans la carte
+   mise en avant et dans les distributions repliées. */
+/* La barre des producteurs se pose où la carte lui fait de la place : dans
+   l'en-tête, à côté de la pastille, dont la hauteur laissait un vide. Son
+   panneau, lui, se déroule en bas — il faut de la largeur pour des fiches. */
+.ac-volet-tete { display:flex; align-items:center; gap:14px; width:100%;
+  padding:12px 16px; border:1px solid var(--ac-trait); border-radius:10px;
+  background:var(--ac-creme); text-align:left; cursor:pointer;
+  transition:background .12s ease, border-color .12s ease; }
+.ac-volet-tete:hover { background:#f6f3ea; border-color:#d9d3c4; }
+.ac-volet-tete.ouvert { background:#f4f1e7; border-color:#d9d3c4; }
+.ac-volet-titre { font-family:var(--ac-police-titre); font-weight:700;
+  color:var(--ac-titre); white-space:nowrap; font-size:.96em; }
+.ac-volet-noms { color:var(--ac-gris); font-size:.88em; flex:1;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ac-volet-tete .chevron { color:var(--ac-gris-clair); margin-left:auto;
+  transition:transform .22s ease; }
+.ac-volet-tete.ouvert .chevron { transform:rotate(180deg); }
+
+.ac-volet-panneau { display:grid; grid-template-rows:0fr;
+  transition:grid-template-rows .3s ease; }
+.ac-volet-panneau > div { overflow:hidden; }
+.ac-volet-panneau.ouvert { grid-template-rows:1fr; }
+/* Ouvert, le panneau se distingue du corps ; fermé, il ne prend aucune place
+   et ne dessine rien. */
+.ac-volet-panneau.ouvert > div { border:1px solid var(--ac-trait);
+  border-radius:12px; overflow:hidden; margin-top:14px; margin-bottom:4px; }
+.ac-producteur:first-child { border-top:0; }
+
+.ac-producteur { padding:20px 20px 22px; background:#fff;
+  border-top:1px solid var(--ac-trait); }
+.ac-producteur header { display:flex; align-items:baseline; gap:14px;
+  flex-wrap:wrap; margin-bottom:10px; }
+.ac-producteur h4 { font-family:var(--ac-police-titre); font-size:1.15em;
+  font-weight:700; color:var(--ac-titre); margin:0; }
+.ac-bio { display:inline-flex; align-items:center; gap:4px; background:var(--ac-vert-pale);
+  color:var(--ac-vert-fonce); border-radius:999px; padding:2px 10px;
+  font-size:.62em; font-weight:700; letter-spacing:.04em; vertical-align:middle; }
+.ac-producteur-lieu { color:var(--ac-gris-clair); font-size:.88em; }
+.ac-producteur-lieu i.icon { opacity:.6; }
+.ac-producteur-texte { color:#3f3d37; line-height:1.65; max-width:72ch;
+  margin:0 0 16px; }
+.ac-producteur-texte.muet { color:var(--ac-gris-clair); font-style:italic; }
+
+.ac-producteur-produits { display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(112px,1fr)); gap:12px; }
+.ac-producteur-produits figure { margin:0; }
+.ac-producteur-produits img { width:100%; aspect-ratio:1; object-fit:cover;
+  border-radius:10px; border:1px solid var(--ac-trait); background:#fff;
+  display:block; }
+.ac-producteur-produits figcaption { font-size:.8em; color:var(--ac-gris);
+  margin-top:6px; line-height:1.35; }
+
+@media (max-width:768px) {
+  .ac-volet-noms { display:none; }
+  .ac-producteur { padding:16px 15px 18px; }
+  .ac-producteur-produits { grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:9px; }
+}
+
+/* La bande occupe toute la largeur, sur une seule ligne.
+   flex:1 1 0 avec min-width:0 : chaque vignette prend une part égale de la
+   place disponible, quel que soit leur nombre — six ou onze remplissent aussi
+   bien la ligne. Une largeur fixe laissait un vide à droite, ou débordait.
+   Le carré est tenu par aspect-ratio, donc la hauteur suit la largeur. */
+.ac-prochaine-vignettes { display:flex; gap:8px; margin-bottom:20px; }
+.ac-prochaine-vignettes img { flex:1 1 0; min-width:0; aspect-ratio:1;
+  object-fit:cover; border-radius:12px; border:1px solid var(--ac-trait);
+  background:#fff; display:block; }
+
+/* Le bouton au centre, isolé entre deux filets : c'est l'action de l'écran, et
+   rien ne doit lui disputer l'attention. L'échéance passe sous lui plutôt qu'à
+   côté — collée au bouton, elle en brouillait le contour, et un délai se lit
+   après avoir vu ce qu'on peut faire, pas pendant. */
+.ac-prochaine-action { display:flex; flex-direction:column; align-items:center;
+  gap:10px; margin:26px 0 10px; padding:24px 0 0; text-align:center;
+  border-top:1px solid var(--ac-trait); }
+/* Premier élément du corps : pas de filet en haut, il doublerait celui de
+   l'en-tête. */
+.ac-prochaine-action:first-child { border-top:0; margin-top:0; padding-top:0; }
+/* Seul entre le filet de l'en-tête et le bas de la carte, le bouton se cale au
+   milieu : 28px au-dessus — la marge de l'en-tête fusionne avec la sienne — et
+   les 28px de fond de corps en dessous, donc aucune marge basse ici. */
+.ac-prochaine-entete + .ac-prochaine-action { border-top:0; padding-top:0;
+  margin:28px 0 0; }
+/* Volet déroulé, le bouton n'est plus le dernier élément : il lui faut son
+   propre espace en dessous, sinon il colle au cadre des producteurs. */
+.ac-prochaine-action + .ac-volet-panneau.ouvert > div { margin-top:26px; }
+.ac-btn-commander { display:inline-flex; align-items:center; gap:9px;
+  background:var(--ac-vert); color:#fff; padding:14px 30px; border-radius:10px;
+  font-size:1.05em; font-weight:600; text-decoration:none;
+  box-shadow:0 2px 10px rgba(90,138,0,.25); transition:all .14s ease; }
+.ac-btn-commander:hover { background:var(--ac-vert-fonce); color:#fff;
+  text-decoration:none; transform:translateY(-1px);
+  box-shadow:0 4px 16px rgba(90,138,0,.3); }
+.ac-btn-second { display:inline-flex; align-items:center; gap:8px; background:#fff;
+  border:1px solid var(--ac-trait); border-radius:9px; padding:11px 20px;
+  color:#4a4a4a; font-size:.95em; cursor:pointer; }
+.ac-btn-second:hover { background:var(--ac-creme); }
+
+/* Le bouton indisponible est creux, l'actif est plein.
+   Un aplat coloré avance vers le lecteur, un contour recule : la différence se
+   perçoit avant qu'on ait lu quoi que ce soit, et sans avoir à distinguer deux
+   nuances de vert — ce qu'un écran mal réglé, une forte luminosité ou une vue
+   fatiguée rendent hasardeux.
+   L'identité verte est conservée : c'est bien le même bouton, simplement pas
+   encore ouvert. */
+.ac-btn-commander.eteint { background:transparent; color:var(--ac-vert-fonce);
+  /* #7a9e46 et non un vert plus pâle : sous 3:1 sur blanc, le contour
+     s'efface, et c'est précisément lui qui porte l'information. */
+  border:1.5px solid #7a9e46; box-shadow:none; cursor:default;
+  font-weight:500; }
+.ac-btn-commander.eteint:hover { background:transparent; color:var(--ac-vert-fonce);
+  transform:none; box-shadow:none; }
+.ac-btn-commander.eteint i.icon { opacity:.8; }
+.ac-echeance { color:var(--ac-gris-clair); font-size:.9em; }
+/* Sous le bouton et non à côté : la ligne reste courte, et le regard descend
+   du geste vers sa condition. */
+.ac-prochaine-action .ac-echeance { max-width:44ch; }
+
+.ac-appel-benevoles { display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  margin:0 0 20px; padding:13px 16px; background:#fdf3f2; border:1px solid #f0d5d3;
+  border-radius:10px; color:#8f302e; font-size:.92em; }
+.ac-appel-benevoles i.icon { flex:none; }
+.ac-appel-benevoles a { margin-left:auto; color:#8f302e; font-weight:600;
+  white-space:nowrap; text-decoration:underline; }
+
+/* Inscrit : plus de barre du tout, mais une ligne dans l'en-tête. Le rouge
+   appelle à agir ; une fois qu'on a répondu, il n'y a plus rien à demander, et
+   une barre pleine largeur réclamait l'attention pour une chose réglée. */
+/* Les permanences, sous le lieu. Trois états, trois couleurs : rouge quand
+   personne ne s'est inscrit, jaune quand il manque du monde, vert quand tout
+   est tenu. Le compte figure en toutes lettres — « 1/2 » — pour que la couleur
+   ne soit pas le seul porteur de l'information : elle se perd au soleil, sur un
+   écran mal réglé, ou pour qui distingue mal le rouge du vert. */
+.ac-permanences { display:inline-flex; align-items:center; gap:6px;
+  align-self:flex-end; margin-top:4px; padding:4px 12px; border-radius:999px;
+  font-size:.86em; white-space:nowrap; text-decoration:none;
+  border:1px solid transparent; transition:filter .12s ease; }
+.ac-permanences:hover { text-decoration:none; filter:brightness(.96); }
+.ac-permanences i.icon { font-size:.95em; opacity:.85; }
+.ac-permanences b { font-weight:700; }
+
+.ac-permanences.vide { background:#fdecea; border-color:#f0c9c5; color:#9a332f; }
+.ac-permanences.vide:hover { color:#7f2a26; }
+.ac-permanences.partiel { background:#fdf3dc; border-color:#ecd9a4; color:#8a6414; }
+.ac-permanences.partiel:hover { color:#6f5010; }
+.ac-permanences.complet { background:var(--ac-vert-pale); border-color:#cfe0a8;
+  color:var(--ac-vert-fonce); }
+.ac-permanences.complet:hover { color:#35520a; }
+
+/* « clip » et non « hidden » : hidden ferait de la liste un conteneur de
+   défilement, et viser une distribution y ferait glisser le contenu de la
+   carte au lieu de faire défiler la page — on restait sur la première.
+   « hidden » d'abord, pour les navigateurs qui ignorent « clip ». */
+.ac-suivantes { background:#fff; border-radius:14px;
+  overflow:hidden; overflow:clip;
+  box-shadow:0 1px 2px rgba(0,0,0,.05), 0 1px 12px rgba(0,0,0,.03); margin-bottom:22px; }
+.ac-suivantes-titre { font-size:.74em; font-weight:700; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ac-gris-clair); padding:16px 22px 10px; }
+/* Amenée sous les yeux, la ligne ne se colle pas au bord de la fenêtre : il
+   lui faut de quoi respirer au-dessus pour qu'on voie qu'il y a un avant. */
+.ac-suivante-bloc { border-top:1px solid var(--ac-trait); scroll-margin-top:18px; }
+/* Des lignes hautes : à 15px de fond, quatre distributions d'affilée faisaient
+   un pavé compact où la date, le lieu et l'état se disputaient la même bande. */
+.ac-suivante { display:flex; align-items:center; gap:18px; padding:22px 26px;
+  color:var(--ac-encre); text-decoration:none; transition:background .12s ease;
+  width:100%; background:none; border:0; text-align:left; cursor:pointer;
+  min-height:74px; }
+.ac-suivante:hover { background:var(--ac-creme); text-decoration:none; color:var(--ac-encre); }
+.ac-suivante .chevron { transition:transform .22s ease; }
+/* Dépliée, la ligne cède la place à la carte : le résumé répéterait la date,
+   le lieu et l'état que la carte affiche déjà, en plus petit et juste
+   au-dessus. */
+.ac-suivante-bloc.deplie > .ac-suivante { display:none; }
+.ac-suivante-bloc.deplie .chevron { transform:rotate(180deg); }
+
+/* Pleine largeur et centré, débordant le padding de la carte pour toucher
+   ses deux bords : la bande se lit comme le bas de la carte, pas comme un
+   bouton posé dedans. */
+.ac-suivante-replier { display:flex; align-items:center; justify-content:center;
+  gap:8px; width:calc(100% + 60px); margin:24px -30px -28px;
+  padding:15px 20px; background:var(--ac-creme); border:0;
+  border-top:1px solid var(--ac-trait); cursor:pointer;
+  font-size:.88em; font-weight:600; color:var(--ac-gris);
+  transition:background .12s ease, color .12s ease; }
+.ac-suivante-replier:hover { background:#efe9dc; color:var(--ac-encre); }
+.ac-suivante-replier i.icon { transform:rotate(180deg); }
+
+@media (max-width:768px) {
+  .ac-suivante-replier { width:calc(100% + 36px); margin:20px -18px -22px;
+    min-height:48px; }
+}
+
+/* Le panneau se déplie sur la hauteur de son contenu, sans hauteur codée en
+   dur : une distribution avec six producteurs et douze vignettes n'a pas la
+   même taille qu'une distribution close. */
+.ac-suivante-panneau { display:grid; grid-template-rows:0fr;
+  transition:grid-template-rows .3s ease; }
+.ac-suivante-panneau > div { overflow:hidden; }
+.ac-suivante-bloc.deplie .ac-suivante-panneau { grid-template-rows:1fr; }
+/* Dépliée, la ligne porte le même en-tête que la carte du haut : il lui faut
+   le même dégagement, pas le filet de 4px qui convenait à un corps seul. */
+.ac-suivante-bloc.deplie .ac-prochaine-corps { padding-top:22px; }
+
+/* Halo de retour : deux secondes pour dire « c'est ici », puis on l'oublie.
+   Une couleur franche crierait au message d'erreur alors qu'il ne s'est rien
+   passé de notable. */
+@keyframes ac-revenu-halo {
+  from { box-shadow:0 0 0 3px rgba(122,158,70,.45); }
+  to   { box-shadow:0 0 0 3px rgba(122,158,70,0); }
+}
+.ac-revenu { animation:ac-revenu-halo 2.2s ease-out forwards;
+  border-radius:12px; }
+@media (prefers-reduced-motion:reduce) {
+  .ac-revenu { animation:none; box-shadow:0 0 0 3px rgba(122,158,70,.35); }
+}
+
+.ac-chargement { text-align:center; color:var(--ac-gris-clair); font-size:.88em;
+  padding:16px; }
+
+/* Le déclencheur du défilement a besoin d'une hauteur : un bloc vide en mesure
+   zéro, et un élément sans surface n'est jamais signalé comme entrant dans la
+   fenêtre. */
+#ac-sentinelle { height:24px; }
+/* Vide, la liste ne doit pas dessiner une carte blanche sur rien. */
+.ac-suivantes.vide { background:none; box-shadow:none; margin-bottom:0; }
+
+/* Accès secondaires, remontés sous la distribution mise en avant : en pied de
+   page, ils repoussaient le déclencheur du défilement hors de vue. */
+.ac-liens-secondaires { display:flex; flex-wrap:wrap; gap:10px 20px;
+  margin:0 0 22px; padding:0 4px; }
+.ac-liens-secondaires a { color:var(--ac-gris); font-size:.9em;
+  display:inline-flex; align-items:center; gap:6px; }
+.ac-liens-secondaires a:hover { color:var(--ac-vert-fonce); }
+.ac-liens-secondaires i.icon { opacity:.6; }
+.ac-suivante .jour { font-family:var(--ac-police-titre); font-weight:700;
+  font-size:1.06em; min-width:172px; color:var(--ac-titre); }
+/* Le lieu ne s'étire plus : c'est l'état qui absorbe l'espace libre et file à
+   droite. Sans quoi tout ce qui suit le lieu — la mise en avant notamment —
+   se retrouvait rejeté au bord droit, loin de ce qu'il qualifie. */
+.ac-suivante .lieu { color:var(--ac-gris); font-size:.92em;
+  flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap; }
+/* Pastille d'état : le même vocabulaire que l'étiquette de la carte mise en
+   avant, en plus petit. Le fond la distingue franchement d'une commande à
+   cliquer — c'est un statut, pas une action. */
+.ac-suivante .etat { margin-left:auto; display:inline-block; padding:5px 13px; border-radius:999px;
+  font-size:.79em; font-weight:700; letter-spacing:.04em; white-space:nowrap;
+  background:#f0ece2; color:var(--ac-gris); }
+.ac-suivante .etat.ouvert { background:var(--ac-vert-pale);
+  color:var(--ac-vert-fonce); }
+.ac-suivante .etat.attente { background:#f6efe1; color:#8a6a2c; }
+.ac-suivante .etat.clos { background:#f0ece2; color:var(--ac-gris); }
+.ac-suivante i.icon { color:var(--ac-gris-clair); flex:none; }
+
+.ac-aucune-distrib { text-align:center; padding:52px 20px; color:var(--ac-gris); }
+.ac-aucune-distrib i.icon { font-size:2.6em; color:#dcd8cd; display:block; margin-bottom:14px; }
+.ac-aucune-distrib p { margin:0; }
+
+@media (max-width:768px) {
+  .ac-prochaine-corps { padding:20px 18px 22px; }
+  .ac-prochaine-date { font-size:1.5em; }
+  /* Sur petit écran, deux colonnes n'ont plus de sens : la droite repasse
+     dessous, alignée à gauche comme le reste. */
+  .ac-prochaine-entete { gap:14px; padding-bottom:16px; margin-bottom:18px; }
+  .ac-pastille-date { width:88px; }
+  .ac-pastille-date .numero { font-size:2.3em; padding-top:7px; }
+  .ac-pastille-date .mois { font-size:.72em; padding-bottom:9px; }
+  /* Sur petit écran, trois colonnes ne tiennent pas : la pastille garde sa
+     colonne, le reste s'empile à sa droite puis en dessous. */
+  /* Sur petit écran, le haut s'empile : titre puis horaires, la barre
+     restant en pied de la colonne. */
+  .ac-prochaine-entete { gap:14px; }
+  .ac-prochaine-haut { flex-direction:column; gap:10px; }
+  .ac-permanences { align-self:flex-start; }
+  .ac-prochaine-infos { align-items:flex-start; text-align:left;
+    padding-top:0; gap:4px; white-space:normal; }
+  /* Sur téléphone, onze vignettes sur une ligne feraient 25 px chacune : on
+     laisse la bande défiler horizontalement plutôt que de les rendre
+     illisibles. */
+  .ac-prochaine-vignettes { overflow-x:auto; padding-bottom:4px; }
+  .ac-prochaine-vignettes img { flex:0 0 auto; width:74px; }
+  .ac-prochaine-action { align-items:stretch; margin:20px 0 8px; padding:20px 0 0; }
+  .ac-btn-commander { justify-content:center; min-height:52px; }
+  .ac-echeance { text-align:center; }
+  .ac-suivante { flex-wrap:wrap; gap:8px 14px; padding:18px 16px; }
+  /* Sur un écran étroit, la pastille passe à la ligne plutôt que d'écraser
+     le lieu ou l'état. */
+  .ac-mise-en-avant.petite { max-width:100%; }
+  .ac-suivante .jour { min-width:0; width:100%; }
+  .ac-suivante .lieu { flex:1 1 100%; white-space:normal; }
+  /* Écran étroit : l'état revient dans le flux, la ligne s'empile. */
+  .ac-suivante .etat { margin-left:0; }
+  .ac-appel-benevoles a { margin-left:0; }
+}
+
+/* ─── Calendrier des permanences ─────────────────────────────────────────── */
+.ac-perm-periode { display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap;
+  margin-bottom:18px; }
+.ac-perm-periode .cyc-champ { flex:0 0 auto; }
+.ac-perm-periode input { min-width:170px; }
+
+.ac-perm-bilan { display:flex; align-items:center; gap:10px; padding:12px 15px;
+  background:var(--ac-vert-pale); border:1px solid #cfe0a8; border-radius:10px;
+  color:var(--ac-vert-fonce); font-size:.93em; }
+.ac-perm-bilan i.icon { flex:none; }
+.ac-perm-bilan.manque { background:#fdf3e6; border-color:#e8d2ae; color:#8a5a1c; }
+
+/* Le tableau défile dans son cadre : une période longue aligne dix colonnes,
+   et pousser la page entière de côté rendrait la colonne des postes
+   inatteignable. */
+.ac-perm-defile { overflow-x:auto; }
+.ac-perm-table { width:100%; border-collapse:collapse; }
+.ac-perm-table th, .ac-perm-table td { padding:12px 14px; text-align:center;
+  border-bottom:1px solid var(--ac-trait); vertical-align:middle; }
+.ac-perm-table thead th { border-bottom:2px solid var(--ac-trait);
+  background:var(--ac-creme); white-space:nowrap; }
+.ac-perm-table thead th .date { display:block; font-family:var(--ac-police-titre);
+  font-weight:700; color:var(--ac-titre); }
+.ac-perm-table thead th .heure { display:block; font-size:.82em;
+  color:var(--ac-gris-clair); margin:2px 0 5px; }
+.ac-perm-table thead th .compte { display:inline-block; padding:2px 9px;
+  border-radius:999px; font-size:.78em; font-weight:700;
+  background:#eeeae0; color:var(--ac-gris); }
+.ac-perm-table thead th.manque .compte { background:#fdecea; color:#9a332f; }
+.ac-perm-table thead th.complet .compte { background:var(--ac-vert-pale);
+  color:var(--ac-vert-fonce); }
+
+/* La colonne des postes reste visible pendant le défilement horizontal :
+   sans elle, on ne sait plus à quelle ligne appartient une case. */
+.ac-perm-table .role { position:sticky; left:0; z-index:1; text-align:left;
+  background:#fff; font-family:var(--ac-police-titre); font-weight:700;
+  color:var(--ac-titre); min-width:170px; }
+.ac-perm-table thead .role { background:var(--ac-creme); }
+.ac-perm-table tbody tr:hover td { background:var(--ac-creme); }
+.ac-perm-table tbody tr:last-child th, .ac-perm-table tbody tr:last-child td {
+  border-bottom:0; }
+
+.ac-perm-prendre { display:inline-flex; align-items:center; gap:6px;
+  padding:7px 14px; border-radius:8px; border:1px solid #7a9e46;
+  background:transparent; color:var(--ac-vert-fonce); font-size:.87em;
+  font-weight:600; cursor:pointer; transition:all .13s ease; }
+.ac-perm-prendre:hover { background:var(--ac-vert); border-color:var(--ac-vert);
+  color:#fff; }
+
+.ac-perm-moi { display:inline-flex; flex-direction:column; align-items:center;
+  gap:4px; }
+.ac-perm-moi .nom { display:inline-flex; align-items:center; gap:5px;
+  padding:4px 11px; border-radius:999px; background:var(--ac-vert-pale);
+  color:var(--ac-vert-fonce); font-size:.85em; font-weight:600; }
+.ac-perm-quitter { background:none; border:0; padding:0; font-size:.79em;
+  color:var(--ac-gris-clair); text-decoration:underline; cursor:pointer; }
+.ac-perm-quitter:hover { color:#8f302e; }
+
+.ac-perm-pris { color:var(--ac-gris); font-size:.9em; }
+.ac-perm-vide { color:#d5d0c4; }
+
+@media (max-width:768px) {
+  .ac-perm-table th, .ac-perm-table td { padding:10px; }
+  .ac-perm-table .role { min-width:130px; }
+  .ac-perm-prendre { min-height:40px; }
+}
+
+/* ─── Menu latéral de l'administration ───────────────────────────────────── */
+/* Il reste en place d'un écran à l'autre : c'est ce qui donne l'impression de
+   circuler dans un espace plutôt que de sauter de page en page.
+   Le corps est décalé en CSS, donc aucun des quarante gabarits de gestion n'a
+   eu à bouger. */
+.ac-lateral {
+  position:fixed; top:0; left:0; bottom:0; width:232px; z-index:1030;
+  background:#fff; border-right:1px solid var(--ac-trait);
+  padding:20px 12px; overflow-y:auto;
+  display:flex; flex-direction:column;
+}
+.ac-lateral-titre { font-family:var(--ac-police-titre); font-weight:700;
+  font-size:.76em; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ac-gris-clair); padding:0 12px; margin-bottom:14px; }
+.ac-lateral nav { display:flex; flex-direction:column; gap:2px; flex:1; }
+.ac-lateral nav a {
+  display:flex; align-items:center; gap:10px; padding:10px 12px;
+  border-radius:8px; color:#4a4a4a; font-size:.93em; text-decoration:none;
+  transition:background .12s ease, color .12s ease;
+}
+.ac-lateral nav a:hover { background:var(--ac-creme); color:var(--ac-vert-fonce);
+  text-decoration:none; }
+.ac-lateral nav a.actif { background:var(--ac-vert-pale); color:var(--ac-vert-fonce);
+  font-weight:600; }
+.ac-lateral nav a i.icon { width:18px; text-align:center; flex:none; opacity:.75; }
+.ac-lateral-sortie { display:flex; align-items:center; gap:8px; margin-top:16px;
+  padding:10px 12px; border-top:1px solid var(--ac-trait); padding-top:16px;
+  color:var(--ac-gris-clair); font-size:.87em; }
+.ac-lateral-sortie:hover { color:var(--ac-vert-fonce); text-decoration:none; }
+
+body.ac-avec-lateral { padding-left:264px !important; }
+.ac-lateral-bouton { display:none; }
+
+@media (max-width:991px) {
+  /* Le menu se retire hors de l'écran et revient au bouton : 232 px sur un
+     téléphone ne laisseraient rien au contenu. */
+  .ac-lateral { transform:translateX(-100%); transition:transform .25s ease;
+                box-shadow:0 0 30px rgba(0,0,0,.16); width:250px; }
+  .ac-lateral.ouvert { transform:translateX(0); }
+  body.ac-avec-lateral { padding-left:12px !important; }
+  .ac-lateral-bouton {
+    display:flex; align-items:center; justify-content:center;
+    position:fixed; right:16px; bottom:16px; z-index:1040;
+    width:52px; height:52px; border-radius:50%; border:0;
+    background:var(--ac-vert); color:#fff; font-size:1.3em;
+    box-shadow:0 3px 14px rgba(0,0,0,.22); cursor:pointer;
+  }
+  .ac-lateral-bouton:active { background:var(--ac-vert-fonce); }
+}
+
+/* ─── Pleine largeur ─────────────────────────────────────────────────────── */
+/* container-fluid seul s'étire sans limite : sur un écran large, une ligne de
+   texte traverse 2000 px et devient illisible. On borne, généreusement. */
+body.ac-large { max-width:1680px; margin:0 auto; padding-left:26px; padding-right:26px; }
+/* L'accueil garde une colonne de lecture : au-delà, l'œil doit traverser
+   l'écran pour relier un titre à son bouton. */
+body.ac-accueil { max-width:1280px; margin:0 auto; padding-left:26px; padding-right:26px; }
+/* Avec le menu latéral, la largeur maximale doit couvrir en plus les 264px
+   qu'il occupe : sinon la colonne de contenu est d'autant plus étroite qu'à
+   l'accueil, alors qu'on veut exactement la même. 1280 - 26 + 264 = 1518. */
+body.ac-accueil.ac-avec-lateral { max-width:1518px; }
+@media (max-width:768px) {
+  body.ac-large, body.ac-accueil { padding-left:12px; padding-right:12px; }
+}
+
+
+/* ─── Tuiles de l'espace d'administration ────────────────────────────────── */
+.ac-tuiles { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr));
+             gap:16px; }
+/* La tuile dangereuse : bordure et titre rouges, icône assortie, et un
+   avertissement écrit. Parmi huit tuiles qui se ressemblent, la couleur seule
+   ne suffit pas à faire ralentir. */
+.ac-tuile.danger { border-color:#e8c4c2; }
+.ac-tuile.danger .ac-tuile-titre { color:#8f302e; }
+.ac-tuile.danger .ac-tuile-icone { background:#fdf1f0; color:#b0413e; }
+.ac-tuile.danger:hover { border-color:#d9a5a2; }
+.ac-tuile-alerte { display:block; margin-top:10px; padding:9px 11px;
+  background:#fdf1f0; border:1px solid #e8c4c2; border-radius:8px;
+  color:#8f302e; font-size:.83em; line-height:1.5; }
+.ac-tuile-alerte i.icon { margin-right:4px; }
+
+.ac-tuile { background:#fff; border-radius:12px; overflow:hidden;
+            box-shadow:0 1px 2px rgba(0,0,0,.05), 0 1px 12px rgba(0,0,0,.03);
+            display:flex; flex-direction:column; transition:box-shadow .15s ease; }
+.ac-tuile:hover { box-shadow:0 2px 4px rgba(0,0,0,.07), 0 6px 22px rgba(0,0,0,.07); }
+.ac-tuile-lien { display:block; padding:22px 22px 18px; flex:1; text-decoration:none; }
+.ac-tuile-lien:hover { text-decoration:none; }
+.ac-tuile-icone { display:inline-flex; align-items:center; justify-content:center;
+  width:44px; height:44px; border-radius:11px; background:var(--ac-vert-pale);
+  color:var(--ac-vert-fonce); font-size:1.25em; margin-bottom:13px; }
+.ac-tuile-titre { display:block; font-family:var(--ac-police-titre); font-weight:700;
+  font-size:1.15em; color:var(--ac-titre); margin-bottom:5px; }
+.ac-tuile-desc { display:block; color:var(--ac-gris); font-size:.9em; line-height:1.5; }
+.ac-tuile-liens { border-top:1px solid var(--ac-trait); padding:10px 22px;
+  display:flex; flex-wrap:wrap; gap:14px; background:var(--ac-creme); }
+.ac-tuile-liens a { font-size:.86em; color:var(--ac-vert-fonce); }
+
+/* Le logo et le nom sur une seule ligne, alignés sur leur milieu : posés l'un
+   sous l'autre ils auraient formé deux blocs distincts au lieu d'une identité.
+   Hauteur bornée — un logo carré comme un logo très large doivent laisser au
+   nom la place de se lire. */
+/* Sans logo, le titre reprend sa place ordinaire : un bloc aligné à gauche.
+   La disposition en ligne ne se met en place que lorsqu'il y a deux choses
+   à aligner. */
+.ac-retour-accueil, .ac-retour-accueil:hover { text-decoration:none;
+  display:block; }
+.ac-retour-accueil.avec-logo { display:flex; align-items:center; gap:22px; }
+/* Le logo du groupe, cadré sur son dessin.
+   Le fichier déposé entoure son dessin d'une réserve blanche : ici l'encre
+   n'occupe que le carré central, 36 % de la largeur, décalé de 31 % à gauche.
+   Affiché tel quel, le dessin paraît trois fois trop petit et son bord gauche
+   flotte loin de la colonne de texte.
+   D'où le zoom : le fond est agrandi jusqu'à ce que l'encre remplisse la
+   boîte (100/0,357 ≈ 280 %), et recentré sur elle. La boîte épouse alors le
+   dessin, qui s'aligne avec tout ce qui suit.
+   Ces trois nombres décrivent CE fichier. Un logo au cadrage différent
+   demandera de les reprendre — ou, mieux, d'être déposé sans réserve. */
+/* Le cadrage du logo, défini une fois : l'en-tête du site et la page de
+   connexion s'en servent tous deux, et deux jeux de valeurs auraient fini par
+   diverger. */
+:root { --ac-logo-zoom:269%; --ac-logo-x:48.6%; --ac-logo-y:53%; }
+
+/* « multiply » plutôt qu'un détourage : le fichier porte un carré blanc à
+   coins arrondis, dont seuls les coins sont transparents — d'où un rectangle
+   blanc posé sur le crème. Multiplié, le blanc devient le fond et le dessin
+   reste. Rien à retoucher dans l'image, et le jour où le groupe en change,
+   le sien passera par le même traitement.
+   Le blanc disparaissant, la marge interne du fichier ne compte plus dans ce
+   qu'on voit : il faut donc une hauteur plus généreuse qu'il n'y paraît. */
+/* Taille d'emblème, pas de bannière : à côté du nom du groupe, il l'accompagne
+   sans lui disputer la ligne. Et légèrement désaturé — ses rouges vifs sortent
+   de la palette du site, où le vert et le brun donnent le ton ; adouci, il
+   voisine le titre au lieu de trancher avec lui. */
+.ac-logo-groupe { flex:none; display:block; height:58px; width:58px;
+  background-repeat:no-repeat;
+  background-size:var(--ac-logo-zoom);
+  background-position:var(--ac-logo-x) var(--ac-logo-y);
+  mix-blend-mode:multiply; filter:saturate(.78); }
+.ac-retour-accueil h1 { transition:color .13s ease; }
+.ac-retour-accueil:hover h1 { color:#7a4f22; }
+
+@media (max-width:768px) {
+  .row.header { margin-bottom:14px; }
+  .breadcrumb { margin:12px 0 18px; }
+  .ac-retour-accueil.avec-logo { gap:14px; }
+  .ac-logo-groupe { height:44px; width:44px; }
+  .ac-tuiles { grid-template-columns:1fr; }
+  .ac-tuile-lien { padding:18px; }
+}
+
 /* ─── Barre de navigation ────────────────────────────────────────────────── */
 /* Jusqu'à huit entrées quand on détient tous les droits — quatre à gauche,
    quatre à droite. Avec la police système, plus large que Cabin, elles ne
@@ -214,9 +1016,73 @@ a:hover, a:focus { color:var(--ac-vert-fonce); }
   .article { padding:16px 15px; border-radius:10px; }
   h1 { font-size:1.55em; }
   h2 { font-size:1.35em; }
-  .breadcrumb { margin-bottom:16px; }
   /* Les tableaux larges défilent dans leur bloc plutôt que de pousser la page
      entière de côté. */
   .table-responsive, .article > table.table { display:block; overflow-x:auto;
     -webkit-overflow-scrolling:touch; }
+}
+
+/* ─── Connexion ──────────────────────────────────────────────────────────
+   Une colonne étroite et centrée : on ne fait qu'une chose sur cette page.
+   Elle affichait le logo générique en 120 px de haut, puis un titre en
+   italique gris — deux traits qu'on ne retrouve nulle part ailleurs sur le
+   site depuis que les titres sont passés au brun et à la Cabin droite. */
+.ac-connexion { max-width:460px; margin:0 auto; padding:0 4px 40px; }
+/* L'inscription demande davantage : deux colonnes de champs y tiennent. */
+.ac-connexion.large { max-width:600px; }
+.ac-connexion-tete { text-align:center; margin:46px 0 26px; }
+/* Le logo du groupe, cadré sur son dessin et fondu dans le fond, comme dans
+   l'en-tête du site — mais plus grand : ici il n'a pas de nom à côté de lui. */
+.ac-connexion-logo { width:104px; height:104px; margin:0 auto 16px;
+  background-repeat:no-repeat;
+  background-size:var(--ac-logo-zoom);
+  background-position:var(--ac-logo-x) var(--ac-logo-y);
+  mix-blend-mode:multiply; filter:saturate(.78); }
+.ac-connexion-tete h1 { font-size:2.1em; margin:0 0 10px !important;
+                        line-height:1.2; }
+.ac-connexion-tete p { color:var(--ac-gris); font-size:1.02em; margin:0;
+                       line-height:1.5; }
+.ac-connexion-carte { padding:26px 28px 22px; }
+/* Le message d'erreur : il n'avait aucune marge sous lui et venait toucher
+   l'intitulé du champ suivant. Il ouvre la carte, il doit donc s'en détacher
+   par le bas. */
+.ac-connexion-carte .cyc-danger { display:flex; align-items:flex-start; gap:10px;
+  margin:0 0 22px; padding:14px 16px; color:#8f302e; font-size:.93em;
+  line-height:1.45; }
+.ac-connexion-carte .cyc-danger[hidden] { display:none; }
+.ac-connexion-carte .cyc-danger .icon { flex:none; margin-top:1px; }
+/* Le bouton occupe la largeur de la carte : c'est la seule action de la page,
+   et rien ne gagne à le laisser flotter à droite d'un formulaire. */
+.ac-connexion-valider { width:100%; justify-content:center; margin-top:20px;
+                        padding:12px 20px; font-size:1em; }
+.ac-connexion-oubli { text-align:center; margin:16px 0 0; font-size:.9em; }
+.ac-connexion-oubli a { color:var(--ac-vert-fonce); }
+.ac-connexion-pied { text-align:center; margin:20px 0 0; color:var(--ac-gris);
+                     font-size:.94em; }
+.ac-connexion-pied .icon { font-size:.8em; }
+
+/* Un état plutôt qu'un formulaire : « regardez votre boîte mail », « mot de
+   passe modifié ». La carte ne porte alors rien à remplir, et l'icône tient
+   lieu d'illustration. */
+.ac-connexion-etat { text-align:center; padding:6px 4px 4px; }
+.ac-connexion-etat > .icon { font-size:2.6em; color:var(--ac-gris-clair);
+                             display:block; margin-bottom:14px; }
+.ac-connexion-etat.succes > .icon { color:var(--ac-vert); }
+.ac-connexion-etat h2 { font-size:1.3em; margin:0 0 12px; }
+.ac-connexion-etat p { color:var(--ac-gris); line-height:1.55; margin:0 0 12px; }
+.ac-connexion-etat p:last-child { margin-bottom:0; }
+.ac-connexion-etat .cyc-note { margin-top:14px; }
+
+/* Les sections du formulaire d'inscription : la première n'a pas à se détacher
+   du haut de la carte, elle en est le début. */
+.ac-connexion-carte .cyc-section:first-of-type { margin-top:0; }
+.ac-connexion-carte form > .cyc-section:first-child { margin-top:0; }
+.ac-connexion-pied a { color:var(--ac-vert-fonce); font-weight:600; }
+
+@media (max-width:576px) {
+  .ac-connexion-tete { margin:30px 0 20px; }
+  .ac-connexion-logo { width:82px; height:82px; margin-bottom:12px; }
+  .ac-connexion-etat > .icon { font-size:2.2em; }
+  .ac-connexion-tete h1 { font-size:1.75em; }
+  .ac-connexion-carte { padding:22px 20px 18px; }
 }

@@ -62,8 +62,8 @@ func (h *PagesHandler) DistributionCyclesPage(c *gin.Context) {
 	data := CyclesData{PageData: pd}
 	data.Title = "Cycles de distribution"
 	data.Category = "distribution"
-	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}}
-	data.Flash, data.FlashError = cycleFlash(c.Query("done"))
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}, {Name: "Cycles de distribution", Link: "/distribution/cycles"}}
+	data.Flash, data.FlashError = cycleFlash(c.Query("done"), atoiSafe(c.Query("n")))
 
 	now := time.Now()
 	for _, cy := range cycles {
@@ -75,12 +75,13 @@ func (h *PagesHandler) DistributionCyclesPage(c *gin.Context) {
 		var msg model.CycleMessage
 		hasMsg := h.db.Where("cycle_id = ?", cy.ID).First(&msg).Error == nil
 
-		state := "Aucun courrier"
-		switch {
-		case hasMsg && msg.IsSendable():
+		// La colonne ne dit que ce qui part. Un courrier rédigé mais dont
+		// l'envoi est décoché n'a rien à y annoncer : le signaler « brouillon »
+		// laissait croire qu'il attendait une action, alors qu'il est
+		// simplement en réserve.
+		state := ""
+		if hasMsg && msg.IsSendable() {
 			state = "Actif"
-		case hasMsg:
-			state = "Brouillon"
 		}
 
 		data.Cycles = append(data.Cycles, CycleRow{
@@ -96,6 +97,8 @@ func (h *PagesHandler) DistributionCyclesPage(c *gin.Context) {
 		})
 	}
 
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_cycles.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -109,7 +112,7 @@ func (h *PagesHandler) DistributionCyclesPage(c *gin.Context) {
 // cycleFlash compose le bandeau qui suit un enregistrement. Comme ailleurs,
 // l'URL ne porte qu'un code : une phrase recopiée depuis la barre d'adresse
 // s'afficherait dans un encadré que l'application signe.
-func cycleFlash(done string) (string, bool) {
+func cycleFlash(done string, n int) (string, bool) {
 	switch done {
 	case "saved":
 		return "Le courrier a été enregistré.", false
@@ -119,6 +122,25 @@ func cycleFlash(done string) (string, bool) {
 		return "Image refusée : formats acceptés PNG, JPEG, GIF, WebP, jusqu'à 5 Mo.", true
 	case "missing":
 		return "Un objet et un texte sont nécessaires pour activer l'envoi.", true
+	case "created":
+		return frCount(n, "journée programmée", "journées programmées") + ".", false
+	case "extended":
+		return "Cycle prolongé : " + frCount(n, "journée ajoutée", "journées ajoutées") + ".", false
+	case "none-created":
+		return "Aucune journée créée : cette période est déjà couverte.", true
+	case "nothing-added":
+		return "Rien à ajouter : cette date est déjà couverte par le cycle.", true
+	case "backwards":
+		return "La fin du cycle précède son début.", true
+	case "invalid":
+		return "Formulaire incomplet ou invalide.", true
+	case "no-place":
+		return "Créez d'abord un lieu de distribution : un cycle s'y rattache.", true
+	case "deleted":
+		return "Cycle supprimé, avec " + frCount(n, "journée", "journées") + ".", false
+	case "deleted-kept":
+		return "Cycle supprimé. " + frCount(n, "journée a été conservée", "journées ont été conservées") +
+			" : des adhérents y ont commandé.", false
 	}
 	return "", false
 }
@@ -358,7 +380,7 @@ func (h *PagesHandler) CycleNewPage(c *gin.Context) {
 		{Name: "Cycles de distribution", Link: "/distribution/cycles"},
 		{Name: "Nouveau cycle", Link: ""},
 	}
-	data.Flash, data.FlashError = cycleFlash(c.Query("done"))
+	data.Flash, data.FlashError = cycleFlash(c.Query("done"), atoiSafe(c.Query("n")))
 	h.renderCycleForm(c, data)
 }
 
@@ -417,8 +439,16 @@ func (h *PagesHandler) createCycle(c *gin.Context, pd PageData, places []model.P
 
 	msg := model.CycleMessage{CycleID: cycle.ID}
 	h.applyMessageForm(c, &msg)
+	// L'image est jointe ici aussi : sans cet appel, celle qu'on téléverse en
+	// créant le cycle était silencieusement perdue, et il fallait rouvrir la
+	// fiche pour la redéposer.
+	rejected := h.attachCycleImage(c, &msg)
 	if err := h.persistCycleMessage(&msg); err != nil {
 		log.Printf("[cycle] courrier du cycle %d non enregistré : %v", cycle.ID, err)
+	}
+	if rejected {
+		c.Redirect(http.StatusFound, fmt.Sprintf("/distribution/cycles/%d?done=image-rejected", cycle.ID))
+		return
 	}
 
 	c.Redirect(http.StatusFound, fmt.Sprintf("/distribution/cycles?done=created&n=%d", created))
@@ -491,7 +521,7 @@ func (h *PagesHandler) CycleEditPage(c *gin.Context) {
 		{Name: "Cycles de distribution", Link: "/distribution/cycles"},
 		{Name: cycle.Name, Link: ""},
 	}
-	data.Flash, data.FlashError = cycleFlash(c.Query("done"))
+	data.Flash, data.FlashError = cycleFlash(c.Query("done"), atoiSafe(c.Query("n")))
 
 	var total, upcoming int64
 	h.db.Model(&model.MultiDistrib{}).Where("cycle_id = ?", cycle.ID).Count(&total)
@@ -677,6 +707,11 @@ func (h *PagesHandler) removeCycleImage(msg *model.CycleMessage) {
 
 // renderCycleForm rend le formulaire, commun à la création et à la modification.
 func (h *PagesHandler) renderCycleForm(c *gin.Context, data CycleFormData) {
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	data.Category = "distribution"
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_cycle_form.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -685,6 +720,16 @@ func (h *PagesHandler) renderCycleForm(c *gin.Context, data CycleFormData) {
 	if err := t.ExecuteTemplate(c.Writer, "base", data); err != nil {
 		c.String(http.StatusInternalServerError, "render error: %v", err)
 	}
+}
+
+// atoiSafe lit un entier d'URL, zéro s'il est absent ou illisible. Le compteur
+// n'est qu'un ornement du bandeau : une valeur douteuse ne doit rien casser.
+func atoiSafe(s string) int {
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 {
+		return 0
+	}
+	return n
 }
 
 // ─── Suppression d'un cycle ──────────────────────────────────────────────────

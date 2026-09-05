@@ -191,6 +191,12 @@ func (h *PagesHandler) MemberViewPage(c *gin.Context) {
 		ddata.DistribOrderSets = append(ddata.DistribOrderSets, *distribMap[mdID])
 	}
 
+	// Le fil nomme cet écran : sans ce cran, toutes les pages de la
+	// rubrique affichaient le même chemin.
+	ddata.Breadcrumb = []BreadcrumbItem{{Name: "Membres", Link: "/member"}, {Name: "Fiche du membre", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	ddata.Category = "member"
 	// Même largeur que les autres écrans de gestion.
 	ddata.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "member_view.html")
@@ -296,6 +302,15 @@ func (h *PagesHandler) MemberPaymentsPage(c *gin.Context) {
 	}
 	data.Title = "Paiements — " + member.FirstName + " " + member.LastName
 
+	// Le fil nomme cet écran : sans ce cran, toutes les pages de la
+	// rubrique affichaient le même chemin.
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Membres", Link: "/member"}, {Name: "Paiements", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	data.Category = "member"
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	data.Category = "member"
 	// Même largeur que les autres écrans de gestion.
 	data.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "member_payments.html")
@@ -448,8 +463,13 @@ func (h *PagesHandler) MemberInsertPage(c *gin.Context) {
 		}
 	}
 
-	// Même largeur que les autres écrans de gestion.
-	pd.Container = "container-fluid ac-accueil"
+	// Sur « ip » et non sur « pd » : la copie a été faite plus haut, et ce que
+	// le gabarit reçoit, c'est « ip ».
+	// Le fil nomme cet écran : sans ce cran, toutes les pages de la rubrique
+	// affichaient le même chemin.
+	ip.Breadcrumb = []BreadcrumbItem{{Name: "Membres", Link: "/member"}, {Name: "Nouveau membre", Link: ""}}
+	ip.Category = "member"
+	ip.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "member_insert.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -584,6 +604,12 @@ func (h *PagesHandler) MemberEditPage(c *gin.Context) {
 	}
 	ep.Title = "Modifier — " + member.FirstName + " " + member.LastName
 
+	// Le fil nomme cet écran : sans ce cran, toutes les pages de la
+	// rubrique affichaient le même chemin.
+	ep.Breadcrumb = []BreadcrumbItem{{Name: "Membres", Link: "/member"}, {Name: "Modifier le membre", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	ep.Category = "member"
 	// Même largeur que les autres écrans de gestion.
 	ep.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "member_edit.html")
@@ -776,7 +802,7 @@ func (h *PagesHandler) InsertPaymentPage(c *gin.Context) {
 	}
 	data.Title = "Saisir un paiement"
 	data.Category = "member"
-	data.Breadcrumb = []BreadcrumbItem{{Name: "Membres", Link: "/member"}}
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Membres", Link: "/member"}, {Name: "Saisir un paiement", Link: ""}}
 
 	// Même largeur que les autres écrans de gestion.
 	data.Container = "container-fluid ac-accueil"
@@ -996,6 +1022,7 @@ func (h *PagesHandler) RegisterPage(c *gin.Context) {
 		}
 	}
 
+	data.LogoURL = h.logoDuPortail()
 	t, err := loadTemplates("base.html", "cycles_style.html", "register.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -2021,7 +2048,9 @@ func (h *PagesHandler) MessagesPage(c *gin.Context) {
 		data.SendNoRcpt = true
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "messages.html")
+	// Même largeur que les autres écrans.
+	data.Container = "container-fluid ac-accueil"
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "messages.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -2064,6 +2093,12 @@ func (h *PagesHandler) VendorViewPage(c *gin.Context) {
 	data := VendorViewData{PageData: pd, Vendor: vendor, Catalogs: catalogs}
 	data.Title = vendor.Name
 
+	// Rubrique et largeur : cet écran appartient à l'espace
+	// d'administration, dont il doit garder le menu et la colonne.
+	data.Category = "contract"
+	data.Container = "container-fluid ac-accueil"
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Producteurs", Link: "/amap"},
+		{Name: data.Vendor.Name, Link: ""}}
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "vendor_view.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)

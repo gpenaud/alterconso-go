@@ -18,7 +18,7 @@
   <p><i>Lieu :</i> <b>{{.Place}}</b></p>
 
   {{if .ContactName}}
-  <p><i>Responsable :</i> {{.ContactName}} — {{.ContactEmail}} — {{.ContactPhone}}</p>
+  <p><i>Responsable :</i> {{.ContactName}} — {{.ContactEmail}} — {{telephone .ContactPhone}}</p>
   {{end}}
 
   {{if .Volunteers}}
@@ -32,7 +32,7 @@
   <table>
     {{range .UserOrders}}
     <tr class="name">
-      <td colspan="7"><b>{{.UserName}}</b>{{if .UserPhone}} — Tél. {{.UserPhone}}{{end}}</td>
+      <td colspan="7"><b>{{.UserName}}</b>{{if .UserPhone}} — Tél. {{telephone .UserPhone}}{{end}}</td>
     </tr>
     <tr>
       <th>Qté</th><th>Produit</th><th>P.U.</th><th>Sous-total</th><th>Frais</th><th>Total</th><th>Signature</th>

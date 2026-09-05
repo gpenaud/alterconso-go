@@ -70,7 +70,8 @@ func TestFlashNameStaysBounded(t *testing.T) {
 // formulaire POST. En lien GET, le préchargement d'un navigateur ou d'un
 // antivirus de messagerie suffirait à décider à la place du gestionnaire.
 func TestDecisionsAreNotClickableLinks(t *testing.T) {
-	tpl, err := loadTemplatesFromRoot(t, "base.html", "design.html", "member_requests.html")
+	tpl, err := loadTemplatesFromRoot(t, "base.html", "design.html",
+		"cycles_style.html", "member_requests.html")
 	if err != nil {
 		t.Fatalf("parse : %v", err)
 	}
@@ -110,7 +111,7 @@ func TestDecisionsAreNotClickableLinks(t *testing.T) {
 // L'inscription demande le groupe : sans lui, le compte créé n'a personne à
 // qui adresser sa demande.
 func TestRegistrationAsksForAGroup(t *testing.T) {
-	tpl, err := loadTemplatesFromRoot(t, "base.html", "register.html")
+	tpl, err := loadTemplatesFromRoot(t, "base.html", "cycles_style.html", "register.html")
 	if err != nil {
 		t.Fatalf("parse : %v", err)
 	}
@@ -139,7 +140,7 @@ func TestRegistrationAsksForAGroup(t *testing.T) {
 // Aucun groupe n'accueille : le formulaire le dit plutôt que d'afficher une
 // liste déroulante vide qu'aucune saisie ne peut satisfaire.
 func TestRegistrationSaysWhenNoGroupWelcomes(t *testing.T) {
-	tpl, err := loadTemplatesFromRoot(t, "base.html", "register.html")
+	tpl, err := loadTemplatesFromRoot(t, "base.html", "cycles_style.html", "register.html")
 	if err != nil {
 		t.Fatalf("parse : %v", err)
 	}

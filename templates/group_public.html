@@ -31,6 +31,7 @@
   .gp-login-btn:hover { background:#6ea543; color:#fff; text-decoration:none; }
 
   .gp-intro { padding:20px 28px; color:#555; line-height:1.55; font-size:1.05em; }
+  .gp-mot { padding-top:0; font-size:1em; }
   @media (min-width:768px) { .gp-intro { padding:24px 40px; font-size:1.1em; } }
 
   .gp-section { background:#fff; border-radius:12px; margin-bottom:28px;
@@ -127,6 +128,13 @@
     {{if .Intro}}
     <div class="gp-intro">{{.Intro}}</div>
     {{end}}
+    {{/* Le mot d'accueil du groupe. Il était chargé depuis toujours sans que
+         rien ne l'affiche, et vivait par ailleurs sur l'écran des commandes,
+         où il encombrait ce qu'on vient y faire. Sa place est ici, auprès de
+         qui découvre le groupe. */}}
+    {{if .Home}}
+    <div class="gp-intro gp-mot">{{nl2br .Home}}</div>
+    {{end}}
   </div>
 
   {{if .Distribs}}
@@ -158,7 +166,7 @@
       <div><span class="ico"><i class="icon icon-mail"></i></span><a href="mailto:{{.ContactEmail}}">{{.ContactEmail}}</a></div>
       {{end}}
       {{if .ShowPhone}}
-      <div><span class="ico"><i class="icon icon-phone"></i></span>{{.ContactPhone}}</div>
+      <div><span class="ico"><i class="icon icon-phone"></i></span>{{telephone .ContactPhone}}</div>
       {{end}}
       {{if .ExtURL}}
       <div><span class="ico"><i class="icon icon-link"></i></span><a href="{{.ExtURL}}" target="_blank" rel="noopener">{{.ExtURL}}</a></div>

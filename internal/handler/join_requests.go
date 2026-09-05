@@ -298,7 +298,7 @@ func (h *PagesHandler) MemberRequestsPage(c *gin.Context) {
 	data := JoinRequestsData{PageData: pd}
 	data.Title = "Demandes d'adhésion"
 	data.Category = "member"
-	data.Breadcrumb = []BreadcrumbItem{{Name: "Membres", Link: "/member"}}
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Membres", Link: "/member"}, {Name: "Demandes d'adhésion", Link: ""}}
 	data.Flash, data.FlashError = joinRequestFlash(c.Query("done"), c.Query("who"))
 
 	for _, r := range requests {

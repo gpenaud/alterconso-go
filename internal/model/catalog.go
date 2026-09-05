@@ -92,7 +92,11 @@ func (c *Catalog) UsersCanOrder() bool {
 
 // Highlight rend le libellé de mise en avant, débarrassé de ses blancs.
 // Vide quand le catalogue n'est pas mis en avant.
-func (c *Catalog) Highlight() string {
+//
+// Récepteur valeur, et non pointeur : les gabarits lisent ce catalogue comme
+// un champ de structure, dont ils ne peuvent pas prendre l'adresse — la
+// méthode leur serait alors invisible, et le rendu s'arrêterait là.
+func (c Catalog) Highlight() string {
 	if c.HighlightLabel == nil {
 		return ""
 	}

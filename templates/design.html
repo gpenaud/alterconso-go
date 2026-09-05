@@ -1,11 +1,35 @@
+{{/* Le bandeau d'accueil, partagé. Une image de ce qu'on vient chercher ici,
+     avant la mécanique des dates et des boutons. Le texte vit dans le
+     document et non dans l'image : il se lit à la voix, se traduit, et
+     survit à un changement de photo. */}}
+{{define "banniere"}}
+    <section class="ac-banniere">
+      <div class="ac-banniere-voile">
+        <p class="ac-banniere-titre">{{.Titre}}</p>
+        <p class="ac-banniere-texte">{{.Texte}}</p>
+      </div>
+    </section>
+{{end}}
+
 {{define "body"}}
 
   {{if .IsImpersonating}}
-  <div style="background:#c0392b;color:#fff;padding:8px 14px;margin-top:10px;border-radius:6px;text-align:center;font-weight:bold;">
-    <i class="icon icon-user"></i>
-    Vous êtes connecté en tant que {{.User.FirstName}} {{.User.LastName}}
-    <a href="/user/return" style="color:#fff;text-decoration:underline;margin-left:14px;">
-      <i class="icon icon-chevron-left"></i> Revenir{{if .ImpersonatorName}} en tant que {{.ImpersonatorName}}{{end}}
+  {{/* Le bandeau d'emprunt d'identité. Il reste en haut de l'écran quoi qu'on
+       fasse : on peut passer une commande ou modifier une fiche sans s'être
+       souvenu qu'on agit au nom de quelqu'un d'autre, et le geste sera porté
+       à son compte. D'où trois choses écrites plutôt qu'une seule ligne
+       rouge : qui l'on est devenu, ce que cela implique, et comment en
+       sortir. */}}
+  <div class="ac-emprunt">
+    <span class="ac-emprunt-pastille">{{initials .User.FirstName .User.LastName}}</span>
+    <div class="ac-emprunt-texte">
+      <b>Vous naviguez en tant que {{.User.FirstName}} {{.User.LastName}}.</b>
+      Tout ce que vous faites ici — commandes, inscriptions, modifications —
+      sera enregistré à son nom.
+    </div>
+    <a href="/user/return" class="ac-emprunt-sortie">
+      <i class="icon icon-sign-out"></i>
+      Redevenir{{if .ImpersonatorName}} {{.ImpersonatorName}}{{else}} moi-même{{end}}
     </a>
   </div>
   {{end}}
@@ -21,7 +45,19 @@
   <div class="row header" style="margin-top:10px;display:flex;align-items:center;flex-wrap:wrap;">
     <div class="col-md-8">
       {{if .Group}}
-        <a href="/home" class="ac-retour-accueil" title="Retour aux commandes"><h1>{{.Group.Name}}</h1></a>
+        {{/* Le logo à gauche du nom : ensemble ils forment l'identité du
+             groupe, et le lien de retour les prend tous les deux. Décoratif —
+             le nom qu'il accompagne dit déjà de qui il s'agit. */}}
+        <a href="/home" class="ac-retour-accueil{{if .LogoURL}} avec-logo{{end}}"
+           title="Retour aux commandes">
+          {{/* Un fond de <span> et non une <img> : le fichier entoure son
+               dessin d'une large réserve blanche, et seul un fond permet de
+               zoomer dedans pour ne garder que l'encre — la boîte se cale
+               alors sur le dessin, qui s'aligne à gauche avec le reste. */}}
+          {{if .LogoURL}}<span class="ac-logo-groupe" role="presentation"
+            style="background-image:url('{{.LogoURL}}')"></span>{{end}}
+          <h1>{{.Group.Name}}</h1>
+        </a>
       {{else if .LogoURL}}
         <div style="margin-bottom:22px;">
           <img src="{{.LogoURL}}" alt="Logo" style="max-height:120px;border-radius:12px;" />
@@ -38,37 +74,84 @@
     <div class="col-md-4 accountBlock">
       {{if .User}}
       <div class="ac-barre-compte">
-        {{/* L'icône n'apparaît qu'à qui administre quelque chose. Pour un
-             adhérent, la page se réduit à ce qu'il vient y faire : commander. */}}
-        {{if or .IsGroupManager .HasMembership .HasCatalogAdmin .HasDistributions .HasParameters .HasDatabaseAdmin}}
-        <a href="/admin" class="ac-icone-lien {{if eq .Category "admin"}}actif{{end}}"
-           title="Espace d'administration">
-          <i class="icon icon-cog"></i>
-          <span class="sr-only">Espace d'administration</span>
+        {{/* Le producteur qui ne tient que ses catalogues vient pour ses
+             produits : son raccourci les lui donne, à gauche de son profil,
+             sans passer par un espace d'administration qui ne contiendrait
+             que cet écran-là. */}}
+        {{if .EstProducteurAutonome}}
+        <a href="{{.LienMesProduits}}" class="ac-btn-entete">
+          {{/* Le crayon, et non la liste : le producteur ne vient pas
+               consulter son catalogue mais le modifier. */}}
+          <i class="icon icon-edit"></i>
+          <span class="ac-btn-entete-texte">Gérer mes produits</span>
         </a>
         {{end}}
 
+        {{/* L'icône n'apparaît qu'à qui administre quelque chose. Pour un
+             adhérent, la page se réduit à ce qu'il vient y faire : commander. */}}
+        {{if .AccesAdministration}}
+        {{/* Nommé, comme le raccourci du producteur : une roue dentée seule
+             demande de deviner où elle mène, et l'espace d'administration
+             n'est pas un réglage. */}}
+        <a href="/admin" class="ac-btn-entete {{if eq .Category "admin"}}actif{{end}}">
+          <i class="icon icon-cog"></i>
+          <span class="ac-btn-entete-texte">Espace d'administration</span>
+        </a>
+        {{end}}
+
+        {{/* Le menu du compte. Ses entrées sont rangées par intention — ce qui
+             me concerne, ce que je gère, ce qui concerne le groupe — plutôt
+             qu'alignées d'un trait : la liste plate mêlait « Messages » et
+             « Changer de groupe », qui n'ont rien à faire ensemble. */}}
         <div class="dropdown ac-compte">
           <a href="#" class="ac-declencheur dropdown-toggle" data-toggle="dropdown"
              role="button" aria-haspopup="true" aria-expanded="false">
             <span class="ac-pastille">{{initials .User.FirstName .User.LastName}}</span>
             <span class="ac-prenom">{{.User.FirstName}}</span>
-            <span class="caret"></span>
+            <i class="icon icon-chevron-down ac-fleche"></i>
           </a>
           <ul class="dropdown-menu dropdown-menu-right ac-menu-compte">
             <li class="ac-menu-entete">
-              <span class="nom">{{.User.FirstName}} {{.User.LastName}}</span>
-              <span class="courriel">{{.User.Email}}</span>
+              <span class="ac-pastille grande">{{initials .User.FirstName .User.LastName}}</span>
+              <span class="qui">
+                <span class="nom">{{.User.FirstName}} {{.User.LastName}}</span>
+                <span class="courriel">{{.User.Email}}</span>
+              </span>
             </li>
-            <li role="separator" class="divider"></li>
+
+            {{/* Le groupe est nommé, et c'est lui qui porte le changement :
+                 « Changer de groupe » perdu en bas de liste ne disait pas
+                 lequel on quittait. */}}
+            {{if .Group}}
+            <li class="ac-menu-groupe">
+              <i class="icon icon-farmer"></i>
+              <span class="nom">{{.Group.Name}}</span>
+              <a href="/user/choose" title="Rejoindre un autre groupe">Changer</a>
+            </li>
+            {{end}}
+
+            <li class="ac-menu-titre">Mon espace</li>
+            <li><a href="/home"><i class="icon icon-basket"></i> Mes commandes</a></li>
             <li><a href="/account"><i class="icon icon-user"></i> Mon compte</a></li>
             <li><a href="/messages"><i class="icon icon-mail"></i> Messages</a></li>
-            {{if or .IsGroupManager .HasMembership .HasCatalogAdmin .HasDistributions .HasParameters .HasDatabaseAdmin}}
+
+            {{/* La rubrique ne s'écrit que si elle a quelque chose à contenir :
+                 un adhérent ordinaire ne voit pas un intitulé vide. */}}
+            {{if or .EstProducteurAutonome .AccesAdministration}}
+            <li class="ac-menu-titre">Gestion</li>
+            {{if .EstProducteurAutonome}}
+            <li><a href="{{.LienMesProduits}}"><i class="icon icon-edit"></i> Gérer mes produits</a></li>
+            {{end}}
+            {{if .AccesAdministration}}
             <li><a href="/admin"><i class="icon icon-cog"></i> Espace d'administration</a></li>
             {{end}}
+            {{end}}
+
+            <li class="ac-menu-titre">Le groupe</li>
+            <li><a href="/apropos"><i class="icon icon-info"></i> À propos</a></li>
+
             <li role="separator" class="divider"></li>
-            <li><a href="/user/choose"><i class="icon icon-chevron-left"></i> Changer de groupe</a></li>
-            <li><a href="/user/logout"><i class="icon icon-delete"></i> Déconnexion</a></li>
+            <li><a href="/user/logout" class="sortie"><i class="icon icon-sign-out"></i> Déconnexion</a></li>
           </ul>
         </div>
       </div>
@@ -94,9 +177,12 @@
       <a href="/admin" class="{{if eq .Category "admin"}}actif{{end}}">
         <i class="icon icon-home"></i> Vue d'ensemble
       </a>
-      {{range adminTiles .}}
+      {{/* Les domaines qui vivent à l'intérieur d'un autre n'ont pas leur
+           entrée ici : les droits sont un onglet des paramètres, et une entrée
+           de premier rang les donnerait pour une rubrique à part. */}}
+      {{range .AdminTiles}}{{if not .HorsMenu}}
       <a href="{{.Link}}" data-domaine="{{.Title}}"><i class="icon {{.Icon}}"></i> {{.Title}}</a>
-      {{end}}
+      {{end}}{{end}}
     </nav>
     <a href="/home" class="ac-lateral-sortie"><i class="icon icon-chevron-left"></i> Retour aux commandes</a>
   </aside>
@@ -104,18 +190,58 @@
           aria-label="Ouvrir le menu d'administration"><i class="icon icon-cog"></i></button>
   {{end}}{{end}}
 
-  <!-- Breadcrumb -->
-  <div class="row" style="margin-top:20px;">
+  {{if .User}}{{if isAdminSection .Category}}
+  <script type="text/javascript">
+  // Ouverture du menu latéral sur petit écran. Le bouton flottant est le seul
+  // moyen d'y accéder une fois le menu sorti de l'écran.
+  (function () {
+    var menu = document.getElementById('ac-lateral');
+    var bouton = document.getElementById('ac-lateral-bouton');
+    if (!menu || !bouton) return;
+    bouton.addEventListener('click', function () { menu.classList.toggle('ouvert'); });
+    document.addEventListener('click', function (e) {
+      if (window.innerWidth > 991) return;
+      if (menu.contains(e.target) || bouton.contains(e.target)) return;
+      menu.classList.remove('ouvert');
+    });
+  })();
+  </script>
+  {{end}}{{end}}
+
+  {{/* Le fil d'Ariane, réduit au chemin propre à l'écran. « Accueil » et le
+       nom du groupe en ouvraient chaque page : le premier est ce que donne le
+       logo cliquable, le second est écrit juste au-dessus en gros. Restent les
+       crans qui apprennent quelque chose.
+       Le fil disparaît quand il n'a rien à dire : une ligne vide vaut moins
+       qu'un repère absent. */}}
+  {{$admin := dansAdministration .}}
+  {{if or .Breadcrumb $admin}}
+  <div class="row">
     <div class="col-md-12">
-      <ol class="breadcrumb">
-        <li><a href="/user/choose">Accueil</a></li>
-        {{if .Group}}<li><a href="/user/choose">Groupe : {{.Group.Name}}</a></li>{{end}}
+      <ol class="breadcrumb" id="ac-fil">
+        {{/* Une racine en icône plutôt qu'en mot : « Accueil » écrit répétait
+             le titre du groupe juste au-dessus, mais sans rien devant, un
+             chemin d'un seul cran ne se lit plus comme un chemin — juste un
+             mot posé là. La maison et son chevron rendent la forme du fil
+             sans redire ce qui est déjà écrit. */}}
+        <li class="ac-fil-racine">
+          <a href="/home" title="Retour aux commandes">
+            <i class="icon icon-home"></i>
+            <span class="sr-only">Accueil</span>
+          </a>
+        </li>
+        {{/* Dans l'espace d'administration, un cran le dit et y ramène : la
+             rubrique seule ne disait pas qu'on avait quitté les commandes. */}}
+        {{if $admin}}
+        <li><a href="/admin">Espace d'administration</a></li>
+        {{end}}
         {{range .Breadcrumb}}
         <li><a href="{{.Link}}">{{.Name}}</a></li>
         {{end}}
       </ol>
     </div>
   </div>
+  {{end}}
 
   {{if .Flash}}
   <div class="row">
@@ -158,32 +284,117 @@
   </script>
   {{end}}
 
-  <div class="row" style="overflow-x:hidden;">
+  {{/* overflow-x:clip et non hidden : « hidden » force overflow-y à « auto »,
+       ce qui fait de ce bloc une zone de défilement. Le déclencheur du
+       défilement continu de l'accueil s'y trouvait alors enfermé, et
+       l'observateur — qui surveille la fenêtre — ne le voyait jamais entrer.
+       « clip » coupe le débordement sans créer ce contexte. */}}
+  <div class="row" style="overflow-x:clip;" id="ac-contenu">
     {{template "content" .}}
   </div>
 
-  <!-- Footer -->
-  <footer style="background:#6a9a2a;color:#fff;margin-top:40px;padding:24px 0 16px;">
-    <div class="container">
-      <div class="row">
-        <div class="col-md-2">
-          <img src="/img/logo3.png" alt="Alterconso" style="max-width:80px;opacity:0.9;" />
-        </div>
-        <div class="col-md-3">
-          <b>AIDE</b><br/>
-          <a href="#" style="color:#dff0a8;">Documentation</a><br/>
-          <a href="#" style="color:#dff0a8;">Contacter l'administrateur du site</a>
-        </div>
-        <div class="col-md-3">
-          <b>SUIVEZ-NOUS</b><br/>
-          {{if .Group}}<a href="#" style="color:#dff0a8;">{{.Group.Name}}</a>{{end}}
-        </div>
-        <div class="col-md-4">
-          <b>INFORMATION</b><br/>
-          <span style="font-size:0.9em;">Ce site est réalisé sur la base d'une version libre de l'application cagette développée par la <a href="https://www.alilo.fr" style="color:#dff0a8;">SCOP Alilo</a></span>
-        </div>
-      </div>
-    </div>
-  </footer>
+  {{if .User}}{{if isAdminSection .Category}}
+  <script type="text/javascript">
+  // Navigation de l'administration sans rechargement.
+  //
+  // Le menu latéral reste en place et seul le contenu change : c'est ce qui
+  // fait qu'on circule dans un espace plutôt que de sauter de page en page.
+  //
+  // Amélioration progressive, jamais un passage obligé : à la moindre
+  // difficulté — requête en échec, page inattendue, navigateur ancien — on
+  // laisse le lien se comporter normalement. Une page qui se recharge est un
+  // désagrément ; une page qui ne s'ouvre pas est une panne.
+  (function () {
+    if (!window.fetch || !window.history || !history.pushState) return;
+    var zone = document.getElementById('ac-contenu');
+    var lateral = document.getElementById('ac-lateral');
+    if (!zone || !lateral) return;
+
+    function marquerActif(url) {
+      var liens = lateral.querySelectorAll('nav a');
+      for (var i = 0; i < liens.length; i++) {
+        var href = liens[i].getAttribute('href');
+        liens[i].classList.toggle('actif', href === url);
+      }
+    }
+
+    // Les scripts injectés par innerHTML ne s'exécutent pas : le navigateur
+    // les insère sans les évaluer. On les rejoue à la main, sans quoi les
+    // écrans qui en dépendent arriveraient inertes.
+    function rejouerScripts(racine) {
+      var scripts = racine.querySelectorAll('script');
+      for (var i = 0; i < scripts.length; i++) {
+        var neuf = document.createElement('script');
+        if (scripts[i].src) { neuf.src = scripts[i].src; }
+        else { neuf.textContent = scripts[i].textContent; }
+        document.body.appendChild(neuf);
+        document.body.removeChild(neuf);
+      }
+    }
+
+    function charger(url, empiler) {
+      zone.style.opacity = '.5';
+      fetch(url, {credentials: 'same-origin', headers: {'X-Requested-With': 'fetch'}})
+        .then(function (r) {
+          if (!r.ok) throw new Error('statut ' + r.status);
+          // Une redirection vers la connexion ne doit pas s'afficher dans le
+          // cadre de l'administration : on suit le navigateur.
+          if (r.redirected && r.url.indexOf('/user/login') !== -1) {
+            window.location.href = r.url; return null;
+          }
+          return r.text();
+        })
+        .then(function (html) {
+          if (html === null) return;
+          var doc = new DOMParser().parseFromString(html, 'text/html');
+          var neuf = doc.getElementById('ac-contenu');
+          if (!neuf) throw new Error('contenu introuvable');
+
+          zone.innerHTML = neuf.innerHTML;
+          rejouerScripts(zone);
+
+          // Le fil suit la page chargée : sans cela il resterait figé sur
+          // l'écran d'où l'on vient, et annoncerait le mauvais endroit.
+          var fil = doc.getElementById('ac-fil');
+          var filActuel = document.getElementById('ac-fil');
+          if (fil && filActuel) filActuel.innerHTML = fil.innerHTML;
+          if (doc.title) document.title = doc.title;
+
+          if (empiler) history.pushState({ac: true}, '', url);
+          marquerActif(url);
+          window.scrollTo(0, 0);
+          zone.style.opacity = '';
+          if (window.innerWidth <= 991) lateral.classList.remove('ouvert');
+        })
+        .catch(function () {
+          // Repli : on laisse le navigateur faire ce qu'il aurait fait.
+          window.location.href = url;
+        });
+    }
+
+    lateral.addEventListener('click', function (e) {
+      var a = e.target.closest ? e.target.closest('a') : null;
+      if (!a) return;
+      var href = a.getAttribute('href');
+      // Seuls les liens du menu, internes, et hors « retour aux commandes »
+      // qui sort de l'espace : celui-là doit recharger, le menu disparaît.
+      if (!href || href.charAt(0) !== '/' || href === '/home') return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+      e.preventDefault();
+      charger(href, true);
+    });
+
+    window.addEventListener('popstate', function (e) {
+      if (e.state && e.state.ac) charger(location.pathname + location.search, false);
+    });
+  })();
+  </script>
+  {{end}}{{end}}
+
+  {{/* Le pied de page a disparu. Pleine largeur et suivi de chaque écran, il
+       repoussait vers le bas ce qui devait s'y trouver — le déclencheur du
+       défilement continu de l'accueil. Son contenu vit désormais dans « À
+       propos », sous la pastille du compte : on l'y consulte une fois, au lieu
+       de le traîner sur toutes les pages. */}}
 
 {{end}}

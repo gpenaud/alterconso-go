@@ -234,7 +234,7 @@ func TestTechnicalManagerIsNotAGroupHead(t *testing.T) {
 // Le responsable en place distribue les autres droits, mais ne transfere pas
 // le sien.
 func TestGroupHeadRoleIsAssignedByTechnicalManagerOnly(t *testing.T) {
-	tpl, err := loadTemplatesFromRoot(t, "amapadmin_layout.html", "amapadmin_rights_edit.html")
+	tpl, err := loadTemplatesFromRoot(t, "cycles_style.html", "amapadmin_layout.html", "amapadmin_rights_edit.html")
 	if err != nil {
 		t.Fatalf("parse : %v", err)
 	}

@@ -24,11 +24,13 @@ func TestPeriodArrowsFollowCurrentOffset(t *testing.T) {
 		{"distributions, période courante", "/distribution", "distribution.html", 0, "offset=-1", "offset=1"},
 		{"distributions, trois crans plus loin", "/distribution", "distribution.html", 3, "offset=2", "offset=4"},
 		{"distributions, dans le passé", "/distribution", "distribution.html", -2, "offset=-3", "offset=-1"},
-		{"accueil, deux crans plus loin", "/home", "home.html", 2, "offset=1", "offset=3"},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.nom, func(t *testing.T) {
+			// cycles_style.html porte le gabarit de style que les écrans
+			// refondus appellent : sans lui, le rendu s'arrête au premier
+			// {{template "cyclesStyle"}}.
 			tpl, err := loadTemplates("base.html", "design.html", "cycles_style.html", tc.tpl)
 			if err != nil {
 				t.Fatalf("parse : %v", err)
@@ -52,5 +54,47 @@ func TestPeriodArrowsFollowCurrentOffset(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// L'accueil n'a plus de flèche vers le futur : le défilement continu y verse
+// les périodes suivantes à mesure qu'on descend. Reste le lien vers le passé,
+// qui doit suivre la période affichée — c'est le défaut d'origine, un lien
+// figé rejouant la même page à chaque pression.
+func TestHomeKeepsOnlyThePastLink(t *testing.T) {
+	chdirRepoRoot(t)
+	tpl, err := loadTemplates("base.html", "design.html", "cycles_style.html", "home.html")
+	if err != nil {
+		t.Fatalf("parse : %v", err)
+	}
+
+	pd := PageData{
+		Group: &model.Group{ID: 1, Name: "AMAP"}, User: &model.User{ID: 9},
+		Category: "home", PeriodLabel: "Du 1 au 30",
+		PrevOffset: 1, NextOffset: 3,
+	}
+	pd.MultiDistribs = []MultiDistribView{{ID: 1, Day: "12", DayLabelFull: "Jeudi 12",
+		Place: "Salle", StartHour: "18:00", EndHour: "19:30"}}
+	pd.HeroDistrib, pd.NextDistribs = splitDistribs(pd.MultiDistribs)
+
+	var sb strings.Builder
+	if err := tpl.ExecuteTemplate(&sb, "base", pd); err != nil {
+		t.Fatalf("render : %v", err)
+	}
+	out := sb.String()
+
+	if !strings.Contains(out, `/home?offset=1"`) {
+		t.Error("le lien vers les distributions passées devrait suivre la période affichée")
+	}
+	if strings.Contains(out, `/home?offset=3"`) {
+		t.Error("la flèche vers le futur fait double emploi avec le défilement continu")
+	}
+	// Et le déclencheur du défilement doit exister, même sans distribution
+	// suivante dans la période courante.
+	if !strings.Contains(out, `id="ac-sentinelle"`) {
+		t.Error("le déclencheur du défilement a disparu")
+	}
+	if !strings.Contains(out, `id="ac-suivantes"`) {
+		t.Error("la liste doit exister même vide, pour recevoir les périodes suivantes")
 	}
 }

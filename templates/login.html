@@ -4,17 +4,25 @@
 {{template "cyclesStyle"}}
 <div class="cyc ac-connexion">
 
-  {{/* Le logo générique d'Alterconso occupait 120 px au-dessus du titre, sans
-       rien dire de plus que le titre lui-même. La page tient en une colonne
-       étroite, centrée : on n'y fait qu'une chose. */}}
+  {{/* Le logo générique d'Alterconso — une image du dossier www — a cédé la
+       place à celui du groupe, qui est aussi celui de l'association derrière
+       le logiciel. Cadré sur son dessin comme dans l'en-tête du site : le
+       fichier déposé l'entoure d'une large réserve blanche. */}}
   <div class="ac-connexion-tete">
+    {{if .LogoURL}}
+    <div class="ac-connexion-logo" role="presentation"
+         style="background-image:url('{{.LogoURL}}')"></div>
+    {{end}}
     <h1>Bienvenue sur Alterconso</h1>
     <p>Les produits frais, bio et locaux de vos producteurs, commandés en ligne.</p>
   </div>
 
   <div class="cyc-panneau ac-connexion-carte">
 
-    <div id="loginError" class="cyc-danger" style="display:none;margin-top:0;">
+    {{/* Masqué par l'attribut « hidden » et non par un style en ligne : le
+         script se contentait de basculer display:block, ce qui écrasait la
+         mise en page du bloc et le collait au champ suivant. */}}
+    <div id="loginError" class="cyc-danger" hidden>
       <i class="icon icon-alert"></i> <span></span>
     </div>
 
@@ -59,7 +67,7 @@
   var errBox = document.getElementById('loginError');
   form.addEventListener('submit', function (e) {
     e.preventDefault();
-    errBox.style.display = 'none';
+    errBox.hidden = true;
     var fd = new FormData(form);
     fetch('/api/user/login', {
       method: 'POST',
@@ -74,12 +82,12 @@
       } else {
         var msg = (data && data.error && data.error.message) || 'Erreur de connexion.';
         errBox.querySelector('span').textContent = msg;
-        errBox.style.display = 'block';
+        errBox.hidden = false;
       }
     })
     .catch(function () {
       errBox.querySelector('span').textContent = 'Erreur réseau, réessayez.';
-      errBox.style.display = 'block';
+      errBox.hidden = false;
     });
   });
 })();

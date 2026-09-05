@@ -3,6 +3,9 @@ package handler
 import (
 	"bytes"
 	"encoding/binary"
+	"image"
+	"image/color"
+	"image/png"
 	"testing"
 )
 

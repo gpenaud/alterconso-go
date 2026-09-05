@@ -20,8 +20,17 @@
 .cyc { --vert:#5a8a00; --vert-fonce:#456a00; --vert-pale:#f2f7e8;
        --trait:#e7e3d9; --gris:#6d6a63; --gris-clair:#9a968e; --creme:#fbf9f4;
        --encre:#26251f;
+       /* Brun terre : il dormait dans style.css sans presque servir. Les
+          titres en noir durcissaient la page, et les mettre en vert aurait
+          brouillé ce qui se clique — le vert ne dit plus que les états et les
+          actions. */
+       --titre:#583816; --titre-doux:#6d6a63;
        --police:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                "Helvetica Neue", Arial, sans-serif; }
+                "Helvetica Neue", Arial, sans-serif;
+       /* Cabin pour les titres seulement : le contraste entre les deux
+          familles pose la hiérarchie, et la police du site reste présente là
+          où elle se voit. Elle est servie par l'application, plus par Google. */
+       --police-titre:'Cabin', var(--police); }
 .cyc, .cyc input, .cyc select, .cyc textarea, .cyc button {
   font-family:var(--police); }
 .cyc { color:var(--encre); -webkit-font-smoothing:antialiased; }
@@ -29,9 +38,10 @@
 /* ─── En-tête d'écran ─────────────────────────────────────────────────── */
 .cyc-entete { display:flex; align-items:flex-start; justify-content:space-between;
               gap:20px; flex-wrap:wrap; margin:0 0 22px; }
-.cyc-entete h3 { font-style:normal; margin:0 0 7px; font-size:1.7em;
-                 font-weight:700; letter-spacing:-.02em; color:var(--encre); }
-.cyc-chapeau { color:var(--gris); margin:0; max-width:60ch; line-height:1.55; }
+.cyc-entete h3 { font-family:var(--police-titre); font-style:normal;
+                 margin:0 0 7px; font-size:1.75em; font-weight:700;
+                 letter-spacing:-.01em; color:var(--titre); }
+.cyc-chapeau { color:var(--titre-doux); margin:0; max-width:62ch; line-height:1.6; }
 
 /* ─── Cartes ──────────────────────────────────────────────────────────── */
 .cyc-carte { background:#fff; border-radius:12px; padding:26px 28px;
@@ -40,22 +50,108 @@
 
 /* ─── Tableau ─────────────────────────────────────────────────────────── */
 .cyc-table { width:100%; border-collapse:collapse; }
-.cyc-table thead th { font-size:.74em; font-weight:700; letter-spacing:.09em;
-                      text-transform:uppercase; color:var(--gris-clair);
-                      text-align:left; padding:0 14px 10px; border-bottom:2px solid var(--trait); }
+/* En-têtes de colonne discrets. Les capitales espacées d'avant criaient plus
+   fort que les données qu'elles annoncent, et à cette taille elles se lisent
+   lettre à lettre. Casse normale, gris moyen, un filet fin : ils nomment les
+   colonnes sans se disputer la page avec elles. */
+.cyc-table thead th { font-size:.82em; font-weight:600; letter-spacing:0;
+                      color:#8b857a; text-align:left;
+                      padding:0 14px 9px; border-bottom:1px solid var(--trait); }
 .cyc-table thead th.num, .cyc-table td.num { text-align:center; }
+/* Colonnes serrées : l'état et les actions ne prennent que ce qu'il leur faut,
+   le reste va au nom et à l'adresse, qui en ont l'usage. */
+/* En-tête qui classe : il se distingue d'un intitulé simple par sa couleur au
+   survol et par la flèche qui dit le sens en cours. */
+.cyc-table th a.cyc-tri { color:inherit; text-decoration:none;
+                          display:inline-flex; align-items:center; gap:5px; }
+.cyc-table th a.cyc-tri:hover { color:var(--titre); text-decoration:none; }
+.cyc-table th a.cyc-tri.actif { color:var(--vert-fonce); font-weight:700; }
+.cyc-table th a.cyc-tri i.icon { font-size:.85em; }
+
+.cyc-table th.serre, .cyc-table td.serre { width:1%; white-space:nowrap; }
+.cyc-table th.actions, .cyc-table td.actions { width:1%; white-space:nowrap;
+                                               text-align:right; }
 .cyc-table tbody td { padding:16px 14px; border-bottom:1px solid var(--trait);
-                      vertical-align:middle; }
+                      vertical-align:middle; position:relative; }
+
+/* Une cellule qui mène quelque part, cliquable sur toute sa surface. Le lien
+   couvre sa cellule par un calque plutôt que par des marges négatives : les
+   retraits de la première et de la dernière colonne changent d'un panneau à
+   l'autre et d'un écran étroit à un large, et des valeurs recopiées ici
+   auraient fini par ne plus correspondre. */
+.cyc-cellule-lien { display:block; color:inherit; text-decoration:none; }
+.cyc-cellule-lien::after { content:""; position:absolute; inset:0; }
+.cyc-cellule-lien:hover { color:inherit; text-decoration:none; }
+.cyc-cellule-lien:hover .nom { color:var(--vert-fonce); text-decoration:underline; }
+.cyc-cellule-lien:focus-visible { outline:none; }
+.cyc-cellule-lien:focus-visible::after { outline:2px solid var(--vert);
+                                         outline-offset:-3px; border-radius:6px; }
 .cyc-table tbody tr:last-child td { border-bottom:0; }
 .cyc-table tbody tr { transition:background .12s ease; }
 .cyc-table tbody tr:hover { background:var(--creme); }
-.cyc-nom { font-weight:650; color:var(--encre); font-size:1.05em; display:block;
-           letter-spacing:-.01em; }
+.cyc-nom { font-family:var(--police-titre); font-weight:700; color:var(--titre);
+           font-size:1.08em; display:block; text-decoration:none; }
+.cyc-nom:hover { color:#3f280f; text-decoration:underline; }
 .cyc-lieu { color:var(--gris); font-size:.9em; }
 .cyc-chiffre { font-size:1.2em; font-weight:650; color:var(--encre);
                font-variant-numeric:tabular-nums; }
 .cyc-chiffre small { display:block; font-size:.62em; font-weight:400;
                      color:var(--gris-clair); text-transform:uppercase; letter-spacing:.05em; }
+
+/* ─── Grille de produits ─────────────────────────────────────────────────
+   Le catalogue vu par un adhérent. Il tenait dans un cadre de 520 px de haut
+   avec sa propre barre de défilement, en trois colonnes bootstrap : on
+   consultait le catalogue par la fenêtre au lieu de le parcourir. */
+.cyc-produits { display:grid; gap:12px;
+                grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); }
+.cyc-produit { display:flex; align-items:center; gap:12px; text-align:left;
+               width:100%; padding:10px; border:1px solid var(--trait);
+               border-radius:12px; background:#fff; cursor:pointer;
+               transition:border-color .13s ease, box-shadow .13s ease; }
+.cyc-produit:hover { border-color:#d5d0c4;
+                     box-shadow:0 2px 10px rgba(0,0,0,.06); }
+.cyc-produit .image { flex:none; width:72px; height:72px; border-radius:9px;
+                      overflow:hidden; background:var(--creme);
+                      border:1px solid var(--trait); }
+.cyc-produit .image img { width:100%; height:100%; object-fit:cover; display:block; }
+.cyc-produit .corps { min-width:0; display:flex; flex-direction:column; gap:3px; }
+.cyc-produit .nom { font-family:var(--police-titre); font-weight:700;
+                    color:var(--titre); line-height:1.25; }
+.cyc-produit .detail { color:var(--gris); font-size:.9em; }
+.cyc-produit .cyc-badge { align-self:flex-start; }
+
+/* ─── Fiche en surimpression ─────────────────────────────────────────────── */
+.cyc-modale { position:fixed; inset:0; z-index:1000; display:flex;
+              align-items:center; justify-content:center; padding:20px;
+              background:rgba(40,28,16,.5); }
+.cyc-modale[hidden] { display:none; }
+.cyc-modale-boite { position:relative; width:100%; max-width:560px;
+                    background:#fff; border-radius:14px; padding:24px;
+                    box-shadow:0 20px 60px rgba(0,0,0,.3);
+                    max-height:calc(100vh - 40px); overflow-y:auto; }
+.cyc-modale-boite .fermer { position:absolute; top:12px; right:12px; }
+.cyc-modale-corps { display:flex; gap:20px; align-items:flex-start; }
+.cyc-modale-corps img { flex:none; width:170px; height:170px; object-fit:cover;
+                        border-radius:11px; background:var(--creme);
+                        border:1px solid var(--trait); }
+.cyc-modale-corps .infos { min-width:0; flex:1; padding-right:28px; }
+.cyc-modale-corps h3 { font-family:var(--police-titre); font-style:normal;
+                       font-weight:700; font-size:1.3em; color:var(--titre);
+                       margin:0 0 10px; }
+.cyc-modale-corps .prix { font-family:var(--police-titre); font-size:1.5em;
+                          font-weight:700; color:var(--titre); margin:0 0 2px; }
+.cyc-modale-corps .prix small { font-family:var(--police); font-size:.5em;
+                                font-weight:400; color:var(--gris-clair); }
+.cyc-modale-corps .producteur { margin-top:14px; padding-top:12px;
+                                border-top:1px solid var(--trait); }
+
+@media (max-width:640px) {
+  .cyc-modale { padding:12px; }
+  .cyc-modale-boite { padding:18px; }
+  .cyc-modale-corps { flex-direction:column; gap:14px; }
+  .cyc-modale-corps img { width:100%; height:190px; }
+  .cyc-modale-corps .infos { padding-right:0; }
+}
 
 /* ─── Pastille d'état ─────────────────────────────────────────────────── */
 .cyc-etat { display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px;
@@ -158,6 +254,8 @@
 .cyc-filtre.actif { background:var(--vert-pale); border-color:#b8d18d;
                     color:var(--vert-fonce); font-weight:600; }
 .cyc-filtre .compte { font-variant-numeric:tabular-nums; opacity:.65; }
+/* Une pastille sans objet : le choix reste lisible mais ne compte plus. */
+.cyc-filtre.eteint { opacity:.45; }
 .cyc-filtre .badge-alerte { background:#b0413e; color:#fff; border-radius:999px;
                             padding:1px 7px; font-size:.85em; font-weight:700;
                             opacity:1; }
@@ -185,6 +283,10 @@
                  transition:all .12s ease; text-decoration:none; }
 .cyc-icone-btn:hover { background:var(--creme); border-color:var(--trait);
                        color:var(--titre); text-decoration:none; }
+/* Le rouge dès le repos : la corbeille avait la couleur des autres icônes et
+   ne se distinguait qu'une fois le curseur dessus, c'est-à-dire trop tard pour
+   servir d'avertissement. */
+.cyc-icone-btn.danger { color:#b0413e; }
 .cyc-icone-btn.danger:hover { background:#fdf1f0; border-color:#e8c4c2; color:#8f302e; }
 .cyc-table tbody td .cyc-actions { opacity:.45; transition:opacity .12s ease; }
 .cyc-table tbody tr:hover .cyc-actions,
@@ -238,6 +340,234 @@
   .cyc-actions-nommees .cyc-btn { flex:1 1 auto; justify-content:center; }
 }
 
+/* En-tête de fiche : qui, en grand, et ses actions à portée. */
+.cyc-fiche-tete { display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+                  margin-bottom:22px; }
+.cyc-fiche-tete .ident { flex:1 1 240px; min-width:0; }
+.cyc-fiche-tete h3 { font-family:var(--police-titre); font-style:normal;
+                     font-size:1.5em; font-weight:700; color:var(--titre);
+                     margin:0 0 4px; }
+.cyc-initiales.grande { width:58px; height:58px; font-size:1.05em; }
+.cyc-actions-nommees.serrees { padding:0; }
+
+/* Le détail bordé : quand il n'est pas dans un panneau replié mais posé sous
+   un en-tête, il lui faut un filet pour s'en détacher. */
+.cyc-detail.bordee { border-top:1px solid var(--trait); padding:18px 0 0;
+                     margin:0; }
+
+/* Le pied d'un tableau porte un total : il se lit comme une conclusion, pas
+   comme une ligne de plus. */
+.cyc-table tfoot td { padding:14px; border-top:2px solid var(--trait);
+                      font-weight:700; color:var(--titre); }
+.cyc-table tfoot .total-intitule { text-align:right; font-weight:600;
+                                   color:var(--gris); }
+
+/* La zone dangereuse, à part et en bas : le seul geste qu'on ne peut pas
+   défaire ne doit pas voisiner ceux qu'on fait tous les jours. */
+/* La liste des producteurs qui ne suivent pas la fenêtre du jour. */
+.cyc-ecarts { list-style:none; margin:10px 0 0; padding:0; }
+.cyc-ecarts li { display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 10px;
+                 padding:6px 0; border-top:1px solid #ecd9d7; font-size:.93em; }
+.cyc-ecarts li:first-child { border-top:0; }
+.cyc-ecarts .nom { font-weight:700; }
+.cyc-ecarts .fenetre { color:#8b6e6c; }
+
+.cyc-zone-danger { border:1px solid #e8c4c2; }
+.cyc-zone-danger h3 { color:#8f302e; }
+.cyc-zone-danger form { margin:0; }
+
+/* ─── Onglets ─────────────────────────────────────────────────────────────
+   À l'horizontale, sous le titre. En colonne latérale, cinq entrées prenaient
+   un quart de la largeur et la reprenaient aux tableaux, qui en ont l'usage.
+   Le filet du bas relie l'onglet actif au contenu qu'il ouvre. */
+.cyc-onglets { display:flex; gap:4px; flex-wrap:wrap;
+               border-bottom:1px solid var(--trait); margin:0 0 22px; }
+.cyc-onglets a { display:inline-flex; align-items:center; gap:7px;
+                 padding:10px 15px; margin-bottom:-1px;
+                 border-bottom:2px solid transparent; color:#7a7468;
+                 font-size:.92em; font-weight:500; text-decoration:none;
+                 white-space:nowrap; transition:all .12s ease; }
+.cyc-onglets a:hover { color:var(--titre); text-decoration:none; }
+.cyc-onglets a i.icon { color:#b5b0a5; }
+.cyc-onglets a.actif { color:var(--vert-fonce); font-weight:700;
+                       border-bottom-color:var(--vert); }
+.cyc-onglets a.actif i.icon { color:var(--vert-fonce); }
+.cyc-onglet-contenu > :first-child { margin-top:0; }
+/* Un onglet qui mène à un écran sans garde-fou se distingue des autres. */
+.cyc-onglets a.danger { color:#a8524f; }
+.cyc-onglets a.danger i.icon { color:#c08a88; }
+.cyc-onglets a.danger:hover { color:#8f302e; }
+.cyc-onglets a.danger.actif { color:#8f302e; border-bottom-color:#b0413e; }
+.cyc-onglets a.danger.actif i.icon { color:#8f302e; }
+
+/* Pastille de date, à la manière d'un feuillet de calendrier. Elle donne à
+   chaque ligne son point d'ancrage : sur un écran de planning, c'est la date
+   qu'on cherche d'abord. */
+/* Assez large pour porter un mois entier : « Septembre » ne doit ni se couper
+   ni passer à la ligne. L'interlettrage des capitales, qui gagne en lisibilité
+   sur deux ou trois lettres, coûte ici la place d'un caractère — il est
+   réduit d'autant. */
+.cyc-date { flex:none; width:82px; border-radius:9px; overflow:hidden;
+            border:1px solid var(--trait); background:#fff; text-align:center;
+            line-height:1.1; }
+.cyc-date .jour { display:block; font-size:.66em; font-weight:700;
+                  text-transform:uppercase; letter-spacing:.03em;
+                  background:var(--creme); color:#8b857a; padding:4px 3px;
+                  white-space:nowrap; }
+.cyc-date .numero { display:block; font-family:var(--police-titre);
+                    font-size:1.75em; font-weight:700; color:var(--titre);
+                    padding-top:5px; }
+.cyc-date .mois { display:block; font-size:.66em; font-weight:600;
+                  text-transform:uppercase; letter-spacing:.02em;
+                  color:#8b857a; padding:0 3px 6px; white-space:nowrap; }
+.cyc-date.aujourdhui { border-color:#b8d18d; }
+.cyc-date.aujourdhui .jour { background:var(--vert); color:#fff; }
+.cyc-date.aujourdhui .numero { color:var(--vert-fonce); }
+
+/* Navigation de période : deux flèches et un libellé, groupés pour se lire
+   comme un seul contrôle. */
+.cyc-periode { display:inline-flex; align-items:center; border-radius:999px;
+               border:1px solid var(--trait); background:#fff; overflow:hidden; }
+.cyc-periode a { display:inline-flex; align-items:center; justify-content:center;
+                 width:36px; height:36px; color:#8b857a; text-decoration:none;
+                 transition:all .12s ease; }
+.cyc-periode a:hover { background:var(--creme); color:var(--titre);
+                       text-decoration:none; }
+.cyc-periode .libelle { padding:0 14px; font-size:.86em; font-weight:600;
+                        color:var(--titre); white-space:nowrap; }
+
+/* Le solde, en grand et avant le détail : c'est le chiffre qu'on vient
+   chercher. La couleur dit le sens — dû par, dû à — sans qu'on ait à
+   interpréter un signe moins. */
+.cyc-solde { display:flex; flex-direction:column; gap:2px; padding:18px 20px;
+             border-radius:11px; background:var(--creme);
+             border:1px solid var(--trait); margin:0 0 20px; }
+.cyc-solde .intitule { font-size:.78em; font-weight:600; color:#8b857a; }
+.cyc-solde .montant { font-family:var(--police-titre); font-size:2em;
+                      font-weight:700; line-height:1.15; color:var(--titre); }
+.cyc-solde.debiteur { background:#fdf3e6; border-color:#e8d2ae; }
+.cyc-solde.debiteur .montant { color:#8a5a1c; }
+.cyc-solde.crediteur .montant { color:var(--vert-fonce); }
+.cyc-solde .cyc-note { margin:2px 0 0; }
+.cyc-table td.negatif { color:#8f302e; }
+
+/* Une ligne désactivée s'efface sans disparaître : on doit pouvoir la
+   retrouver pour la réactiver. */
+.cyc-table tbody tr.eteinte { opacity:.5; transition:opacity .12s ease; }
+/* Une ligne éteinte reste lisible dès qu'on la vise : à demi effacée, ses
+   actions en icônes ne se distinguaient plus les unes des autres. */
+.cyc-table tbody tr.eteinte:hover,
+.cyc-table tbody tr.eteinte:focus-within { opacity:1; }
+.cyc-table tbody tr.eteinte:hover { opacity:1; }
+/* Une référence est une suite de caractères qu'on recopie : chasse fixe. */
+.cyc-ref { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.85em;
+           color:#8b857a; background:none; padding:0; }
+/* Un bouton dans une pastille de filtre : même forme, comportement de bouton. */
+.cyc-filtre { font-family:inherit; cursor:pointer; }
+
+/* Le logo du groupe sur sa fiche, et l'aperçu carré du choix d'image. */
+.cyc-logo-groupe { flex:none; width:76px; height:76px; object-fit:cover;
+                   border-radius:12px; border:1px solid var(--trait); }
+.cyc-apercu-carre { width:200px; height:200px; margin:0 auto 18px;
+                    background:var(--creme); border:1px solid var(--trait);
+                    border-radius:12px; display:flex; align-items:center;
+                    justify-content:center; overflow:hidden; color:#c9c5bc;
+                    font-size:2.4em; }
+.cyc-apercu-carre img { width:100%; height:100%; object-fit:cover; }
+
+/* Une adresse qu'on recopie : chasse fixe, et de quoi la sélectionner d'un
+   trait sans attraper le texte autour. */
+.cyc-adresse { display:flex; align-items:center; gap:9px; padding:12px 15px;
+               background:var(--creme); border:1px solid var(--trait);
+               border-radius:9px; word-break:break-all; }
+.cyc-adresse a { color:var(--vert-fonce); }
+
+/* Une liste de droits : des pastilles côte à côte plutôt qu'une liste à
+   puces, qui étirait la ligne sur autant de niveaux que de délégations. */
+.cyc-droits { display:flex; flex-wrap:wrap; gap:5px; }
+
+/* Vignette de produit dans un tableau. */
+.cyc-vignette { width:44px; height:44px; object-fit:cover; border-radius:7px;
+                border:1px solid var(--trait); display:block; }
+.cyc-vignette.muette { opacity:.45; }
+
+.cyc-vignette.ronde { border-radius:50%; width:38px; height:38px; }
+
+/* Une bande de vignettes de produits, sous le catalogue qui les propose. */
+.cyc-vignettes { display:grid; gap:10px;
+                 grid-template-columns:repeat(auto-fill,minmax(84px,1fr));
+                 margin:12px 0 4px; }
+.cyc-vignettes figure { margin:0; }
+.cyc-vignettes img { width:100%; aspect-ratio:1; object-fit:cover;
+                     border-radius:9px; border:1px solid var(--trait);
+                     display:block; background:var(--creme); }
+.cyc-vignettes figcaption { font-size:.78em; color:var(--gris); margin-top:5px;
+                            line-height:1.35; }
+
+/* Le compte des destinataires, sous la liste qui le détermine : c'est la
+   conséquence immédiate du choix qu'on vient de faire. Zéro se signale en
+   couleur, avant l'envoi plutôt qu'après. */
+.cyc-destinataires { margin-top:14px; padding:14px 16px; border-radius:10px;
+                     background:var(--vert-pale); border:1px solid #cfe0a8; }
+.cyc-destinataires .tete { display:flex; align-items:center; gap:10px;
+                           flex-wrap:wrap; }
+.cyc-destinataires .nombre { font-family:var(--police-titre); font-size:1.6em;
+                             font-weight:700; color:var(--vert-fonce);
+                             line-height:1; }
+.cyc-destinataires .mot { color:var(--vert-fonce); font-weight:600; }
+.cyc-destinataires .tete .cyc-btn { margin-left:auto; }
+.cyc-destinataires .liste { list-style:none; margin:12px 0 0; padding:12px 0 0;
+                            border-top:1px solid #cfe0a8; max-height:280px;
+                            overflow-y:auto; font-size:.86em; color:#4a4a4a;
+                            columns:2; column-gap:24px; }
+.cyc-destinataires .liste li { padding:2px 0; break-inside:avoid;
+                               word-break:break-all; }
+.cyc-destinataires.vide { background:#fdf1f0; border-color:#e8c4c2; }
+.cyc-destinataires.vide .nombre,
+.cyc-destinataires.vide .mot { color:#8f302e; }
+.cyc-contact .nom.alerte { color:#8f302e; }
+.cyc-contact .nom small { font-weight:400; color:var(--gris); }
+
+@media (max-width:768px) {
+  .cyc-destinataires .liste { columns:1; }
+}
+
+/* Le contact du groupe, dans l'en-tête : quelques lignes serrées plutôt qu'une
+   colonne latérale pour trois informations. */
+.cyc-contact { flex:none; max-width:260px; text-align:right; font-size:.88em;
+               line-height:1.6; color:var(--gris); }
+.cyc-contact .intitule { display:block; font-size:.86em; font-weight:600;
+                         color:#8b857a; }
+.cyc-contact .nom { display:block; font-weight:700; color:var(--titre); }
+.cyc-contact a, .cyc-contact span { display:block; }
+
+/* Aperçu d'une image en cours de remplacement. */
+.cyc-apercu { margin:0 0 18px; }
+.cyc-apercu img { max-width:220px; max-height:220px; object-fit:cover;
+                  border-radius:10px; border:1px solid var(--trait);
+                  display:block; }
+
+/* Un exemple de fichier : du texte à recopier, pas de la prose. */
+.cyc-exemple { background:var(--creme); border:1px solid var(--trait);
+               border-radius:8px; padding:12px 14px; margin:0 0 16px;
+               font-size:.84em; line-height:1.6; overflow-x:auto;
+               color:#4a4a4a; }
+
+/* Un message de réussite, pendant du bloc d'alerte. */
+.cyc-succes { background:var(--vert-pale); border:1px solid #cfe0a8;
+              border-radius:9px; padding:13px 16px; margin:0 0 18px;
+              color:var(--vert-fonce); }
+
+/* Une ligne de liste qui mène ailleurs plutôt que de se déplier. */
+/* Une ligne de liste qui ne se déplie pas : même mise en page, sans le
+   comportement de bouton. */
+.cyc-sommaire.statique { cursor:default; }
+.cyc-sommaire.statique:hover { background:none; }
+.cyc-sommaire .cyc-actions { flex:none; }
+.cyc-sommaire.lien { text-decoration:none; }
+.cyc-sommaire.lien:hover { text-decoration:none; }
+.cyc-sommaire.lien .chevron { transform:none; }
+
 /* Un message rapporté : encadré et sur fond crème pour qu'on voie où commence
    la parole de quelqu'un d'autre. */
 .cyc-message { background:var(--creme); border:1px solid var(--trait);
@@ -274,6 +604,8 @@
   .cyc-panneau .cyc-deborde .cyc-table tbody td:last-child { padding-right:16px; }
   .cyc-choix, .cyc-choix select { width:100%; }
   .cyc-filtres { margin-left:0; }
+  .cyc-onglets { gap:0; overflow-x:auto; flex-wrap:nowrap; }
+  .cyc-onglets a { padding:10px 12px; font-size:.88em; }
   .cyc-barre { gap:10px; }
   .cyc-recherche { flex:1 1 100%; }
   .cyc-icone-btn { width:38px; height:38px; }
@@ -282,22 +614,36 @@
 
 /* ─── Formulaire ──────────────────────────────────────────────────────── */
 .cyc-section { margin:0 0 26px; }
-.cyc-section > h4 { font-style:normal; font-size:1.05em; font-weight:700;
-                    letter-spacing:-.01em; color:var(--encre); margin:0 0 4px; }
-.cyc-section > .cyc-aide { color:var(--gris); font-size:.9em; margin:0 0 14px;
-                           line-height:1.5; }
-.cyc-champs { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
-              gap:16px 20px; }
+.cyc-section > h4 { font-family:var(--police-titre); font-style:normal;
+                    font-size:1.12em; font-weight:700; color:var(--titre);
+                    margin:0 0 5px; }
+.cyc-section > .cyc-aide { color:var(--titre-doux); font-size:.92em;
+                           margin:0 0 14px; line-height:1.55; }
+/* « auto-fill » et non « auto-fit » : avec auto-fit, les colonnes vides sont
+   supprimées et le dernier champ d'une ligne s'étire sur toute la largeur.
+   D'un bloc à l'autre, les champs n'avaient plus la même taille et rien ne
+   s'alignait verticalement. auto-fill garde la grille, donc les colonnes. */
+.cyc-champs { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+              gap:16px 20px; align-items:start; }
 .cyc-champ { display:flex; flex-direction:column; }
 .cyc-champ.large { grid-column:1/-1; }
 .cyc-champ label { font-weight:600; color:#4a4a4a; font-size:.9em; margin-bottom:5px; }
-.cyc-champ input[type=text], .cyc-champ input[type=date], .cyc-champ input[type=time],
-.cyc-champ input[type=number], .cyc-champ select, .cyc-champ textarea,
-.cyc-champ input[type=file] {
+/* On nomme les exceptions plutôt que les cas. Énumérer les types à dessiner
+   — text, date, time, number, file — laissait dehors ceux auxquels on n'avait
+   pas pensé : « email », « password », « tel » et « search » retombaient sur
+   le dessin par défaut du navigateur, carrés et gris au milieu de champs
+   arrondis. Les cases à cocher et les boutons, eux, sont une liste finie. */
+.cyc-champ input:not([type=checkbox]):not([type=radio]):not([type=submit]):not([type=button]):not([type=hidden]):not([type=range]):not([type=color]),
+.cyc-champ select, .cyc-champ textarea {
   width:100%; padding:9px 12px; border:1px solid #d8d3c8; border-radius:6px;
   font-family:inherit; font-size:.95em; color:#333; background:#fff;
   transition:border-color .13s ease, box-shadow .13s ease; }
 .cyc-champ textarea { line-height:1.6; resize:vertical; min-height:150px; }
+/* Un champ qu'on ne peut pas modifier le dit de lui-même : dessiné comme les
+   autres, il invitait à cliquer dedans pour rien. */
+.cyc-champ input[readonly], .cyc-champ textarea[readonly] {
+  background:var(--creme); color:var(--gris); cursor:default; }
+.cyc-champ input[readonly]:focus { border-color:#d8d3c8; box-shadow:none; }
 .cyc-champ input:focus, .cyc-champ select:focus, .cyc-champ textarea:focus {
   outline:none; border-color:var(--vert); box-shadow:0 0 0 3px rgba(90,138,0,.13); }
 .cyc-note { color:var(--gris-clair); font-size:.84em; margin:5px 0 0; line-height:1.45; }
@@ -315,9 +661,23 @@
 .cyc-rythmes input:focus-visible + label { box-shadow:0 0 0 3px rgba(90,138,0,.25); }
 
 /* Ligne composée : « de 19:00 à 20:00 », « 10 jours avant, à 08:00 ». */
-.cyc-ligne { display:flex; align-items:center; gap:9px; flex-wrap:wrap; color:#555; }
-.cyc-ligne input { width:auto; min-width:105px; }
-.cyc-ligne input[type=number] { min-width:78px; }
+/* Deux valeurs dans un même champ — « de … à … », « n jours avant, à … ».
+   Sur une seule ligne, elles ne tiennent pas dans une colonne de grille : les
+   champs d'heure prennent plus de 130px de large sur certains navigateurs, et
+   la ligne se repliait où elle pouvait.
+   D'où une grille de deux colonnes : les mots à gauche sur une largeur fixe,
+   le champ à droite. Fixe et non « auto » — sinon « jours avant » élargit sa
+   colonne et les trois blocs ne s'alignent plus entre eux. */
+.cyc-duo { display:grid; grid-template-columns:6.4em 1fr; gap:8px 10px;
+           align-items:center; }
+.cyc-duo .mot { text-align:right; color:#8b857a; font-size:.88em;
+                white-space:nowrap; }
+.cyc-duo > input { width:100%; }
+
+/* Ancienne mise en ligne, encore employée ailleurs dans le formulaire. */
+.cyc-ligne { display:flex; align-items:center; gap:7px; flex-wrap:wrap;
+             color:#555; font-size:.9em; }
+.cyc-ligne > input { flex:none; width:84px; min-width:0; }
 
 /* ─── Interrupteur du rappel ──────────────────────────────────────────── */
 .cyc-bascule { display:flex; gap:13px; align-items:flex-start; padding:16px 18px;
@@ -327,7 +687,9 @@
 .cyc-bascule.actif { background:var(--vert-pale); border-color:#cfe0a8; }
 .cyc-bascule input { width:18px; height:18px; margin:2px 0 0; flex:none; cursor:pointer;
                      accent-color:var(--vert); }
-.cyc-bascule .titre { font-weight:600; color:#2f2f2f; display:block; margin-bottom:3px; }
+.cyc-bascule .titre { font-family:var(--police-titre); font-weight:700;
+                      color:var(--titre); display:block; margin-bottom:4px;
+                      font-size:1.02em; }
 .cyc-bascule .cyc-note { margin:0; }
 
 /* Dépliage : la hauteur s'anime, le contenu ne saute pas. */
@@ -352,21 +714,61 @@
 /* ─── Zone dangereuse ─────────────────────────────────────────────────── */
 .cyc-danger { margin-top:18px; padding:18px 20px; border:1px solid #ecd9d7;
               border-radius:10px; background:#fdf7f6; }
-.cyc-danger h4 { font-style:normal; font-weight:700; margin:0 0 6px;
-                 font-size:1em; color:#8f302e; }
+.cyc-danger h4 { font-family:var(--police-titre); font-style:normal;
+                 font-weight:700; margin:0 0 6px; font-size:1.02em; color:#8f302e; }
 
 /* ─── Vide ────────────────────────────────────────────────────────────── */
+/* Le déclencheur du défilement continu a besoin d'une hauteur : un bloc vide
+   mesure zéro, et un élément sans surface n'est jamais signalé comme entrant
+   dans la fenêtre. */
+#mbr-sentinelle { height:24px; }
+.cyc-chargement { text-align:center; color:var(--gris-clair); font-size:.88em;
+                  padding:14px; }
+
 .cyc-aucun { text-align:center; padding:46px 20px; color:var(--gris); }
 .cyc-aucun .icone { font-size:2.6em; color:#dcd8cd; display:block; margin-bottom:12px; }
 .cyc-aucun p { margin:0 0 18px; }
 
 @media (max-width:768px) {
-  .cyc-carte { padding:18px 16px; }
+  .cyc-carte { padding:18px 16px; border-radius:10px; }
+  .cyc-entete { margin-bottom:18px; }
+  .cyc-entete h3 { font-size:1.45em; }
+
+  /* Le tableau se replie en fiches : à 375 px, sept colonnes obligeraient à
+     pousser la page latéralement pour lire la dernière. */
   .cyc-table thead { display:none; }
   .cyc-table tbody td { display:block; border:0; padding:3px 0; }
   .cyc-table tbody tr { display:block; padding:16px 0; border-bottom:1px solid var(--trait); }
   .cyc-table td.num { text-align:left; }
-  .cyc-actions { justify-content:flex-start; margin-top:12px; }
+  .cyc-chiffre { font-size:1em; }
+  .cyc-chiffre small { display:inline; font-size:.85em; margin-left:4px; }
+
+  /* Cibles tactiles : 44 px de haut au moins. Un bouton de 33 px se vise mal
+     au doigt, et se manque d'autant plus qu'il est destructeur. */
+  .cyc-btn { min-height:44px; padding:11px 16px; }
+  .cyc-btn-primaire { width:100%; justify-content:center; }
+  .cyc-actions { justify-content:flex-start; margin-top:14px; gap:8px; }
+  .cyc-actions .cyc-btn { flex:1; justify-content:center; }
+
+  /* 16 px au moins dans les champs : en dessous, iOS zoome à chaque mise au
+     point et le formulaire part de travers. */
+  .cyc-champ input, .cyc-champ select, .cyc-champ textarea { font-size:16px;
+    min-height:44px; padding:11px 12px; }
+  .cyc-champ textarea { min-height:170px; }
+  .cyc-champs { grid-template-columns:1fr; gap:16px; }
+  /* Écran étroit : la colonne des mots se resserre. */
+  .cyc-duo { grid-template-columns:5.6em 1fr; }
+  .cyc-ligne { gap:7px; flex-wrap:wrap; }
+  .cyc-ligne > input { flex:0 0 auto; }
+
+  /* Les pastilles de rythme s'étalent sur deux colonnes plutôt que de former
+     une colonne d'une pastille par ligne. */
+  .cyc-rythmes { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .cyc-rythmes label { text-align:center; padding:12px 10px; }
+
+  .cyc-pied { flex-direction:column; align-items:stretch; }
+  .cyc-pied .cyc-btn { width:100%; justify-content:center; }
+  .cyc-bascule { padding:14px 15px; }
 }
 </style>
 {{end}}

@@ -25,7 +25,7 @@
         {{/* Catégorie de la taxonomie du shop. Un produit sans catégorie n'est
              pas perdu : il se range sous « Autres ». */}}
         <label for="txp_category">Catégorie</label>
-        {{$sel := .SelectedCategory}}
+        {{$sel := .SelectedCategoryID}}
         <select id="txp_category" name="txp_category">
           <option value="">— Autres —</option>
           {{range .Categories}}
@@ -61,7 +61,7 @@
       <div class="cyc-champ">
         <label for="qt">Quantité</label>
         <input type="text" id="qt" name="qt" placeholder="1, 1/2, 0,25…"
-               value="{{if .Product.Qt}}{{derefFloatStr .Product.Qt}}{{end}}" />
+               value="{{if .Product.Qt}}{{qtDisplay .Product.Qt}}{{else}}1{{end}}" />
       </div>
       <div class="cyc-champ">
         <label for="vat">TVA</label>

@@ -1,39 +1,77 @@
-{{define "content"}}
-  <div id="content" class="col-md-12" style="padding-top:20px;">
-  {{if .Group}}{{if .Group.TxtHome}}
-  <div class="ac-mot-accueil">{{nl2br .Group.TxtHome}}</div>
-  {{end}}{{end}}
+{{define "teteProducteurs"}}
+{{if .Vendors}}
+<button type="button" class="ac-volet-tete {{if .OuvrirProducteurs}}ouvert{{end}}"
+        data-volet="producteurs-{{.ID}}"
+        aria-expanded="{{if .OuvrirProducteurs}}true{{else}}false{{end}}"
+        aria-controls="producteurs-{{.ID}}">
+  <span class="ac-volet-titre">
+    {{len .Vendors}} producteur{{if gt (len .Vendors) 1}}s{{end}}
+  </span>
+  <span class="ac-volet-noms">
+    {{range $i, $v := .Vendors}}{{if $i}} · {{end}}{{$v.Name}}{{end}}
+  </span>
+  <i class="icon icon-chevron-down chevron"></i>
+</button>
+{{end}}
+{{end}}
 
-    {{if .HeroDistrib}}
-    {{with .HeroDistrib}}
-    <section class="ac-prochaine {{if .CanOrder}}ouverte{{end}}">
-      <div class="ac-prochaine-corps">
-        <span class="ac-prochaine-etiquette">
-          {{if .CanOrder}}Commandes ouvertes{{else if .OrderNotYetOpen}}Prochaine distribution{{else}}Prochaine distribution{{end}}
-        </span>
-        <h2 class="ac-prochaine-date">{{.DayLabelFull}}</h2>
-        <div class="ac-prochaine-infos">
-          <span><i class="icon icon-clock"></i> de {{.StartHour}} à {{.EndHour}}</span>
-          <span><i class="icon icon-map-marker"></i> {{.Place}}{{if .PlaceAddress}}, {{.PlaceAddress}}{{end}}</span>
-        </div>
-
-        {{/* Les producteurs présents : la donnée existait et ne servait à
-             personne. « Qui sera là » est ce qui donne envie d'ouvrir la
-             boutique — plus qu'une date et une heure. */}}
-        {{if .Vendors}}
-        <div class="ac-prochaine-producteurs">
-          <span class="compte">{{len .Vendors}} producteur{{if gt (len .Vendors) 1}}s{{end}}</span>
-          {{range .Vendors}}<span class="nom">{{.Name}}{{if .Organic}} <i class="icon icon-leaf" title="Bio"></i>{{end}}</span>{{end}}
-        </div>
-        {{end}}
-
-        {{if and .ProductImages (or .CanOrder .OrderNotYetOpen)}}
-        <div class="ac-prochaine-vignettes">
-          {{range .ProductImages}}
-          <img src="{{.URL}}" alt="{{.Name}}" title="{{.Name}}" loading="lazy" decoding="async" />
+{{define "ligneDistrib"}}
+      <div class="ac-suivante-bloc {{if .CanOrder}}ouverte{{end}}" id="distrib-{{.ID}}">
+        <button type="button" class="ac-suivante" aria-expanded="false">
+          <span class="jour">{{.DayOfWeek}} {{.Day}} {{.Month}}</span>
+          <span class="lieu">{{.Place}} · {{.StartHour}}–{{.EndHour}}</span>
+          {{/* Après la date et le lieu, mais toujours collée à gauche : c'est
+               la pastille d'état qui prend l'espace libre et file à droite,
+               plutôt que le lieu qui s'étire en repoussant tout devant lui. */}}
+          {{if .Highlight}}
+          <span class="ac-mise-en-avant petite">
+            <i class="icon icon-star"></i> {{.Highlight}}
+          </span>
           {{end}}
-        </div>
-        {{end}}
+          {{/* L'état en pastille, et non en texte nu : posé à côté du chevron,
+               un libellé long comme « Ouvre Lundi 31 Août à 09:00 » passait
+               pour un second bouton. */}}
+          <span class="etat {{if .CanOrder}}ouvert{{else if .OrderNotYetOpen}}attente{{else}}clos{{end}}">
+            {{if .CanOrder}}{{if .UserOrders}}Ma commande · {{price .UserOrderTotal}} €{{else}}Commander{{end}}
+            {{else if .OrderNotYetOpen}}Ouvre {{.OrderStartDate}}
+            {{else}}Fermée{{end}}
+          </span>
+          <i class="icon icon-chevron-down chevron"></i>
+        </button>
+        {{/* Dépliée, une ligne montre exactement ce que montre la carte du
+             haut — même en-tête, même corps. Deux mises en page pour la même
+             chose obligeaient à réapprendre l'écran à chaque ouverture. */}}
+        {{/* Trois niveaux, et non deux : l'élément qu'on écrase à zéro doit
+             être nu. Un padding sur lui reste visible — le clip se fait sur la
+             boîte de padding — et la ligne repliée laissait voir le haut de
+             l'en-tête, coupé au milieu des lettres. */}}
+        <div class="ac-suivante-panneau"><div><div class="ac-prochaine-corps">
+          {{/* Volet fermé ici, à la différence de la carte du haut : une ligne
+               qu'on ouvre déroulerait sinon six producteurs et leurs vignettes
+               d'un coup, et l'écran sauterait sous le doigt. */}}
+          {{$d := teteAilleurs (ouvrirProducteurs . false)}}
+          {{template "enteteDistrib" $d}}
+          {{template "corpsDistrib" $d}}
+          {{/* Dépliée, la ligne s'efface : c'est la carte qui la remplace, et
+               elle redit déjà la date, le lieu et l'état. Reste ce bandeau,
+               le seul moyen de refermer une fois le résumé parti. En pied de
+               carte et pleine largeur : c'est là que le regard arrive quand
+               il a fini de lire, et une bande qui ferme se cherche au bas de
+               ce qu'elle ferme — en haut à droite, elle passait pour une
+               commande de la page. */}}
+          <button type="button" class="ac-suivante-replier">
+            <i class="icon icon-chevron-down"></i> Replier cette distribution
+          </button>
+        </div></div></div>
+      </div>
+{{end}}
+
+{{define "corpsDistrib"}}
+        {{/* L'appel aux bénévoles passe avant les producteurs : c'est ce qui
+             demande une action, et une distribution sans permanence ne se tient
+             pas. Vert et remerciement dès qu'on s'est inscrit — on ne réclame
+             pas deux fois à qui a déjà répondu. */}}
+
 
         {{if .Distributions}}
         <div class="ac-prochaine-action">
@@ -49,45 +87,189 @@
             <i class="icon icon-basket"></i> Ma commande · {{price .UserOrderTotal}} €
           </button>
           {{end}}
-          <span class="ac-echeance">
-            {{if .OrderNotYetOpen}}Ouvre {{.OrderStartDate}}{{else}}Commandes fermées{{end}}
+          {{if .OrderNotYetOpen}}
+          <span class="ac-btn-commander eteint" aria-disabled="true">
+            <i class="icon icon-clock"></i> Ouvre {{.OrderStartDate}}
           </span>
+          {{else}}
+          <span class="ac-btn-commander eteint" aria-disabled="true">
+            <i class="icon icon-clock"></i> Commandes fermées
+          </span>
+          {{end}}
           {{end}}
         </div>
         {{end}}
 
-        {{if gt .VolunteerNeeded 0}}
-        <div class="ac-appel-benevoles">
-          <i class="icon icon-alert"></i>
-          <span>
-            <b>{{.VolunteerNeeded}}</b> bénévole{{if gt .VolunteerNeeded 1}}s{{end}} manque{{if eq .VolunteerNeeded 1}}{{else}}nt{{end}}
-            {{if .VolunteerRoles}}({{range $i, $r := .VolunteerRoles}}{{if $i}}, {{end}}{{$r}}{{end}}){{end}}
-          </span>
-          <a href="/distribution/volunteersCalendar">S'inscrire</a>
-        </div>
+        {{/* Le panneau des producteurs. Sa barre — la tête — vit ailleurs
+             quand la carte lui donne une place : dans l'en-tête, à côté de la
+             pastille, où elle occupe le vide que la date y laissait. Les deux
+             se retrouvent par identifiant, ce qui permet de les séparer sans
+             que le clic cesse d'agir. */}}
+        {{if .Vendors}}
+        {{if not .TeteAilleurs}}{{template "teteProducteurs" .}}{{end}}
+        <div class="ac-volet-panneau {{if .OuvrirProducteurs}}ouvert{{end}}"
+             id="producteurs-{{.ID}}"><div>
+          {{range .Vendors}}
+          <article class="ac-producteur">
+            <header>
+              <h4>
+                {{.Name}}
+                {{if .Organic}}<span class="ac-bio"><i class="icon icon-bio"></i> Bio</span>{{end}}
+              </h4>
+              {{if .City}}<span class="ac-producteur-lieu"><i class="icon icon-map-marker"></i> {{.City}}</span>{{end}}
+            </header>
+            {{if .Description}}
+            <div class="ac-producteur-texte">{{nl2br .Description}}</div>
+            {{else}}
+            <p class="ac-producteur-texte muet">Ce producteur n'a pas encore de présentation.</p>
+            {{end}}
+            {{if .Products}}
+            <div class="ac-producteur-produits">
+              {{range .Products}}
+              <figure>
+                <img src="{{.URL}}" alt="{{.Name}}" loading="lazy" decoding="async" />
+                <figcaption>{{.Name}}</figcaption>
+              </figure>
+              {{end}}
+            </div>
+            {{end}}
+          </article>
+          {{end}}
+        </div></div>
         {{end}}
+{{end}}
+
+{{define "enteteDistrib"}}
+        <div class="ac-prochaine-entete">
+          <div class="ac-pastille-date {{if .CanOrder}}ouverte{{end}}">
+            <span class="jour">{{.DayOfWeek}}</span>
+            <span class="numero">{{.Day}}</span>
+            <span class="mois">{{.Month}}</span>
+          </div>
+
+          {{/* La colonne de droite s'étire à la hauteur de la pastille et
+               répartit son contenu entre haut et bas : le titre en tête, la
+               barre des producteurs en pied. C'est ce qui aligne leurs bases,
+               ce qu'une grille ne garantissait pas — ses deux rangs mesuraient
+               presque exactement la pastille, si bien qu'il n'y avait rien à
+               répartir. */}}
+          <div class="ac-prochaine-droite">
+            <div class="ac-prochaine-haut">
+              <div class="ac-prochaine-titres">
+                <div class="ac-prochaine-etats">
+                  <span class="ac-prochaine-etiquette {{if .CanOrder}}ouvert{{else}}ferme{{end}}">
+                    {{if .CanOrder}}Commandes ouvertes
+                    {{else if .OrderNotYetOpen}}Commandes pas encore ouvertes
+                    {{else}}Commandes closes{{end}}
+                  </span>
+                  {{/* La mise en avant ne dit pas un état de commande : elle
+                       porte donc sa propre couleur, terracotta, et non le vert
+                       qui signifie déjà « ouvert ». Confondues, les deux
+                       s'annulent. */}}
+                  {{if .Highlight}}
+                  <span class="ac-mise-en-avant" title="Campagne exceptionnelle">
+                    <i class="icon icon-star"></i> {{.Highlight}}
+                  </span>
+                  {{end}}
+                </div>
+                <h2 class="ac-prochaine-date">{{.Place}}</h2>
+              </div>
+
+              <div class="ac-prochaine-infos">
+                <span><i class="icon icon-clock"></i> de {{.StartHour}} à {{.EndHour}}</span>
+                {{if .PlaceAddress}}
+                <span><i class="icon icon-map-marker"></i> {{.PlaceAddress}}</span>
+                {{end}}
+                {{/* Les permanences, sous le lieu. Une pastille dit d'un coup
+                     d'œil s'il manque du monde — rouge quand personne ne s'est
+                     inscrit, jaune quand il en manque, verte quand tout est
+                     tenu — et mène à la page où l'on choisit son poste.
+                     Une barre pleine largeur pour cela réclamait l'attention
+                     bien au-delà de ce que l'information vaut. */}}
+                {{if gt .VolunteerTotal 0}}
+                <a href="/distribution/volunteersCalendar?from={{.VolunteerFrom}}&amp;to={{.VolunteerTo}}&amp;retour={{.ID}}"
+                   class="ac-permanences {{if ge .VolunteerFilled .VolunteerTotal}}complet{{else if gt .VolunteerFilled 0}}partiel{{else}}vide{{end}}"
+                   title="{{if .UserIsVolunteer}}Vous tenez une permanence{{if .UserVolunteerRole}} « {{.UserVolunteerRole}} »{{end}}. {{end}}Voir et choisir les permanences">
+                  <i class="icon {{if ge .VolunteerFilled .VolunteerTotal}}icon-check{{else}}icon-users{{end}}"></i>
+                  Permanences {{.VolunteerFilled}}/{{.VolunteerTotal}}
+                  {{if .UserIsVolunteer}}<b>· vous</b>{{end}}
+                </a>
+                {{end}}
+              </div>
+            </div>
+
+            {{template "teteProducteurs" .}}
+          </div>
+        </div>
+{{end}}
+
+{{define "content"}}
+  <div id="content" class="col-md-12" style="padding-top:20px;">
+
+    {{template "banniere" (bandeau
+      "Cultivé tout près, récolté cette semaine"
+      "Vos producteurs préparent la prochaine distribution : des légumes qui n'ont pas pris l'autoroute, et des visages qu'on connaît.")}}
+
+    {{if not .HeroDistrib}}
+    <div class="ac-aucune-distrib">
+      <i class="icon icon-calendar"></i>
+      <p>Aucune distribution prévue sur cette période.</p>
+    </div>
+    {{end}}
+
+    {{if .HeroDistrib}}
+    {{with .HeroDistrib}}
+    <section class="ac-prochaine {{if .CanOrder}}ouverte{{end}}" id="distrib-{{.ID}}">
+      <div class="ac-prochaine-corps">
+        {{/* Même vue pour l'en-tête et le corps : c'est elle qui porte
+             « producteurs déroulés » et « barre en en-tête », et les deux
+             gabarits doivent s'accorder là-dessus.
+             Volet replié, comme dans les lignes : la carte du haut donne
+             d'abord la date, le lieu et le bouton — la liste des producteurs
+             se déroule pour qui la demande. */}}
+        {{$d := teteAilleurs (ouvrirProducteurs . false)}}
+        {{template "enteteDistrib" $d}}
+        {{template "corpsDistrib" $d}}
       </div>
     </section>
     {{end}}
 
-    {{if .NextDistribs}}
-    <div class="ac-suivantes">
-      <div class="ac-suivantes-titre">Les distributions suivantes</div>
-      {{range .NextDistribs}}
-      <a class="ac-suivante {{if .CanOrder}}ouverte{{end}}"
-         href="{{if .CanOrder}}/shop/{{.ID}}{{else}}/distribution/list/{{.ID}}{{end}}">
-        <span class="jour">{{.DayOfWeek}} {{.Day}} {{.Month}}</span>
-        <span class="lieu">{{.Place}} · {{.StartHour}}–{{.EndHour}}</span>
-        <span class="etat">
-          {{if .CanOrder}}{{if .UserOrders}}Ma commande · {{price .UserOrderTotal}} €{{else}}Commander{{end}}
-          {{else if .OrderNotYetOpen}}Ouvre {{.OrderStartDate}}
-          {{else}}Fermée{{end}}
-        </span>
-        <i class="icon icon-chevron-right"></i>
+    {{/* Le producteur qui tient son catalogue ne vient pas ici pour commander,
+         mais pour tenir ses produits à jour. Ce geste-là mérite un bouton, pas
+         une ligne perdue parmi les liens : c'est sa raison d'ouvrir le site. */}}
+    {{if .EstProducteurAutonome}}
+    <div class="ac-acces-producteur">
+      <a href="/contractAdmin" class="ac-btn-producteur">
+        <i class="icon icon-list-alt"></i> Gérer mes produits
       </a>
-      {{end}}
     </div>
     {{end}}
+
+    <div class="ac-liens-secondaires">
+      <a href="/distribution/volunteersCalendar">
+        <i class="icon icon-calendar"></i> Calendrier des permanences
+      </a>
+      <a href="/home?offset={{.PrevOffset}}">
+        <i class="icon icon-chevron-left"></i> Distributions passées
+      </a>
+    </div>
+
+    {{/* La liste existe même vide : le défilement y verse les périodes
+         suivantes, et sans conteneur il n'aurait nulle part où les mettre.
+         Le titre, lui, attend d'avoir quelque chose à annoncer. */}}
+    <div class="ac-suivantes {{if not .NextDistribs}}vide{{end}}" id="ac-suivantes">
+      {{if .NextDistribs}}
+      <div class="ac-suivantes-titre">Les distributions suivantes</div>
+      {{range .NextDistribs}}
+      {{template "ligneDistrib" .}}
+      {{end}}
+      {{end}}
+    </div>
+    <div id="ac-chargement" class="ac-chargement" hidden>Chargement des distributions suivantes…</div>
+    {{/* Dernier élément de la page : c'est ce qui fait qu'arrivé tout en bas,
+         on tombe sur le déclencheur et non sur un pied de page qui l'aurait
+         repoussé hors de vue. */}}
+    <div id="ac-sentinelle" aria-hidden="true"></div>
     {{end}}
 
     {{/* Les modales restent hors de la mise en page : elles valent pour toutes
@@ -158,30 +340,311 @@
         </a>
       </div>
       {{end}}
-
-    </div>
     {{end}}
 
-    {{else}}
-    <div style="padding:32px;text-align:center;color:#999;">
-      Il n'y a pas de distribution prévue pour le moment.
-    </div>
-    {{end}}
+    <script type="text/javascript">
+    // Dépliage d'une distribution, et défilement continu.
+    //
+    // Amélioration progressive : sans JavaScript, les lignes restent lisibles
+    // et la navigation par période fait le travail. Le repli n'est pas un
+    // luxe — c'est ce qui garantit que l'accueil marche toujours.
+    (function () {
+      var liste = document.getElementById('ac-suivantes');
 
-    <!-- Period navigation (bottom) -->
-    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;margin-bottom:16px;">
-      <a href="/home?offset={{.PrevOffset}}" class="btn btn-default btn-sm" title="Période précédente"><i class="icon icon-chevron-left"></i></a>
-      <span class="btn btn-default btn-sm" style="pointer-events:none;">{{.PeriodLabel}}</span>
-      <a href="/home?offset={{.NextOffset}}" class="btn btn-default btn-sm" title="Période suivante"><i class="icon icon-chevron-right"></i></a>
-    </div>
+      // Amener une carte sous les yeux. On calcule et on défile le document :
+      // scrollIntoView s'adresse d'abord au conteneur de défilement le plus
+      // proche, et la carte de la liste en devient un dès qu'elle clippe ses
+      // coins — la page restait alors sur la première distribution.
+      function viser(el, doux) {
+        var haut = el.getBoundingClientRect().top
+          + (window.pageYOffset || document.documentElement.scrollTop) - 18;
+        if (haut < 0) haut = 0;
+        var calme = window.matchMedia
+          && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        try {
+          window.scrollTo({ top: haut, behavior: (doux && !calme) ? 'smooth' : 'auto' });
+        } catch (err) {
+          window.scrollTo(0, haut);
+        }
+      }
+
+      // Volets « producteurs ». Délégué au document : ils existent dans la
+      // carte mise en avant comme dans les lignes dépliées, et dans celles que
+      // le défilement ajoutera plus tard.
+      document.addEventListener('click', function (e) {
+        var tete = e.target.closest ? e.target.closest('.ac-volet-tete') : null;
+        if (!tete) return;
+        // La barre et son panneau se retrouvent par identifiant : ils ne sont
+        // plus voisins dans la page, la première vivant dans l'en-tête et le
+        // second en bas de la carte.
+        var panneau = document.getElementById(tete.getAttribute('data-volet'));
+        if (!panneau) return;
+        var ouvert = panneau.classList.toggle('ouvert');
+        tete.classList.toggle('ouvert', ouvert);
+        tete.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+      });
+
+      // Dépliage. Délégué au conteneur : les lignes ajoutées par le
+      // défilement fonctionnent sans qu'on ait à les rebrancher.
+      if (liste) {
+        liste.addEventListener('click', function (e) {
+          // Le résumé ouvre, le bouton « Replier » referme : une fois
+          // déplié, le résumé n'est plus là pour recevoir le clic.
+          var cible = e.target.closest
+            ? e.target.closest('.ac-suivante, .ac-suivante-replier') : null;
+          if (!cible) return;
+          var bloc = cible.closest('.ac-suivante-bloc');
+          if (!bloc) return;
+          var tete = bloc.querySelector('.ac-suivante');
+          var ouvert = cible.classList.contains('ac-suivante-replier')
+            ? false : !bloc.classList.contains('deplie');
+          // Une seule ouverte à la fois : deux panneaux dépliés font des
+          // pages de plusieurs écrans où l'on perd la ligne qu'on lisait.
+          var autres = liste.querySelectorAll('.ac-suivante-bloc.deplie');
+          for (var i = 0; i < autres.length; i++) {
+            if (autres[i] === bloc) continue;
+            autres[i].classList.remove('deplie');
+            var precedente = autres[i].querySelector('.ac-suivante');
+            if (precedente) precedente.setAttribute('aria-expanded', 'false');
+          }
+          bloc.classList.toggle('deplie', ouvert);
+          tete.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+          // Le résumé disparaît : sans cela le focus resterait sur un élément
+          // masqué, et le clavier n'aurait plus de prise sur la page.
+          if (!ouvert) { tete.focus(); return; }
+
+          // La distribution ouverte prend le focus et vient sous les yeux.
+          // On attend la fin du dépliage : les lignes qu'on vient de refermer
+          // remontent pendant ces 300 ms, et viser trop tôt raterait la cible.
+          var panneau = bloc.querySelector('.ac-suivante-panneau');
+          var fait = false;
+          function cadrer() {
+            if (fait) return;
+            fait = true;
+            var replier = bloc.querySelector('.ac-suivante-replier');
+            if (replier) replier.focus({ preventScroll: true });
+            viser(bloc, true);
+          }
+          if (panneau) {
+            panneau.addEventListener('transitionend', cadrer, { once: true });
+          }
+          window.setTimeout(cadrer, 340);
+        });
+      }
+
+      // Retour depuis les permanences. Le calendrier renvoie sur
+      // #distrib-<id> : on rouvre cette distribution et on l'amène sous les
+      // yeux, plutôt que de reposer le visiteur en haut d'une liste où il
+      // devrait retrouver seul la carte qu'il venait de quitter.
+      // On note d'où l'on part vers les permanences. Le lien « Retour aux
+      // commandes » porte l'ancre, mais beaucoup reviennent par le bouton
+      // « précédent » du navigateur, qui lui ne la porte pas : sans cette
+      // trace, ce retour-là retombe en haut d'une liste refermée.
+      document.addEventListener('click', function (e) {
+        var lien = e.target.closest ? e.target.closest('.ac-permanences') : null;
+        if (!lien) return;
+        var bloc = lien.closest('[id^="distrib-"]');
+        try {
+          if (bloc) window.sessionStorage.setItem('ac-retour', bloc.id);
+        } catch (err) { /* navigation privée : on se passe de la trace */ }
+      });
+
+      // Défilement continu.
+      var sentinelle = document.getElementById('ac-sentinelle');
+      var temoin = document.getElementById('ac-chargement');
+      // Un drapeau plutôt qu'un « return » : le retour sur une distribution
+      // précise vit après ce bloc et doit fonctionner même sans observateur.
+      var defilementDispo = !!(liste && sentinelle
+        && window.IntersectionObserver && window.fetch);
+
+      var offset = 1, occupe = false, fini = false, observateur = null;
+
+      function suivante() {
+        if (!defilementDispo || occupe || fini) return Promise.resolve();
+        occupe = true;
+        if (temoin) temoin.hidden = false;
+        return fetch('/home/more?offset=' + offset, {credentials: 'same-origin'})
+          .then(function (r) {
+            // 204 : plus rien à ajouter. C'est le signal de fin, et il évite
+            // d'avoir à savoir d'avance combien de périodes existent.
+            if (r.status === 204) { fini = true; return ''; }
+            if (!r.ok) throw new Error('statut ' + r.status);
+            return r.text();
+          })
+          .then(function (html) {
+            if (html && html.trim()) {
+              // La liste a pu partir vide — une seule distribution dans la
+              // période courante. La première fournée lui rend son titre et
+              // son fond, sinon les lignes flotteraient sans en-tête.
+              if (liste.classList.contains('vide')) {
+                liste.classList.remove('vide');
+                var titre = document.createElement('div');
+                titre.className = 'ac-suivantes-titre';
+                titre.textContent = 'Les distributions suivantes';
+                liste.appendChild(titre);
+              }
+              liste.insertAdjacentHTML('beforeend', html);
+              offset += 1;
+            } else {
+              fini = true;
+            }
+          })
+          .catch(function () {
+            // On cesse de demander plutôt que de marteler un serveur qui
+            // répond mal. La navigation par période reste disponible.
+            fini = true;
+          })
+          .then(function () {
+            occupe = false;
+            if (temoin) temoin.hidden = true;
+            if (fini && observateur) observateur.disconnect();
+          });
+      }
+
+      if (defilementDispo) {
+        observateur = new IntersectionObserver(function (entrees) {
+          for (var i = 0; i < entrees.length; i++) {
+            if (entrees[i].isIntersecting) suivante();
+          }
+        }, {rootMargin: '300px'});
+        observateur.observe(sentinelle);
+      }
+
+      // Filet : si l'observateur reste muet — un parent qui défile, une
+      // sentinelle sans surface, un navigateur capricieux — le défilement de
+      // la fenêtre prend le relais. Mieux vaut deux déclencheurs qu'une page
+      // qui s'arrête sans raison visible.
+      var dernierAppel = 0;
+      window.addEventListener('scroll', function () {
+        if (!defilementDispo || fini || occupe) return;
+        var maintenant = Date.now();
+        if (maintenant - dernierAppel < 200) return;
+        dernierAppel = maintenant;
+        var reste = document.documentElement.scrollHeight
+                  - window.innerHeight - window.pageYOffset;
+        if (reste < 400) suivante();
+      }, {passive: true});
+
+      // ── Retour sur une distribution précise ────────────────────────────
+      // Soit l'ancre #distrib-<id> que pose le calendrier des permanences,
+      // soit la trace laissée au départ pour ceux qui reviennent par le
+      // bouton « précédent ». La page garde sa prochaine distribution en
+      // tête : on ne saute pas de période, on déroule la liste jusqu'à
+      // celle qu'on cherche.
+      function cibleDuRetour() {
+        var m = /^#distrib-(\d+)$/.exec(window.location.hash || '');
+        if (m) return m[1];
+        var q = /[?&]distrib=(\d+)/.exec(window.location.search || '');
+        if (q) return q[1];
+        var trace = null;
+        try { trace = window.sessionStorage.getItem('ac-retour'); } catch (err) { trace = null; }
+        var t = trace && /(\d+)$/.exec(trace);
+        return t ? t[1] : null;
+      }
+
+      function poserSur(cible) {
+        // Les mains lâchent dès que le visiteur défile lui-même — mais pas
+        // avant d'avoir trouvé : la recherche peut durer plusieurs fournées,
+        // et s'interdire d'agir dès le premier geste reviendrait à ne jamais
+        // rien faire.
+        var mainPrise = false;
+        ['wheel', 'touchstart', 'keydown'].forEach(function (ev) {
+          window.addEventListener(ev, function () { mainPrise = true; },
+            { passive: true, once: true });
+        });
+
+        var deplier = cible.classList.contains('ac-suivante-bloc')
+          && !cible.classList.contains('deplie');
+        if (deplier) {
+          var autres = document.querySelectorAll('.ac-suivante-bloc.deplie');
+          for (var i = 0; i < autres.length; i++) {
+            if (autres[i] !== cible) autres[i].classList.remove('deplie');
+          }
+          cible.classList.add('deplie');
+          var resume = cible.querySelector('.ac-suivante');
+          if (resume) resume.setAttribute('aria-expanded', 'true');
+        }
+
+        // Un seul cadrage, et il attend la fin du dépliage. Repasser « au cas
+        // où » — au chargement, puis à 400 et 900 ms — donnait trois sauts
+        // secs à la suite ; viser une fois, au bon moment, suffit.
+        var pose = false;
+        function caler() {
+          if (pose) return;
+          pose = true;
+          if (!mainPrise) viser(cible, true);
+          // Revenu sur une carte déjà visible, rien ne dirait qu'on a été
+          // ramené au bon endroit sans ce bref halo.
+          cible.classList.add('ac-revenu');
+          window.setTimeout(function () { cible.classList.remove('ac-revenu'); }, 2200);
+        }
+        var panneau = deplier ? cible.querySelector('.ac-suivante-panneau') : null;
+        if (!panneau) {
+          // Rien à déplier : la hauteur est déjà la bonne, on vise tout de
+          // suite plutôt que d'attendre une transition qui ne viendra pas.
+          caler();
+        } else {
+          panneau.addEventListener('transitionend', caler, { once: true });
+          // Filet : onglet en arrière-plan, animations coupées — la
+          // transition peut ne jamais se signaler.
+          window.setTimeout(caler, 360);
+        }
+      }
+
+      function retourVers(id) {
+        // Consommée une fois : sans cela, chaque passage ultérieur par
+        // l'accueil rouvrirait la même distribution.
+        try { window.sessionStorage.removeItem('ac-retour'); } catch (err) { /* rien */ }
+
+        // Le navigateur restaure de lui-même la position d'avant sur un
+        // rechargement ou un « précédent », et il le fait après nos scripts.
+        // On lui reprend la main le temps de poser la page.
+        var restauration = null;
+        try {
+          if ('scrollRestoration' in window.history) {
+            restauration = window.history.scrollRestoration;
+            window.history.scrollRestoration = 'manual';
+          }
+        } catch (err) { /* rien */ }
+        function rendreLaMain() {
+          try {
+            if (restauration !== null) window.history.scrollRestoration = restauration;
+          } catch (err) { /* rien */ }
+        }
+
+        // Bornée : la liste s'arrête d'elle-même sur un 204, mais un compteur
+        // évite qu'un identifiant fantaisiste ne fasse défiler tout l'agenda.
+        var restant = 30;
+        (function chercher() {
+          var cible = document.getElementById('distrib-' + id);
+          if (cible) { poserSur(cible); window.setTimeout(rendreLaMain, 1400); return; }
+          if (fini || restant-- <= 0 || !defilementDispo) { rendreLaMain(); return; }
+          suivante().then(chercher);
+        })();
+      }
+
+      var idDepart = cibleDuRetour();
+      if (idDepart) retourVers(idDepart);
+
+      // Changer la seule ancre dans la barre d'adresse ne recharge pas la
+      // page : c'est cet événement-là, et lui seul, qui le signale.
+      window.addEventListener('hashchange', function () {
+        var id = cibleDuRetour();
+        if (id) retourVers(id);
+      });
+
+      // Retour par « précédent » : la page peut être restaurée telle quelle,
+      // sans que les scripts rejouent.
+      window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        var id = cibleDuRetour();
+        if (id) retourVers(id);
+      });
+    })();
+    </script>
+
 
   </div>
 
-  <!-- RIGHT COLUMN -->
-  <div class="col-md-12" style="padding-bottom:24px;">
-    <a href="/distribution/volunteersCalendar" class="btn btn-default btn-sm">
-      <i class="icon icon-calendar"></i> Calendrier des permanences
-    </a>
-  </div>
 
 {{end}}

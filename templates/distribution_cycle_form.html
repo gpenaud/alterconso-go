@@ -1,7 +1,10 @@
 {{define "content"}}
 {{template "cyclesStyle"}}
 <div class="cyc">
-<div class="col-md-8">
+<div class="col-md-12">
+  {{/* Tout le formulaire dans un seul bloc blanc : les cartes empilées
+       découpaient un même propos en blocs sans hiérarchie. */}}
+  <div class="cyc-panneau" style="max-width:860px;">
 
   <div class="cyc-entete">
     <div>
@@ -20,7 +23,7 @@
   <form method="POST" enctype="multipart/form-data"
         action="{{if .IsNew}}/distribution/cycles/new{{else}}/distribution/cycles/{{.Cycle.ID}}{{end}}">
 
-    <div class="cyc-carte">
+    <div class="cyc-section">
       <div class="cyc-section">
         <h4>Identité</h4>
         <div class="cyc-champs">
@@ -86,32 +89,43 @@
         <h4>Horaires</h4>
         <p class="cyc-aide">Appliqués à chaque distribution {{if .IsNew}}créée{{else}}ajoutée{{end}}.</p>
         <div class="cyc-champs">
-          <div class="cyc-champ">
-            <label>Distribution</label>
-            <div class="cyc-ligne">
-              de <input type="time" name="startHour" value="19:00" required />
-              à <input type="time" name="endHour" value="20:00" required />
+            {{/* Deux lignes plutôt qu'une : « de 19:00 à 20:00 » ne tient
+                 pas dans une colonne de grille sans se replier n'importe où.
+                 Une colonne de mots de largeur fixe à gauche, le champ à
+                 droite — les trois blocs s'alignent alors sur la même
+                 verticale. */}}
+            <div class="cyc-champ">
+              <label>Distribution</label>
+              <div class="cyc-duo">
+                <span class="mot">de</span>
+                <input type="time" name="startHour" value="19:00" required aria-label="Heure de début" />
+                <span class="mot">à</span>
+                <input type="time" name="endHour" value="20:00" required aria-label="Heure de fin" />
+              </div>
             </div>
-          </div>
-          <div class="cyc-champ">
-            <label>Ouverture des commandes</label>
-            <div class="cyc-ligne">
-              <input type="number" name="daysBeforeOpen" value="10" min="0" required /> j. avant, à
-              <input type="time" name="openingHour" value="08:00" required />
+            <div class="cyc-champ">
+              <label>Ouverture des commandes</label>
+              <div class="cyc-duo">
+                <span class="mot">jours avant</span>
+                <input type="number" name="daysBeforeOpen" value="10" min="0" required aria-label="Nombre de jours avant la distribution" />
+                <span class="mot">à</span>
+                <input type="time" name="openingHour" value="08:00" required aria-label="Heure d'ouverture" />
+              </div>
             </div>
-          </div>
-          <div class="cyc-champ">
-            <label>Fermeture des commandes</label>
-            <div class="cyc-ligne">
-              <input type="number" name="daysBeforeClose" value="2" min="0" required /> j. avant, à
-              <input type="time" name="closingHour" value="23:55" required />
+            <div class="cyc-champ">
+              <label>Fermeture des commandes</label>
+              <div class="cyc-duo">
+                <span class="mot">jours avant</span>
+                <input type="number" name="daysBeforeClose" value="2" min="0" required aria-label="Nombre de jours avant la distribution" />
+                <span class="mot">à</span>
+                <input type="time" name="closingHour" value="23:55" required aria-label="Heure de fermeture" />
+              </div>
             </div>
-          </div>
         </div>
       </div>
     </div>
 
-    <div class="cyc-carte">
+    <div class="cyc-section">
       <label class="cyc-bascule {{if .Message.Enabled}}actif{{end}}" id="bascule" for="enabledBox">
         <input type="checkbox" id="enabledBox" name="enabled" value="1" {{if .Message.Enabled}}checked{{end}} />
         <span>
@@ -179,6 +193,26 @@
   </form>
 
   {{if not .IsNew}}
+  <div class="cyc-section">
+    <h4>Ce cycle en bref</h4>
+    <dl class="cyc-detail bordee">
+      <div><dt>Lieu</dt><dd>{{.Cycle.Place.Name}}</dd></div>
+      <div><dt>Rythme</dt><dd>{{.RhythmText}}</dd></div>
+      <div>
+        <dt>Période</dt>
+        <dd>du {{.Cycle.StartDate.Format "02/01/2006"}} au {{.Cycle.EndDate.Format "02/01/2006"}}</dd>
+      </div>
+      <div>
+        <dt>Distributions</dt>
+        <dd>{{.NbDistribs}} au total, dont {{.NbUpcoming}} à venir</dd>
+      </div>
+    </dl>
+    <p class="cyc-note">
+      Le rythme et le lieu ne se modifient pas : les distributions déjà
+      programmées portent des commandes.
+    </p>
+  </div>
+
   <div class="cyc-danger">
     <h4>Supprimer ce cycle</h4>
     <p class="cyc-note" style="margin-bottom:12px;">
@@ -193,26 +227,9 @@
     </form>
   </div>
   {{end}}
-</div>
 
-{{if not .IsNew}}
-<div class="col-md-4">
-  <div class="cyc-carte cyc-fiche">
-    <dl>
-      <dt>Lieu</dt><dd>{{.Cycle.Place.Name}}</dd>
-      <dt>Rythme</dt><dd>{{.RhythmText}}</dd>
-      <dt>Période</dt>
-      <dd>du {{.Cycle.StartDate.Format "02/01/2006"}} au {{.Cycle.EndDate.Format "02/01/2006"}}</dd>
-      <dt>Distributions</dt>
-      <dd><span class="cyc-chiffre">{{.NbDistribs}}</span> au total, dont {{.NbUpcoming}} à venir</dd>
-    </dl>
-    <p class="cyc-note" style="margin-top:16px;padding-top:14px;border-top:1px solid #e7e3d9;">
-      Le rythme et le lieu ne se modifient pas : les distributions déjà
-      programmées portent des commandes.
-    </p>
   </div>
 </div>
-{{end}}
 </div>
 
 <script>

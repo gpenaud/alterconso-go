@@ -12,7 +12,10 @@ type AboutData struct {
 	// l'application elle-même, par opposition au groupe. Vide, la mention ne
 	// s'affiche pas plutôt que d'offrir un lien vers nulle part.
 	TechnicalManagerEmail string
-	AppVersion            string
+	// GroupWord : le mot d'accueil rédigé par le groupe. Il vivait sur l'écran
+	// des commandes, où il encombrait ce qu'on vient y faire ; il se lit une
+	// fois, et c'est ici qu'on vient lire ce genre de chose.
+	GroupWord string
 }
 
 // AboutPage : les mentions qui vivaient dans le pied de page.
@@ -34,6 +37,9 @@ func (h *PagesHandler) AboutPage(c *gin.Context) {
 	data.Category = "account"
 	data.Breadcrumb = []BreadcrumbItem{{Name: "À propos", Link: "/apropos"}}
 	data.TechnicalManagerEmail = h.cfg.TechnicalManager.Email
+	if pd.Group != nil && pd.Group.TxtHome != nil {
+		data.GroupWord = *pd.Group.TxtHome
+	}
 
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "about.html")
 	if err != nil {

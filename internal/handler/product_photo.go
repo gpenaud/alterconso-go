@@ -7,10 +7,7 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
-	"strings"
 	"sync"
-
-	"github.com/gpenaud/alterconso/internal/model"
 )
 
 // minPaletteColors : en deçà, l'image est un dessin, pas une photographie.
@@ -66,8 +63,27 @@ func looksLikePhoto(header []byte) bool {
 	return true
 }
 
+// maxDominantShare : au-delà, l'image est faite d'aplats — une étiquette, un
+// logo, un dessin — et non une photographie.
+//
+// La mesure sépare les deux familles sans les frôler : sur les images de cette
+// installation, huit teintes couvrent 85 % d'une étiquette de fondue et 99 %
+// d'un pictogramme, contre 21 % d'une photographie de farine et 6 % d'une
+// photographie de poulet. Une photo, fût-elle sur fond clair, garde des
+// dégradés que rien ne réduit à huit couleurs.
+const maxDominantShare = 0.50
+
+// dominantSample : un pixel sur trois en largeur comme en hauteur. La
+// proportion d'aplats ne se joue pas au pixel près, et l'échantillon divise le
+// travail par neuf.
+const dominantSample = 3
+
+// photoVerdicts retient ce qui a déjà été jugé. Une image de produit ne change
+// pratiquement jamais, et la décoder à chaque affichage de l'accueil coûterait
+// quelques millisecondes par vignette pour un résultat invariable.
 var photoVerdicts sync.Map // map[uint]bool
 
+// PhotoVerdictCached rend le verdict déjà calculé pour ce fichier, s'il existe.
 func PhotoVerdictCached(fileID uint) (bool, bool) {
 	v, ok := photoVerdicts.Load(fileID)
 	if !ok {
@@ -77,10 +93,21 @@ func PhotoVerdictCached(fileID uint) (bool, bool) {
 	return b, true
 }
 
+// RememberPhotoVerdict garde le verdict d'un fichier.
 func RememberPhotoVerdict(fileID uint, isPhoto bool) {
 	photoVerdicts.Store(fileID, isPhoto)
 }
 
+// IsPhotograph juge une image sur son contenu : est-elle faite de dégradés,
+// comme une photographie, ou d'aplats, comme une étiquette ?
+//
+// Complète looksLikePhoto, qui ne lit que l'en-tête et n'attrape que les
+// palettes très pauvres. Une étiquette scannée peut compter cent couleurs tout
+// en restant, pour l'essentiel, du blanc et deux encres.
+//
+// Dans le doute — format inconnu, image illisible — on répond oui : écarter à
+// tort la photo d'un producteur est plus dommageable que laisser passer une
+// étiquette.
 func IsPhotograph(data []byte) bool {
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
@@ -124,78 +151,4 @@ func IsPhotograph(data []byte) bool {
 		dominant += n
 	}
 	return float64(dominant)/float64(total) < maxDominantShare
-}
-
-func dedupeFamilies(produits []ProductImageView) []ProductImageView {
-	if len(produits) < 2 {
-		return produits
-	}
-	vus := make(map[string]bool, len(produits))
-	out := make([]ProductImageView, 0, len(produits))
-	for _, p := range produits {
-		cle := productFamilyKey(p.Name)
-		if cle != "" {
-			if vus[cle] {
-				continue
-			}
-			vus[cle] = true
-		}
-		out = append(out, p)
-	}
-	return out
-}
-
-func (h *PagesHandler) isProductPhoto(fileID uint, header []byte) bool {
-	if !looksLikePhoto(header) {
-		return false
-	}
-	if verdict, connu := PhotoVerdictCached(fileID); connu {
-		return verdict
-	}
-
-	var f model.File
-	if err := h.db.Select("id, data").First(&f, fileID).Error; err != nil {
-		// Illisible : on garde, plutôt que d'écarter la photo d'un producteur
-		// sur un incident de lecture.
-		RememberPhotoVerdict(fileID, true)
-		return true
-	}
-	verdict := IsPhotograph(f.Data)
-	RememberPhotoVerdict(fileID, verdict)
-	return verdict
-}
-
-const maxDominantShare = 0.50
-
-// dominantSample : un pixel sur trois en largeur comme en hauteur. La
-// proportion d'aplats ne se joue pas au pixel près, et l'échantillon divise le
-// travail par neuf.
-const dominantSample = 3
-
-// productFamilyKey rapproche les déclinaisons d'un même produit : « RILLETTE
-// DE POULET AU THYM » et « RILLETTE DE POULET NATURE », « Tisane paysanne —
-// Éveil de printemps » et « … Évasion nocturne ».
-//
-// Les deux premiers mots qui portent du sens. C'est volontairement grossier, et
-// cela ne sert qu'à composer un aperçu de huit vignettes : deux parfums d'une
-// même tisane s'y ressemblent trop pour mériter deux places.
-//
-// Rien n'est masqué pour autant — le volet du producteur montre tous ses
-// produits, et les catalogues sont intacts. Seule la bande arbitre.
-//
-// Un nom de moins de trois mots reste entier : « Jus de Caseille » et « Jus de
-// pomme » se distinguent par leur troisième mot, et les confondre appauvrirait
-// l'aperçu au lieu de le varier.
-func productFamilyKey(name string) string {
-	champs := strings.Fields(productVariantKey(name))
-	utiles := make([]string, 0, 3)
-	for _, m := range champs {
-		if !motsVides[m] {
-			utiles = append(utiles, m)
-		}
-	}
-	if len(utiles) < 3 {
-		return strings.Join(utiles, " ")
-	}
-	return strings.Join(utiles[:2], " ")
 }

@@ -26,6 +26,7 @@
         <label for="to">Au</label>
         <input type="date" id="to" name="to" value="{{.To}}" />
       </div>
+      <input type="hidden" name="tri" value="{{.Tri}}" />
       <button type="submit" class="cyc-btn" style="align-self:flex-end;">Afficher</button>
     </form>
 
@@ -33,9 +34,27 @@
     <div class="cyc-deborde">
       <table class="cyc-table">
         <thead>
+          {{/* Les en-têtes classent. Un lien plutôt qu'une liste déroulante :
+               on clique la colonne qu'on veut lire, et la flèche dit dans
+               quel sens. */}}
+          {{$p := printf "?from=%s&to=%s" .From .To}}
           <tr>
-            <th>Membre</th>
-            <th class="serre num">Permanences tenues</th>
+            <th>
+              <a href="{{$p}}&amp;tri=nom" class="cyc-tri {{if eq .Tri "nom"}}actif{{end}}">
+                Membre {{if eq .Tri "nom"}}<i class="icon icon-chevron-down"></i>{{end}}
+              </a>
+            </th>
+            <th class="serre num">
+              {{/* Le clic bascule : la première fois du plus au moins actif,
+                   la seconde dans l'autre sens. */}}
+              <a href="{{$p}}&amp;tri={{if eq .Tri "plus"}}moins{{else}}plus{{end}}"
+                 class="cyc-tri {{if or (eq .Tri "plus") (eq .Tri "moins")}}actif{{end}}"
+                 title="{{if eq .Tri "plus"}}Classer du moins actif au plus actif{{else}}Classer du plus actif au moins actif{{end}}">
+                Permanences tenues
+                {{if eq .Tri "plus"}}<i class="icon icon-chevron-down"></i>
+                {{else if eq .Tri "moins"}}<i class="icon icon-chevron-up"></i>{{end}}
+              </a>
+            </th>
             <th class="serre num">Distributions</th>
             <th class="serre num">Part</th>
           </tr>

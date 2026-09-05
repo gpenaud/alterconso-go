@@ -84,8 +84,11 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/user/return", pageAuth, pagesH.ImpersonateReturn)
 	r.GET("/user/choose", pageAuth, pagesH.ChoosePage)
 	r.GET("/home", pageAuth, pagesH.HomePage)
+	// Fragment des periodes suivantes, pour le defilement continu de l accueil.
+	r.GET("/home/more", pageAuth, pagesH.HomeMoreFragment)
 	r.GET("/contract/view/:id", pageAuth, pagesH.ContractViewPage)
 	r.GET("/account", pageAuth, pagesH.AccountPage)
+	r.GET("/apropos", pageAuth, pagesH.AboutPage)
 	r.GET("/account/edit", pageAuth, pagesH.AccountEditPage)
 	r.POST("/account/update", pageAuth, pagesH.AccountUpdate)
 	r.GET("/account/quit", pageAuth, pagesH.AccountQuitPage)
@@ -125,6 +128,12 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/amapadmin/documents", pageAuth, reqParameters, pagesH.AmapAdminDocumentsPage)
 	r.POST("/amapadmin/documents", pageAuth, reqParameters, pagesH.AmapAdminDocumentsUpload)
 	r.GET("/amapadmin/documents/delete/:id", pageAuth, reqParameters, pagesH.AmapAdminDocumentsDelete)
+
+	// Espace d'administration : le point d'entree unique vers les ecrans de
+	// gestion, depuis que la barre de navigation a disparu. Pas de middleware
+	// de droit : le handler compose l ecran selon ce que l on detient, et
+	// renvoie a l accueil s il n a rien a montrer.
+	r.GET("/admin", pageAuth, pagesH.AdminHomePage)
 
 	// ---- Admin base de données (droit DatabaseAdmin) ----
 	r.GET("/admin/db", pageAuth, reqDBAdmin, pagesH.AdminDBIndex)
@@ -210,19 +219,27 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET("/distribution/deleteMd/:id", pageAuth, reqDistributions, pagesH.DistributionDeleteMdPage)
 	r.GET("/distribution/insertMd", pageAuth, reqDistributions, pagesH.DistributionInsertMdPage)
 	r.POST("/distribution/insertMd", pageAuth, reqDistributions, pagesH.DistributionInsertMdPage)
-	// Les cycles de distribution : la liste, la creation et la modification.
-	r.GET("/distribution/cycles", pageAuth, reqDistributions, pagesH.DistributionCyclesPage)
-	r.GET("/distribution/cycles/new", pageAuth, reqDistributions, pagesH.CycleNewPage)
-	r.POST("/distribution/cycles/new", pageAuth, reqDistributions, pagesH.CycleNewPage)
-	r.GET("/distribution/cycles/:id", pageAuth, reqDistributions, pagesH.CycleEditPage)
-	r.POST("/distribution/cycles/:id", pageAuth, reqDistributions, pagesH.CycleEditPage)
 	// L'ancienne adresse de programmation mene desormais a l'ecran dedie, qui
 	// liste, cree et modifie. Conservee en redirection : un signet ou un lien
 	// garde ailleurs ne doit pas tomber sur une page morte.
 	r.GET("/distribution/insertMdCycle", pageAuth, reqDistributions, func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/distribution/cycles/new")
 	})
-	r.GET("/apropos", pageAuth, pagesH.AboutPage)
+	// Les cycles et leur courrier d'ouverture. Sous la meme delegation que le
+	// calendrier : ce courrier annonce l'ouverture des commandes, il appartient
+	// a qui tient les distributions et non a qui ecrit aux membres.
+	// Sas vers la boutique, porte par les courriers : il garantit la connexion
+	// la ou /shop/:id, servie par la SPA, repond 200 sans session et n echoue
+	// qu ensuite sur ses appels d API.
+	r.GET("/distribution/order/:id", pageAuth, pagesH.DistributionOrderRedirect)
+	r.GET("/distribution/cycles", pageAuth, reqDistributions, pagesH.DistributionCyclesPage)
+	r.GET("/distribution/cycles/new", pageAuth, reqDistributions, pagesH.CycleNewPage)
+	r.POST("/distribution/cycles/new", pageAuth, reqDistributions, pagesH.CycleNewPage)
+	r.GET("/distribution/cycles/:id", pageAuth, reqDistributions, pagesH.CycleEditPage)
+	r.POST("/distribution/cycles/:id", pageAuth, reqDistributions, pagesH.CycleEditPage)
+	// En POST : la suppression detruit des journees de calendrier, et le
+	// prechargement d un lien suffirait a la declencher.
+	r.POST("/distribution/cycles/:id/delete", pageAuth, reqDistributions, pagesH.CycleDeleteAction)
 	r.GET("/distribution/validate/:id", pageAuth, reqDistributions, pagesH.DistributionValidatePage)
 	r.GET("/distribution/inviteFarmers/:id", pageAuth, reqDistributions, pagesH.DistributionInviteFarmersPage)
 	// La page listait les producteurs sans permettre d'en ajouter ni d'en

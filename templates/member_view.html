@@ -12,7 +12,7 @@
         <h3>{{.Member.FirstName}} {{.Member.LastName}}</h3>
         <p class="cyc-chapeau">
           <a href="mailto:{{.Member.Email}}">{{.Member.Email}}</a>
-          {{if .Member.Phone}} · {{deref .Member.Phone}}{{end}}
+          {{if .Member.Phone}} · {{telephone .Member.Phone}}{{end}}
         </p>
       </div>
       <div class="cyc-actions-nommees serrees">
@@ -46,7 +46,7 @@
       </div>
       <div>
         <dt>Téléphone</dt>
-        <dd {{if not .Member.Phone}}class="muet"{{end}}>{{if .Member.Phone}}{{deref .Member.Phone}}{{else}}Non renseigné{{end}}</dd>
+        <dd {{if not .Member.Phone}}class="muet"{{end}}>{{if .Member.Phone}}{{telephone .Member.Phone}}{{else}}Non renseigné{{end}}</dd>
       </div>
       <div>
         <dt>Dernière connexion</dt>

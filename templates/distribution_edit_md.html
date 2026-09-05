@@ -77,6 +77,40 @@
 
       <div class="cyc-section">
         <h4>Producteurs</h4>
+
+        {{/* Ce que la fenêtre du dessus ne commande pas. Un producteur qui
+             porte ses propres dates ignore celles de la distribution : sans ce
+             rappel, on repoussait l'ouverture, on enregistrait, et l'accueil
+             restait fermé sans qu'on sache pourquoi. */}}
+        {{if .Divergents}}
+        <div class="cyc-danger">
+          <i class="icon icon-alert"></i>
+          <div>
+            {{if gt (len .Divergents) 1}}
+            <b>{{len .Divergents}} producteurs ont leurs propres dates de commande</b>,
+            qui priment sur la fenêtre ci-dessus. Cochez le recalage pour les remplacer.
+            {{else}}
+            <b>Un producteur a ses propres dates de commande</b>, qui priment sur
+            la fenêtre ci-dessus. Cochez le recalage pour les remplacer.
+            {{end}}
+            <ul class="cyc-ecarts">
+              {{range .Divergents}}
+              <li>
+                <span class="nom">{{.Catalogue}}</span>
+                <span class="fenetre">{{.Fenetre}}</span>
+                {{if .Close}}<span class="cyc-badge attention">fermée</span>{{end}}
+              </li>
+              {{end}}
+            </ul>
+          </div>
+        </div>
+        {{else}}
+        <p class="cyc-aide">
+          Tous les producteurs suivent la fenêtre de commande de la
+          distribution.
+        </p>
+        {{end}}
+
         <label class="cyc-bascule">
           <input type="checkbox" name="syncAll" value="1" />
           <span>

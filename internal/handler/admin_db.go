@@ -202,7 +202,7 @@ func (h *PagesHandler) AdminDBIndex(c *gin.Context) {
 		PageTitle: "Base de données",
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "admin_db_layout.html", "admin_db_index.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "amapadmin_layout.html", "admin_db_layout.html", "admin_db_index.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -290,10 +290,7 @@ func (h *PagesHandler) AdminDBList(c *gin.Context) {
 		pageCount = 1
 	}
 	pd.Title = m.Label
-	pd.Breadcrumb = []BreadcrumbItem{
-		{Name: "Base de données", Link: "/admin/db"},
-		{Name: m.Label, Link: "/admin/db/" + m.Slug},
-	}
+	poseCadreDB(&pd, m.Label)
 
 	data := adminDBListData{
 		adminDBLayoutData: adminDBLayoutData{PageData: pd, Tables: adminDBRegistry, ActiveSlug: m.Slug, PageTitle: m.Label},
@@ -310,7 +307,7 @@ func (h *PagesHandler) AdminDBList(c *gin.Context) {
 		NextPage:          page + 1,
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "admin_db_layout.html", "admin_db_list.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "amapadmin_layout.html", "admin_db_layout.html", "admin_db_list.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -397,11 +394,7 @@ func (h *PagesHandler) renderAdminDBEdit(c *gin.Context, pd PageData, m *adminDB
 		title = "Nouveau — " + m.Label
 	}
 	pd.Title = title
-	pd.Breadcrumb = []BreadcrumbItem{
-		{Name: "Base de données", Link: "/admin/db"},
-		{Name: m.Label, Link: "/admin/db/" + m.Slug},
-		{Name: title, Link: "#"},
-	}
+	poseCadreDB(&pd, m.Label+" — "+title)
 
 	data := adminDBEditData{
 		adminDBLayoutData: adminDBLayoutData{PageData: pd, Tables: adminDBRegistry, ActiveSlug: m.Slug, PageTitle: title},
@@ -412,7 +405,7 @@ func (h *PagesHandler) renderAdminDBEdit(c *gin.Context, pd PageData, m *adminDB
 		ErrorMsg:          errMsg,
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "admin_db_layout.html", "admin_db_edit.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "amapadmin_layout.html", "admin_db_layout.html", "admin_db_edit.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return

@@ -1,5 +1,8 @@
 {{define "content"}}
 <div class="col-md-12 cyc">
+  {{template "banniere" (bandeau
+    "Une AMAP, c'est d'abord des gens"
+    "Des producteurs, des bénévoles et des adhérents qui s'organisent pour la même chose : bien manger, tout près de chez soi.")}}
   <div class="cyc-entete">
     <div>
       <h3>À propos</h3>
@@ -9,6 +12,15 @@
       </p>
     </div>
   </div>
+
+  {{if .GroupWord}}
+  <div class="cyc-carte" style="margin-bottom:18px;">
+    <h4 style="font-family:'Cabin',sans-serif;font-weight:700;color:#583816;margin:0 0 10px;">
+      Le mot de {{.Group.Name}}
+    </h4>
+    <div style="color:#3f3d37;line-height:1.65;max-width:72ch;">{{nl2br .GroupWord}}</div>
+  </div>
+  {{end}}
 
   <div class="ac-tuiles">
     <div class="ac-tuile">

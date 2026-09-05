@@ -64,16 +64,30 @@ func TestLineBreaksSurvive(t *testing.T) {
 	}
 }
 
-// Le bouton mène à l'espace de commande du destinataire, et son libellé est
+// Le bouton mène à la boutique de LA distribution annoncée, et son libellé est
 // celui qu'on a choisi. L'adresse, elle, ne se configure pas.
-func TestButtonPointsToTheOrderingSpace(t *testing.T) {
+//
+// Il passe par le sas et non par /shop/:id : cette dernière est servie par la
+// SPA, qui répond 200 sans session et n'échoue qu'ensuite sur ses appels d'API.
+// Un courrier se lit souvent après l'expiration du cookie.
+func TestButtonPointsToTheDistributionShop(t *testing.T) {
+	md := distribFixture()
+	md.ID = 951
 	msg := CycleMessage{Subject: "o", Body: "texte", ButtonLabel: "Je commande"}
-	out, _ := renderCycleEmail(distribFixture(), model.User{FirstName: "A"}, msg, "alterconso.test")
-	if !strings.Contains(out, `href="https://alterconso.test/home"`) {
-		t.Error("le bouton devrait mener à l'espace de commande")
+	out, _ := renderCycleEmail(md, model.User{FirstName: "A"}, msg, "alterconso.test")
+
+	if !strings.Contains(out, `href="https://alterconso.test/distribution/order/951"`) {
+		t.Error("le bouton devrait mener à la boutique de cette distribution, via le sas")
+	}
+	if strings.Contains(out, `href="https://alterconso.test/shop/951"`) {
+		t.Error("le lien direct laisserait une session expirée devant une page vide")
 	}
 	if !strings.Contains(out, "Je commande") {
 		t.Error("le libellé choisi devrait figurer sur le bouton")
+	}
+	// Le réglage des notifications reste sur le compte, pas sur la boutique.
+	if !strings.Contains(out, `href="https://alterconso.test/account"`) {
+		t.Error("le lien vers l'espace personnel a disparu")
 	}
 }
 

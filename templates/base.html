@@ -26,7 +26,7 @@
   <script type="text/javascript" src="/js/app-shim.js"></script>
 </head>
 
-<body class="{{if .Container}}{{.Container}}{{else}}container{{end}}{{if .User}}{{if isAdminSection .Category}} ac-avec-lateral{{end}}{{end}}">
+<body class="{{if .Container}}{{.Container}}{{else}}container{{end}}{{bodyExtraClass .}}">
 
   <!-- Modal window -->
   <div class="modal" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
@@ -51,10 +51,10 @@
   <script type="text/javascript">
     document.addEventListener("DOMContentLoaded", function(event) {
       _.lang = "fr";
-      {{if .User}}
-      _.userId = {{.User.ID}};
-      _.userName = "{{.User.FirstName}} {{.User.LastName}}";
-      _.userEmail = "{{.User.Email}}";
+      {{with currentUser .}}
+      _.userId = {{.ID}};
+      _.userName = "{{.FirstName}} {{.LastName}}";
+      _.userEmail = "{{.Email}}";
       {{end}}
       _.antiDoubleClick();
       if (typeof NeolithicViewsGenerator !== "undefined") {

@@ -61,7 +61,6 @@ func TestFlavourVariantsShareAFamily(t *testing.T) {
 	memes := [][2]string{
 		{"RILLETTE DE POULET BIO AU THYM EN BOCAUX", "RILLETTE DE POULET BIO NATURE EN BOCAUX"},
 		{"Tisane paysanne - Éveil de printemps", "Tisane paysanne - Évasion nocturne"},
-		{"Confiture de fraise", "Confiture de framboise"},
 	}
 	for _, m := range memes {
 		if a, b := productFamilyKey(m[0]), productFamilyKey(m[1]); a != b {
@@ -77,6 +76,10 @@ func TestShortNamesStayDistinct(t *testing.T) {
 		{"Jus de Caseille", "Jus de pomme"},
 		{"Bûche cendrée de chèvre", "Tomme de chèvre"},
 		{"Farine de Sarrasin", "Farine de Blé"},
+		// Deux mots utiles seulement : la règle s'abstient plutôt que de
+		// confondre une confiture de fraise et une de framboise, qui n'ont ni
+		// le même goût ni la même couleur.
+		{"Confiture de fraise", "Confiture de framboise"},
 	}
 	for _, d := range distincts {
 		if a, b := productFamilyKey(d[0]), productFamilyKey(d[1]); a == b {

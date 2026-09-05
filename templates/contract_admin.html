@@ -15,9 +15,9 @@
     </div>
 
     {{if .AdminCatalogs}}
-    {{/* Un tableau, et les six écrans du catalogue en icônes au bout de la
-         ligne : on y va d'un clic au lieu d'ouvrir un panneau pour trouver le
-         bouton. Chaque icône porte son nom en infobulle. */}}
+    {{/* Un tableau : la moitié gauche de la ligne ouvre le récapitulatif, et
+         les autres écrans du catalogue tiennent en icônes au bout de la ligne,
+         chacune sous son infobulle. */}}
     <div class="cyc-deborde">
       <table class="cyc-table">
         <thead>
@@ -30,20 +30,30 @@
         </thead>
         <tbody>
           {{range .AdminCatalogs}}
-          <tr {{if not .Active}}class="eteint"{{end}}>
+          <tr {{if not .Active}}class="eteinte"{{end}}>
+            {{/* La moitié gauche de la ligne — le nom, le producteur, la
+                 période — est elle-même le lien vers le récapitulatif : c'est
+                 là qu'on vise naturellement, et cela rend une icône de plus
+                 inutile au bout de la ligne. */}}
             <td>
-              <div class="cyc-identite">
-                <span class="cyc-initiales">{{initialesDe .VendorName}}</span>
-                <span>
-                  <a href="/contractAdmin/view/{{.ID}}" class="nom">{{.Name}}</a>
-                  <span class="second">{{.VendorName}}</span>
+              <a href="/contractAdmin/view/{{.ID}}" class="cyc-cellule-lien"
+                 title="Récapitulatif de {{.Name}}">
+                <span class="cyc-identite">
+                  <span class="cyc-initiales">{{initialesDe .VendorName}}</span>
+                  <span>
+                    <span class="nom">{{.Name}}</span>
+                    <span class="second">{{.VendorName}}</span>
+                  </span>
                 </span>
-              </div>
+              </a>
             </td>
             <td class="serre cyc-lieu">
-              {{if or .StartDate .EndDate}}
-              {{if .StartDate}}du {{.StartDate}}{{end}}{{if .EndDate}} au {{.EndDate}}{{end}}
-              {{else}}<span class="cyc-note">Non fixée</span>{{end}}
+              <a href="/contractAdmin/view/{{.ID}}" class="cyc-cellule-lien"
+                 title="Récapitulatif de {{.Name}}">
+                {{if or .StartDate .EndDate}}
+                {{if .StartDate}}du {{.StartDate}}{{end}}{{if .EndDate}}{{if .StartDate}} {{end}}au {{.EndDate}}{{end}}
+                {{else}}<span class="cyc-note">Non fixée</span>{{end}}
+              </a>
             </td>
             <td class="serre">
               {{if .Active}}
@@ -54,10 +64,6 @@
             </td>
             <td class="actions">
               <div class="cyc-actions">
-                <a href="/contractAdmin/view/{{.ID}}" class="cyc-icone-btn"
-                   title="Récapitulatif" aria-label="Récapitulatif">
-                  <i class="icon icon-home"></i>
-                </a>
                 <a href="/contractAdmin/products/{{.ID}}" class="cyc-icone-btn"
                    title="Produits" aria-label="Produits">
                   <i class="icon icon-products"></i>

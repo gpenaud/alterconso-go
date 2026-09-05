@@ -16,7 +16,7 @@
         </h3>
         <p class="cyc-chapeau">
           <a href="mailto:{{.Vendor.Email}}">{{.Vendor.Email}}</a>
-          {{if .Vendor.Phone}} · {{deref .Vendor.Phone}}{{end}}
+          {{if .Vendor.Phone}} · {{telephone .Vendor.Phone}}{{end}}
         </p>
       </div>
       <div class="cyc-actions-nommees serrees">
@@ -33,7 +33,7 @@
       </div>
       <div>
         <dt>Téléphone</dt>
-        <dd {{if not .Vendor.Phone}}class="muet"{{end}}>{{if .Vendor.Phone}}{{deref .Vendor.Phone}}{{else}}Non renseigné{{end}}</dd>
+        <dd {{if not .Vendor.Phone}}class="muet"{{end}}>{{if .Vendor.Phone}}{{telephone .Vendor.Phone}}{{else}}Non renseigné{{end}}</dd>
       </div>
       <div>
         <dt>Courriel</dt>

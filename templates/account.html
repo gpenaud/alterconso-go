@@ -44,7 +44,7 @@
       <div>
         <dt>Téléphone</dt>
         <dd {{if not .User.Phone}}class="muet"{{end}}>
-          {{if .User.Phone}}{{deref .User.Phone}}{{else}}Non renseigné{{end}}
+          {{if .User.Phone}}{{telephone .User.Phone}}{{else}}Non renseigné{{end}}
         </dd>
       </div>
       <div>
@@ -119,6 +119,7 @@
         <thead>
           <tr>
             <th>Produit</th>
+            <th>Catalogue</th>
             <th>Quantité</th>
             <th style="text-align:right;">Total</th>
             <th>Règlement</th>
@@ -128,6 +129,7 @@
           {{range .RecentOrders}}
           <tr>
             <td><b>{{.ProductName}}</b></td>
+            <td class="cyc-note">{{.CatalogName}}</td>
             <td>{{.SmartQty}}</td>
             <td style="text-align:right;">{{price .Total}} €</td>
             <td>

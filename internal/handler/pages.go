@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"math"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -21,11 +22,34 @@ import (
 
 // ---- Template helpers ----
 
+// rubriqueAdministration : les écrans qui vivent dans l'espace
+// d'administration. Une seule liste, lue par le menu latéral comme par le fil
+// d'Ariane — deux listes tenues à la main auraient divergé au premier ajout.
+func rubriqueAdministration(categorie string) bool {
+	switch categorie {
+	case "admin", "member", "distribution", "contract", "amapadmin":
+		return true
+	}
+	return false
+}
+
 var funcMap = template.FuncMap{
 	// Les numéros sont saisis à la main : d'un trait, espacés, parfois d'un
-	// double espace. La colonne mêlait tous ces formats ; on les redit ici
-	// deux chiffres par deux, comme on les prononce.
-	"telephone": formatTelephone,
+	// double espace. Les écrans mêlaient tous ces formats ; on les redit ici
+	// deux chiffres par deux, comme on les prononce. Chaîne ou pointeur
+	// indifféremment : les champs de modèle sont nullables, ceux des vues non.
+	"telephone": func(v any) string {
+		switch t := v.(type) {
+		case string:
+			return formatTelephone(t)
+		case *string:
+			if t == nil {
+				return ""
+			}
+			return formatTelephone(*t)
+		}
+		return ""
+	},
 	"deref": func(s *string) string {
 		if s == nil {
 			return ""
@@ -64,6 +88,16 @@ var funcMap = template.FuncMap{
 		return fmt.Sprintf("%d", *i)
 	},
 	"hasFlag": func(flags uint, f uint) bool { return flags&f != 0 },
+	// deref64 : un pointeur de flottant rendu tel qu'on le saisirait — sans
+	// zéros inutiles. Employé pour un pourcentage, où « 5 » vaut mieux que
+	// « 5.000000 ».
+	"deref64": func(f *float64) string {
+		if f == nil {
+			return ""
+		}
+		return strconv.FormatFloat(*f, 'f', -1, 64)
+	},
+
 	"derefUint": func(i *uint) string {
 		if i == nil {
 			return ""
@@ -101,6 +135,27 @@ var funcMap = template.FuncMap{
 	//
 	// Découpe en runes et non en octets : « %.1s » sur « Élise » couperait le
 	// É en deux et afficherait un caractère de remplacement.
+	// initialesDe : les initiales d'un nom complet, quand l'écran ne dispose
+	// pas du prénom et du nom séparément — une demande d'adhésion n'en garde
+	// qu'une seule chaîne.
+	"initialesDe": func(complet string) string {
+		champs := strings.Fields(complet)
+		out := ""
+		for _, mot := range champs {
+			for _, r := range mot {
+				out += strings.ToUpper(string(r))
+				break
+			}
+			if len(out) == 2 {
+				break
+			}
+		}
+		if out == "" {
+			return "?"
+		}
+		return out
+	},
+
 	"initials": func(first, last string) string {
 		pick := func(s string) string {
 			for _, r := range strings.TrimSpace(s) {
@@ -114,12 +169,89 @@ var funcMap = template.FuncMap{
 		}
 		return out
 	},
-	// adminTiles : les domaines d'administration ouverts à ce visiteur.
+	// dansAdministration : cet écran fait-il partie de l'espace
+	// d'administration ? Le fil d'Ariane s'en sert pour poser son premier
+	// cran. Même réflexion que bodyExtraClass, et pour la même raison : les
+	// gabarits communs servent aussi des structures sans rubrique.
+	"dansAdministration": func(v any) bool {
+		val := reflect.ValueOf(v)
+		for val.Kind() == reflect.Pointer {
+			if val.IsNil() {
+				return false
+			}
+			val = val.Elem()
+		}
+		if val.Kind() != reflect.Struct {
+			return false
+		}
+		user := val.FieldByName("User")
+		cat := val.FieldByName("Category")
+		if !user.IsValid() || !cat.IsValid() || cat.Kind() != reflect.String {
+			return false
+		}
+		if user.Kind() == reflect.Pointer && user.IsNil() {
+			return false
+		}
+		return rubriqueAdministration(cat.String())
+	},
+
+	// bodyExtraClass : la classe supplémentaire du corps de page.
 	//
-	// Exposée au gabarit pour que le menu latéral se compose depuis la même
-	// source que l'écran d'accueil de l'administration. Deux listes tenues à la
-	// main auraient divergé au premier ajout.
-	"adminTiles": adminTilesFor,
+	// Passe par la réflexion parce que les gabarits communs servent des
+	// structures qui n'ont pas toutes les mêmes champs : la fiche publique
+	// d'un groupe n'a ni compte ni rubrique, et « {{if .User}} » y faisait
+	// échouer le rendu — la page s'arrêtait au milieu, pour des visiteurs qui
+	// n'étaient même pas connectés.
+	"bodyExtraClass": func(v any) string {
+		val := reflect.ValueOf(v)
+		for val.Kind() == reflect.Pointer {
+			if val.IsNil() {
+				return ""
+			}
+			val = val.Elem()
+		}
+		if val.Kind() != reflect.Struct {
+			return ""
+		}
+		// Les champs promus d'un PageData embarqué se lisent par leur nom.
+		user := val.FieldByName("User")
+		cat := val.FieldByName("Category")
+		if !user.IsValid() || !cat.IsValid() || cat.Kind() != reflect.String {
+			return ""
+		}
+		if user.Kind() == reflect.Pointer && user.IsNil() {
+			return ""
+		}
+		if rubriqueAdministration(cat.String()) {
+			return " ac-avec-lateral"
+		}
+		return ""
+	},
+	// currentUser : le compte connecté, ou nil quand la page n'en porte pas.
+	//
+	// Même raison que bodyExtraClass : la fiche publique d'un groupe se rend
+	// avec une structure sans champ User, et « {{if .User}} » y interrompait le
+	// rendu — la page s'arrêtait au milieu de son script, pour des visiteurs
+	// qui n'étaient même pas connectés. Ce défaut est antérieur au menu de
+	// compte ; il se voyait seulement plus tard dans la page.
+	"currentUser": func(v any) *model.User {
+		val := reflect.ValueOf(v)
+		for val.Kind() == reflect.Pointer {
+			if val.IsNil() {
+				return nil
+			}
+			val = val.Elem()
+		}
+		if val.Kind() != reflect.Struct {
+			return nil
+		}
+		f := val.FieldByName("User")
+		if !f.IsValid() || f.Kind() != reflect.Pointer || f.IsNil() {
+			return nil
+		}
+		u, _ := f.Interface().(*model.User)
+		return u
+	},
 	// isAdminSection : cette page appartient-elle à l'administration ? C'est ce
 	// qui décide d'afficher le menu latéral, et de décaler le contenu.
 	"isAdminSection": func(category string) bool {
@@ -128,6 +260,31 @@ var funcMap = template.FuncMap{
 			return true
 		}
 		return false
+	},
+	// ouvrirProducteurs : la vue d'une distribution, en demandant que son volet
+	// de producteurs paraisse déjà ouvert.
+	//
+	// Le bandeau porte les mêmes formes partout, mais pas les mêmes mots :
+	// l'accueil annonce la récolte qui vient, « À propos » parle du groupe.
+	// Un gabarit unique et deux jeux de mots, plutôt que deux copies du même
+	// balisage qui auraient divergé à la première retouche.
+	"bandeau": func(titre, texte string) BandeauView {
+		return BandeauView{Titre: titre, Texte: texte}
+	},
+
+	// La carte mise en avant l'ouvre — c'est là qu'on veut voir ce qui sera
+	// proposé, et un volet fermé cacherait justement ce qu'on est venu
+	// regarder. Les distributions suivantes, déjà repliées, le gardent fermé :
+	// deux niveaux de dépliage ouverts d'emblée noieraient la page.
+	"ouvrirProducteurs": func(v MultiDistribView, ouvrir bool) MultiDistribView {
+		v.OuvrirProducteurs = ouvrir
+		return v
+	},
+	// teteAilleurs : la barre des producteurs est posée hors du corps — dans
+	// l'en-tête de la carte — et le corps ne doit donc pas la répéter.
+	"teteAilleurs": func(v MultiDistribView) MultiDistribView {
+		v.TeteAilleurs = true
+		return v
 	},
 	"paginateInts": paginateInts,
 	"seq": func(start, end int) []int {
@@ -204,17 +361,13 @@ type PageData struct {
 	// le responsable technique, personne d'autre.
 	CanManageRights   bool
 	AllowedCatalogIDs []uint // nil = tous (GroupManager ou CatalogAdmin global)
-	// EstProducteurAutonome : ne tient que ses propres catalogues, nommément
-	// désignés, et n'a aucune fonction transverse dans le groupe. C'est le
-	// producteur qui vient mettre ses produits à jour, et rien d'autre.
-	EstProducteurAutonome bool
-	Category              string
-	Breadcrumb            []BreadcrumbItem
-	Flash                 string
-	FlashError            bool
-	Redirect              string
-	Container             string
-	HideNav               bool
+	Category          string
+	Breadcrumb        []BreadcrumbItem
+	Flash             string
+	FlashError        bool
+	Redirect          string
+	Container         string
+	HideNav           bool
 	// impersonation (« se connecter en tant que »)
 	IsImpersonating  bool
 	ImpersonatorName string
@@ -261,9 +414,9 @@ type PageData struct {
 	Admins       []model.User
 	AmapAdminTab string
 	// AmapAdminTitre et AmapAdminChapeau : le titre de l'onglet ouvert et sa
-	// phrase d'explication. Portés par la coquille commune plutôt que répétés
-	// dans chaque gabarit — la mise en page de l'en-tête ne s'écrit ainsi
-	// qu'une fois.
+	// phrase d'explication. Ici et non sur AmapAdminPageData : deux écrans des
+	// paramètres composent leur contexte à partir d'un simple PageData, et la
+	// coquille commune les lit sur tous.
 	AmapAdminTitre   string
 	AmapAdminChapeau string
 	NbMembers        int
@@ -284,6 +437,14 @@ type PageData struct {
 	TotalMembers int
 	TotalPages   int
 	CurrentPage  int
+	// AdminTiles : les domaines d'administration ouverts à ce visiteur.
+	//
+	// Portées par PageData et non passées au gabarit par une fonction : les
+	// écrans rendent des structures qui embarquent PageData — JoinRequestsData,
+	// CyclesData… — et un helper appelé avec « . » y recevait la structure
+	// dérivée, pas PageData. Le rendu échouait alors en silence, tronquant la
+	// page au milieu du menu. Un champ, lui, est promu partout.
+	AdminTiles []AdminTile
 	// JoinRequestCount : demandes d'adhésion en attente. Le compteur est ce qui
 	// fait revenir sur l'écran — un lien seul se laisse oublier, et une demande
 	// oubliée est un adhérent qui ne vient jamais.
@@ -291,8 +452,8 @@ type PageData struct {
 	SearchQuery      string
 	MemberFilter     string
 	// AnneeCourante : l'année civile, pour intituler « Adhésion 2026 ». Elle
-	// vient du serveur plutôt que d'une fonction de gabarit : l'horloge n'a
-	// rien à faire dans un modèle.
+	// vient du serveur plutôt que d'une fonction de gabarit : un seul écran
+	// s'en sert, et l'horloge n'a rien à faire dans un modèle.
 	AnneeCourante int
 }
 
@@ -314,6 +475,48 @@ func estProducteurAutonome(pd PageData) bool {
 	return len(pd.AllowedCatalogIDs) > 0
 }
 
+// lienMesProduits mène le producteur là où il va travailler.
+//
+// Un seul catalogue : droit à ses produits. Une liste d'un seul élément lui
+// demanderait un clic pour choisir ce qu'il n'a pas à choisir. Plusieurs :
+// la liste, puisqu'il faut bien qu'il désigne lequel.
+func lienMesProduits(ids []uint) string {
+	if len(ids) == 1 {
+		return fmt.Sprintf("/contractAdmin/products/%d", ids[0])
+	}
+	return "/contractAdmin"
+}
+
+// accesAdministration : à qui l'espace d'administration s'ouvre.
+//
+// Le producteur en est écarté bien qu'il détienne le droit « catalogues » :
+// il n'y trouverait qu'un écran, celui de ses propres catalogues, que son
+// raccourci lui donne déjà en un clic. Un espace d'administration d'une seule
+// entrée n'administre rien.
+func accesAdministration(pd PageData) bool {
+	if estProducteurAutonome(pd) {
+		return false
+	}
+	return pd.IsGroupManager || pd.HasMembership || pd.HasCatalogAdmin ||
+		pd.HasDistributions || pd.HasParameters || pd.HasDatabaseAdmin
+}
+
+// EstProducteurAutonome, LienMesProduits et AccesAdministration : des méthodes
+// et non des champs.
+//
+// Un champ se remplit quelque part, et ce quelque part finit par être oublié —
+// un écran qui compose son PageData autrement aurait affiché un en-tête faux
+// sans que rien ne le signale. La méthode, elle, répond toujours à partir des
+// droits eux-mêmes.
+//
+// Récepteur valeur : les gabarits lisent ces vues comme des valeurs, dont ils
+// ne peuvent pas prendre l'adresse.
+func (pd PageData) EstProducteurAutonome() bool { return estProducteurAutonome(pd) }
+
+func (pd PageData) LienMesProduits() string { return lienMesProduits(pd.AllowedCatalogIDs) }
+
+func (pd PageData) AccesAdministration() bool { return accesAdministration(pd) }
+
 func (pd *PageData) CanManageCatalog(catalogID uint) bool {
 	if pd.IsGroupManager {
 		return true
@@ -330,6 +533,13 @@ func (pd *PageData) CanManageCatalog(catalogID uint) bool {
 		}
 	}
 	return false
+}
+
+// BandeauView : les mots du bandeau d'accueil. Le gabarit en fournit la forme,
+// chaque page ses phrases.
+type BandeauView struct {
+	Titre string
+	Texte string
 }
 
 type MultiDistribView struct {
@@ -366,11 +576,30 @@ type MultiDistribView struct {
 	// manque un » ne dit pas s'il en manque un sur deux ou un sur dix.
 	VolunteerTotal  int `json:"volunteerTotal"`
 	VolunteerFilled int `json:"volunteerFilled"`
+	// VolunteerFrom et VolunteerTo bornent la semaine de cette distribution :
+	// la pastille ouvre ainsi le calendrier des permanences là où elle pointe,
+	// et non sur la semaine courante, qui peut être à des mois de distance.
+	VolunteerFrom string `json:"-"`
+	VolunteerTo   string `json:"-"`
 	// UserIsVolunteer : le lecteur s'est inscrit pour tenir une permanence ce
 	// jour-là. On le remercie au lieu de lui réclamer ce qu'il a déjà donné.
-	UserIsVolunteer   bool     `json:"userIsVolunteer"`
-	UserVolunteerRole string   `json:"userVolunteerRole,omitempty"`
-	VolunteerRoles    []string `json:"volunteerRoles,omitempty"`
+	UserIsVolunteer   bool   `json:"userIsVolunteer"`
+	UserVolunteerRole string `json:"userVolunteerRole,omitempty"`
+	// UserFirstName : le prénom du lecteur, pour le remercier par son nom quand
+	// il tient une permanence. La vue le porte parce que le gabarit du corps ne
+	// voit qu'elle, jamais le compte.
+	UserFirstName string `json:"-"`
+	// UserFullName : prénom et nom du lecteur, tels que la mention « Bénévole »
+	// les affiche dans l'en-tête.
+	UserFullName string `json:"-"`
+	// OuvrirProducteurs : le volet des producteurs paraît-il déjà ouvert ?
+	// Posé par le gabarit selon l'endroit où la distribution s'affiche, jamais
+	// par les données.
+	OuvrirProducteurs bool `json:"-"`
+	// TeteAilleurs : la barre des producteurs est déjà affichée hors du corps —
+	// dans l'en-tête de la carte — et le corps ne doit pas la répéter.
+	TeteAilleurs   bool     `json:"-"`
+	VolunteerRoles []string `json:"volunteerRoles,omitempty"`
 }
 
 type UserOrderView struct {
@@ -427,6 +656,7 @@ type SubscriptionView struct {
 
 type RecentOrderView struct {
 	ProductName string
+	CatalogName string
 	SmartQty    string
 	Total       float64
 	Paid        bool
@@ -566,6 +796,10 @@ func (h *PagesHandler) buildPageData(c *gin.Context) PageData {
 				pd.HasDistributions || pd.HasParameters || pd.HasMembership
 			pd.HasDatabaseAdmin = ug.CanAdminDatabase()
 			pd.CanManageRights = ug.CanManageRights()
+			// Composées ici pour que le menu latéral et l'écran d'accueil de
+			// l'administration lisent la même source : deux listes tenues à la
+			// main auraient divergé au premier ajout.
+			pd.AdminTiles = adminTilesFor(pd)
 			if pd.HasCatalogAdmin && !pd.IsGroupManager {
 				for _, r := range ug.GetRights() {
 					if r.Right == model.RightCatalogAdmin {
@@ -582,9 +816,6 @@ func (h *PagesHandler) buildPageData(c *gin.Context) PageData {
 					}
 				}
 			}
-			// Calculé une fois les catalogues autorisés connus : la portée du
-			// droit est justement ce qui distingue le producteur.
-			pd.EstProducteurAutonome = estProducteurAutonome(pd)
 		}
 	}
 	return pd
@@ -603,6 +834,9 @@ func (h *PagesHandler) LoginPage(c *gin.Context) {
 		return
 	}
 	pd := PageData{Title: "Connexion", Redirect: redirect}
+
+	pd.LogoURL = h.logoDuPortail()
+
 	if err := t.ExecuteTemplate(c.Writer, "base", pd); err != nil {
 		c.String(http.StatusInternalServerError, "render error: %v", err)
 	}
@@ -829,11 +1063,12 @@ const homePeriodDays = 21
 // groupe courant. L'appelant décide alors où renvoyer le visiteur.
 func (h *PagesHandler) homePeriodData(c *gin.Context, offsetWeeks int) *PageData {
 	pd := h.buildPageData(c)
-	// L'accueil prend toute la largeur : c'est l'écran où l'on choisit sa
-	// distribution et où l'on commande, et les cartes y gagnent à s'étaler.
-	// La feuille borne cette largeur pour que les lignes restent lisibles sur
-	// un grand écran.
-	pd.Container = "container-fluid ac-large"
+	// L'accueil respire, sans s'étaler : ses cartes se lisent l'une après
+	// l'autre, et une colonne trop large les étire jusqu'à ce que l'œil doive
+	// traverser l'écran pour relier un titre à son bouton. Plus large que la
+	// grille d'origine, plus étroit que les écrans de gestion, dont les
+	// tableaux profitent au contraire de la place.
+	pd.Container = "container-fluid ac-accueil"
 	if pd.User == nil || pd.Group == nil {
 		return nil
 	}
@@ -932,6 +1167,17 @@ func (h *PagesHandler) homePeriodData(c *gin.Context, offsetWeeks int) *PageData
 			FileName *string
 			Header   []byte
 		}
+		view.Highlight = highlightDesDistribs(md.Distributions)
+		// Le producteur derrière la mise en avant : c'est lui qu'on épingle en
+		// tête du volet, une fois les vignettes rapportées.
+		var vendeurMisEnAvant uint
+		for _, d := range md.Distributions {
+			if d.Catalog.Highlight() != "" {
+				vendeurMisEnAvant = d.Catalog.VendorID
+				break
+			}
+		}
+
 		parVendeur := make(map[uint]int, len(md.Distributions))
 		candidats := make([][]ProductImageView, 0, len(md.Distributions))
 
@@ -1010,6 +1256,11 @@ func (h *PagesHandler) homePeriodData(c *gin.Context, offsetWeeks int) *PageData
 			}
 		}
 
+		// L'épinglage vient après l'attribution des vignettes : les index de
+		// « candidats » suivent l'ordre de construction, et les brouiller
+		// avant donnerait à chaque producteur les produits de son voisin.
+		view.Vendors = epinglerEnTete(view.Vendors, vendeurMisEnAvant)
+
 		// La bande de vignettes se compose une fois tous les producteurs
 		// connus, sans requête supplémentaire : elle pioche dans ce qu'ils ont
 		// déjà rapporté.
@@ -1077,9 +1328,21 @@ func (h *PagesHandler) homePeriodData(c *gin.Context, offsetWeeks int) *PageData
 			if moi.Role != nil {
 				view.UserVolunteerRole = *moi.Role
 			}
+			if pd.User != nil {
+				view.UserFirstName = pd.User.FirstName
+				view.UserFullName = strings.TrimSpace(
+					pd.User.FirstName + " " + pd.User.LastName)
+			}
 		}
 
 		nbNeeded := len(rolesNeeded)
+		// La semaine qui contient cette distribution, du dimanche au dimanche —
+		// le découpage que le calendrier des permanences applique lui-même.
+		jour := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())
+		debutSemaine := jour.AddDate(0, 0, -int(jour.Weekday()))
+		view.VolunteerFrom = debutSemaine.Format("2006-01-02")
+		view.VolunteerTo = debutSemaine.AddDate(0, 0, 7).Format("2006-01-02")
+
 		view.VolunteerTotal = nbNeeded
 		view.VolunteerFilled = int(nbRegistered)
 		if view.VolunteerFilled > nbNeeded {
@@ -1116,6 +1379,7 @@ func (h *PagesHandler) homePeriodData(c *gin.Context, offsetWeeks int) *PageData
 		views = append(views, view)
 	}
 	pd.MultiDistribs = views
+	pd.HeroDistrib, pd.NextDistribs = splitDistribs(views)
 
 	// Load open variable-order catalogs
 	var catalogs []model.Catalog
@@ -1147,7 +1411,7 @@ func (h *PagesHandler) HomePage(c *gin.Context) {
 		return
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "home.html")
+	t, err := loadTemplates("base.html", "design.html", "home.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1254,6 +1518,8 @@ func (h *PagesHandler) ContractViewPage(c *gin.Context) {
 	pd.Contact = catalog.Contact
 	pd.Distribs = distribViews
 
+	// Même largeur que les autres écrans de gestion.
+	pd.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contract_view.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -1304,11 +1570,13 @@ func (h *PagesHandler) AccountPage(c *gin.Context) {
 		Find(&orders)
 
 	for _, o := range orders {
-		if o.Product.Catalog.Type != model.CatalogTypeVarOrder {
-			continue
-		}
+		// Tous les types de catalogue, et non les seules commandes libres :
+		// l'écran ne retenait que celles-ci et annonçait « aucune commande » à
+		// qui n'a que des contrats — c'est-à-dire à la plupart des adhérents.
+		// Le catalogue est nommé pour qu'on distingue les unes des autres.
 		pd.RecentOrders = append(pd.RecentOrders, RecentOrderView{
 			ProductName: o.Product.Name,
+			CatalogName: o.Product.Catalog.Name,
 			SmartQty:    orderQtyLabel(o.Quantity, o.Product),
 			Total:       o.TotalPrice(),
 			Paid:        o.Paid,
@@ -1567,9 +1835,14 @@ func (h *PagesHandler) MemberPage(c *gin.Context) {
 	pd.CurrentPage = page
 	pd.SearchQuery = search
 	pd.MemberFilter = filtre
+	pd.AnneeCourante = anneeCourante()
 
 	pd.JoinRequestCount = pendingJoinRequestCount(h.db, pd.Group.ID)
 
+	// Même largeur que l'écran des commandes : les deux montrent des cartes
+	// pleine largeur, et une colonne plus étroite ici étirerait le tableau
+	// sur un fond vide de chaque côté.
+	pd.Container = "container-fluid ac-accueil"
 	pd.Title = "Membres"
 	pd.Category = "member"
 	pd.Breadcrumb = []BreadcrumbItem{{Name: "Membres", Link: "/member"}}
@@ -1868,6 +2141,10 @@ func (h *PagesHandler) AmapPage(c *gin.Context) {
 	pd.Category = "amap"
 	pd.Breadcrumb = []BreadcrumbItem{{Name: "Producteurs", Link: "/amap"}}
 
+	// Rubrique et largeur : cet écran appartient à l'espace
+	// d'administration, dont il doit garder le menu et la colonne.
+	pd.Category = "contract"
+	pd.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "amap.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -1930,6 +2207,8 @@ func (h *PagesHandler) ContractAdminPage(c *gin.Context) {
 	pd.Category = "contract"
 	pd.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"}}
 
+	// Même largeur que les autres écrans de gestion.
+	pd.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contract_admin.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -1948,10 +2227,20 @@ func (h *PagesHandler) AmapAdminPage(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
-	if !pd.IsGroupManager {
+	// Le droit « paramètres » suffit à consulter : c'est le premier onglet de
+	// sa rubrique, et le refuser en faisait le seul inaccessible. Les
+	// paramètres ne s'y modifient que par le responsable du groupe — le
+	// gabarit désactive le formulaire, et AmapAdminUpdate le refuse.
+	if !pd.HasParameters {
 		c.String(http.StatusForbidden, "accès refusé")
 		return
 	}
+
+	// Les listes que le formulaire des propriétés emploie.
+	h.db.Where("group_id = ?", pd.Group.ID).Find(&pd.Places)
+	h.db.Joins("JOIN user_groups ON user_groups.user_id = users.id").
+		Where("user_groups.group_id = ? AND user_groups.rights LIKE ?", pd.Group.ID, "%GroupAdmin%").
+		Order("users.last_name").Find(&pd.Admins)
 
 	var nbMembers int64
 	h.db.Model(&model.UserGroup{}).Where("group_id = ?", pd.Group.ID).Count(&nbMembers)
@@ -1975,7 +2264,12 @@ func (h *PagesHandler) AmapAdminPage(c *gin.Context) {
 	pd.Category = "amapadmin"
 	pd.Breadcrumb = []BreadcrumbItem{{Name: "Paramètres", Link: "/amapadmin"}}
 
-	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin.html")
+	// Rubrique, largeur et fil : cet écran passe à côté de
+	// buildAmapAdminData, il pose lui-même ce que celui-ci donne aux autres.
+	pd.Category = "amapadmin"
+	pd.Container = "container-fluid ac-accueil"
+	pd.Breadcrumb = []BreadcrumbItem{{Name: "Paramètres", Link: "/amapadmin"}}
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "amapadmin_layout.html", "amapadmin.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1987,45 +2281,26 @@ func (h *PagesHandler) AmapAdminPage(c *gin.Context) {
 
 // ---- AmapAdmin edit page (form) ----
 
+// AmapAdminEditPage : les propriétés se règlent désormais sur le tableau de
+// bord des paramètres, où elles voisinent l'identité du groupe qu'elles
+// définissent. Cette adresse y ramène, pour les liens et les signets qui la
+// portent encore.
 func (h *PagesHandler) AmapAdminEditPage(c *gin.Context) {
+	c.Redirect(http.StatusFound, "/amapadmin")
+}
+
+func (h *PagesHandler) AmapAdminUpdate(c *gin.Context) {
 	pd := h.buildPageData(c)
 	if pd.User == nil || pd.Group == nil {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
+	// Le responsable du groupe, et lui seul : ces réglages engagent le groupe
+	// entier — son type, ses inscriptions, sa présence dans l'annuaire. Le
+	// droit « paramètres » ouvrait cet enregistrement alors que le formulaire
+	// lui était déjà refusé ; un POST forgé suffisait à le contourner.
 	if !pd.IsGroupManager {
-		c.String(http.StatusForbidden, "accès refusé")
-		return
-	}
-
-	h.db.Where("group_id = ?", pd.Group.ID).Find(&pd.Places)
-	h.db.Joins("JOIN user_groups ON user_groups.user_id = users.id").
-		Where("user_groups.group_id = ? AND user_groups.rights LIKE ?", pd.Group.ID, "%GroupAdmin%").
-		Order("users.last_name").Find(&pd.Admins)
-
-	pd.Title = "Modifier les propriétés"
-	pd.Category = "amapadmin"
-	pd.Breadcrumb = []BreadcrumbItem{
-		{Name: "Paramètres", Link: "/amapadmin"},
-		{Name: "Modifier les propriétés", Link: "/amapadmin/edit"},
-	}
-
-	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin_edit.html")
-	if err != nil {
-		c.String(http.StatusInternalServerError, "template error: %v", err)
-		return
-	}
-	if err := t.ExecuteTemplate(c.Writer, "base", pd); err != nil {
-		c.String(http.StatusInternalServerError, "render error: %v", err)
-	}
-}
-
-// ---- AmapAdmin update ----
-
-func (h *PagesHandler) AmapAdminUpdate(c *gin.Context) {
-	pd := h.buildPageData(c)
-	if pd.User == nil || pd.Group == nil || !pd.HasParameters {
-		c.Redirect(http.StatusFound, "/user/choose")
+		c.String(http.StatusForbidden, "seul le responsable du groupe peut modifier ces paramètres")
 		return
 	}
 
@@ -2343,7 +2618,11 @@ func pickAcrossVendors(vendors []VendorView) []ProductImageView {
 			}
 		}
 		if len(avecPhoto) > 0 {
-			illustres = append(illustres, spreadCategories(avecPhoto))
+			// Un seul conditionnement par produit, puis alternance des rayons :
+			// l'ordre compte, dédupliquer après aurait pu vider une catégorie
+			// de ce qui la représentait.
+			illustres = append(illustres,
+				spreadCategories(dedupeFamilies(dedupeVariants(avecPhoto))))
 		}
 	}
 	if len(illustres) == 0 {
@@ -2376,6 +2655,80 @@ func pickAcrossVendors(vendors []VendorView) []ProductImageView {
 		}
 	}
 	return out
+}
+
+// spreadCategories réordonne les produits d'un producteur pour que ses
+// premiers montrent des rayons différents.
+//
+// Une ferme qui vend des fromages et vingt légumes voyait ses vignettes tirées
+// du même rayon — la bande annonçait des légumes et taisait la crémerie, alors
+// qu'elle est là pour dire l'étendue de ce qu'on trouvera.
+//
+// Un tour de table entre catégories, dans l'ordre où elles apparaissent : le
+// premier produit de chacune, puis le deuxième, et ainsi de suite. Les produits
+// sans catégorie forment un groupe comme les autres, plutôt que d'être écartés.
+func spreadCategories(produits []ProductImageView) []ProductImageView {
+	if len(produits) < 3 {
+		return produits
+	}
+
+	ordre := make([]uint, 0, 4)
+	groupes := make(map[uint][]ProductImageView, 4)
+	for _, p := range produits {
+		if _, vu := groupes[p.Category]; !vu {
+			ordre = append(ordre, p.Category)
+		}
+		groupes[p.Category] = append(groupes[p.Category], p)
+	}
+	if len(ordre) < 2 {
+		return produits
+	}
+
+	out := make([]ProductImageView, 0, len(produits))
+	for tour := 0; len(out) < len(produits); tour++ {
+		ajoute := false
+		for _, cat := range ordre {
+			g := groupes[cat]
+			if tour < len(g) {
+				out = append(out, g[tour])
+				ajoute = true
+			}
+		}
+		if !ajoute {
+			break
+		}
+	}
+	return out
+}
+
+// isProductPhoto décide si l'image d'un produit est une photographie.
+//
+// Deux examens, du moins cher au plus coûteux. L'en-tête suffit à écarter les
+// pictogrammes, et il est déjà en main. Le reste — étiquettes, logos, visuels
+// faits d'aplats — ne se voit qu'en regardant l'image, ce qui demande de la
+// charger : on ne le fait qu'une fois par fichier, et le verdict est retenu.
+//
+// Une image de produit ne change pratiquement jamais ; la décoder à chaque
+// affichage de l'accueil coûterait quelques millisecondes par vignette pour un
+// résultat invariable.
+func (h *PagesHandler) isProductPhoto(fileID uint, header []byte) bool {
+	if !looksLikePhoto(header) {
+		return false
+	}
+	if verdict, connu := PhotoVerdictCached(fileID); connu {
+		return verdict
+	}
+
+	var f model.File
+	if err := h.db.Select("id, data").First(&f, fileID).Error; err != nil {
+		// Illisible : on garde, plutôt que d'écarter la photo d'un producteur
+		// sur un incident de lecture.
+		RememberPhotoVerdict(fileID, true)
+		return true
+	}
+	verdict := IsPhotograph(f.Data)
+	RememberPhotoVerdict(fileID, verdict)
+	return verdict
 }
 
 // formatTelephone redit un numéro par paires de chiffres — « 03 85 72 30 92 ».
@@ -2429,48 +2782,4 @@ func (h *PagesHandler) logoDuPortail() string {
 		return FileURL(groupes[0].Logo.ID, h.cfg.Key, groupes[0].Logo.Name)
 	}
 	return ""
-}
-
-// spreadCategories réordonne les produits d'un producteur pour que ses
-// premiers montrent des rayons différents.
-//
-// Une ferme qui vend des fromages et vingt légumes voyait ses vignettes tirées
-// du même rayon — la bande annonçait des légumes et taisait la crémerie, alors
-// qu'elle est là pour dire l'étendue de ce qu'on trouvera.
-//
-// Un tour de table entre catégories, dans l'ordre où elles apparaissent : le
-// premier produit de chacune, puis le deuxième, et ainsi de suite. Les produits
-// sans catégorie forment un groupe comme les autres, plutôt que d'être écartés.
-func spreadCategories(produits []ProductImageView) []ProductImageView {
-	if len(produits) < 3 {
-		return produits
-	}
-
-	ordre := make([]uint, 0, 4)
-	groupes := make(map[uint][]ProductImageView, 4)
-	for _, p := range produits {
-		if _, vu := groupes[p.Category]; !vu {
-			ordre = append(ordre, p.Category)
-		}
-		groupes[p.Category] = append(groupes[p.Category], p)
-	}
-	if len(ordre) < 2 {
-		return produits
-	}
-
-	out := make([]ProductImageView, 0, len(produits))
-	for tour := 0; len(out) < len(produits); tour++ {
-		ajoute := false
-		for _, cat := range ordre {
-			g := groupes[cat]
-			if tour < len(g) {
-				out = append(out, g[tour])
-				ajoute = true
-			}
-		}
-		if !ajoute {
-			break
-		}
-	}
-	return out
 }

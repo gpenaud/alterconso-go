@@ -1,108 +1,368 @@
 {{define "content"}}
 {{template "amapadmin_nav" .}}
-<div class="col-md-9">
-  <h2 style="margin:0 0 12px;padding:0 4px;">Groupe</h2>
-  <div class="article">
-    {{if .Group}}
-    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
-      {{if .LogoURL}}
-      <img src="{{.LogoURL}}" alt="Logo" style="width:96px;height:96px;object-fit:cover;border-radius:12px;border:1px solid #eee;" />
-      {{else}}
-      <div style="width:96px;height:96px;background:#f5f5f5;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:2em;">
-        <i class="icon icon-image"></i>
-      </div>
-      {{end}}
-      <div style="flex:1;min-width:220px;">
-        <h3 style="font-style:italic;margin:0 0 4px;">{{.Group.Name}}</h3>
-        <p style="margin:0;color:#555;"><b>{{.NbMembers}}</b> membres.</p>
-        <p style="margin:0;color:#555;"><b>{{.NbActiveCatalogs}}</b> catalogues actifs.</p>
-      </div>
-    </div>
 
-    <hr />
-
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;">
-      <a href="/amapadmin/edit" class="btn btn-default">
-        <i class="icon icon-edit"></i> Modifier les propriétés
-      </a>
-      <button type="button" class="btn btn-default" data-toggle="modal" data-target="#modalLogo">
-        <i class="icon icon-image"></i> {{if .LogoURL}}Changer le logo{{else}}Définir un logo{{end}}
-      </button>
-      {{if .LogoURL}}
-      <a href="/amapadmin/logo/delete" class="btn btn-default" onclick="return confirm('Supprimer le logo ?')">
-        <i class="icon icon-delete"></i> Retirer le logo
-      </a>
-      {{end}}
-    </div>
-
-    <p style="margin-bottom:8px;">
-      Votre groupe a une page publique, vous pouvez l'utiliser comme un micro site web.<br/>
-      Copiez-collez cette adresse et partagez-la !
+{{if .Group}}
+<div class="cyc-fiche-tete">
+  {{if .LogoURL}}
+  <img src="{{.LogoURL}}" alt="" class="cyc-logo-groupe" />
+  {{else}}
+  <span class="cyc-initiales grande">{{initialesDe .Group.Name}}</span>
+  {{end}}
+  <div class="ident">
+    <h3>{{.Group.Name}}</h3>
+    <p class="cyc-chapeau">
+      {{.NbMembers}} membre{{if gt .NbMembers 1}}s{{end}} ·
+      {{.NbActiveCatalogs}} catalogue{{if gt .NbActiveCatalogs 1}}s{{end}} en cours
     </p>
-
-    <pre style="background:#f5f5f5;padding:12px 16px;border-radius:4px;font-family:monospace;word-break:break-all;">
-<i class="icon icon-link"></i> <a href="{{.PublicGroupURL}}" target="_blank" style="color:#6aa84f;">{{.PublicGroupURL}}</a>
-</pre>
-
-    <div style="margin-bottom:16px;">
-      <a href="{{.PublicGroupURL}}" target="_blank" class="btn btn-default">
-        <i class="icon icon-chevron-right"></i> Afficher
-      </a>
-    </div>
-
-    {{if hasFlag .Group.Flags 8}}
-    <div style="background:#dff0d8;color:#3c763d;padding:12px 16px;border-radius:4px;">
-      <i class="icon icon-check"></i> Votre groupe est visible sur la carte.
-    </div>
-    {{else}}
-    <div style="background:#fcf8e3;color:#8a6d3b;padding:12px 16px;border-radius:4px;">
-      <i class="icon icon-alert"></i> Votre groupe n'est pas listé dans l'annuaire Alterconso.
-    </div>
-    {{end}}
+  </div>
+  <div class="cyc-actions-nommees serrees">
+    <button type="button" class="cyc-btn" data-toggle="modal" data-target="#modalLogo">
+      <i class="icon icon-image"></i> {{if .LogoURL}}Changer le logo{{else}}Ajouter un logo{{end}}
+    </button>
+    {{if .LogoURL}}
+    <a href="/amapadmin/logo/delete" class="cyc-btn cyc-btn-danger"
+       onclick="return confirm('Retirer le logo du groupe ?')">
+      <i class="icon icon-delete"></i> Retirer le logo
+    </a>
     {{end}}
   </div>
 </div>
 
-<!-- Modal upload logo -->
+<div class="cyc-section">
+  <h4>Page publique</h4>
+  <p class="cyc-aide">
+    Votre groupe a une page ouverte à tous : elle peut servir de petit site.
+    Copiez cette adresse et partagez-la.
+  </p>
+  <div class="cyc-adresse">
+    <i class="icon icon-link"></i>
+    <a href="{{.PublicGroupURL}}" target="_blank" rel="noopener">{{.PublicGroupURL}}</a>
+  </div>
+  <div class="cyc-pied" style="margin-top:14px;padding-top:0;border-top:0;">
+    <a href="{{.PublicGroupURL}}" target="_blank" rel="noopener" class="cyc-btn">
+      <i class="icon icon-eye"></i> Voir la page publique
+    </a>
+  </div>
+</div>
+
+<div class="cyc-section">
+  <h4>Annuaire Alterconso</h4>
+  {{if hasFlag .Group.Flags 8}}
+  <div class="cyc-succes">
+    <i class="icon icon-check"></i> Votre groupe est visible sur la carte des groupes.
+  </div>
+  {{else}}
+  <div class="cyc-danger">
+    <i class="icon icon-alert"></i>
+    Votre groupe n'est pas listé dans l'annuaire. Les personnes qui cherchent
+    une AMAP près de chez elles ne le trouveront pas.
+  </div>
+  {{end}}
+</div>
+{{end}}
+
+<div class="cyc-section">
+  <h4>Paramètres du groupe</h4>
+  {{if .IsGroupManager}}
+  <p class="cyc-aide">
+    Ce qui définit le groupe et la manière dont il fonctionne.
+  </p>
+  {{else}}
+  <p class="cyc-aide">
+    Ce qui définit le groupe et la manière dont il fonctionne. Seul le
+    responsable du groupe peut en changer ; vous les consultez.
+  </p>
+  {{end}}
+</div>
+
+<form method="POST" action="/amapadmin/update">
+  {{/* Un fieldset désactivé plutôt qu'un affichage en lecture seule à part :
+       le navigateur grise les champs, refuse la saisie et ne les transmet
+       pas. Un seul balisage, donc pas de version qui prendrait du retard. */}}
+  <fieldset {{if not .IsGroupManager}}disabled{{end}}>
+
+  <div class="cyc-section">
+    <h4>Identité</h4>
+    <div class="cyc-champs">
+      <div class="cyc-champ large">
+        <label for="name">Nom du groupe *</label>
+        <input type="text" id="name" name="name" value="{{.Group.Name}}" required />
+      </div>
+      <div class="cyc-champ large">
+        <label for="txt_intro">Courte description</label>
+        <textarea id="txt_intro" name="txt_intro" rows="2">{{if .Group.TxtIntro}}{{deref .Group.TxtIntro}}{{end}}</textarea>
+        <p class="cyc-note">Une phrase, affichée sur la page publique et dans l'annuaire.</p>
+      </div>
+      <div class="cyc-champ">
+        <label for="ext_url">Site du groupe</label>
+        <input type="text" id="ext_url" name="ext_url"
+               value="{{if .Group.ExtURL}}{{deref .Group.ExtURL}}{{end}}"
+               placeholder="https://…" />
+      </div>
+    </div>
+  </div>
+
+  <div class="cyc-section">
+    <h4>Textes affichés</h4>
+    <div class="cyc-champs">
+      <div class="cyc-champ large">
+        <label for="txt_home">Mot du groupe</label>
+        <textarea id="txt_home" name="txt_home" rows="4">{{if .Group.TxtHome}}{{deref .Group.TxtHome}}{{end}}</textarea>
+        <p class="cyc-note">Affiché sur la page « À propos » et sur la page publique.</p>
+      </div>
+      <div class="cyc-champ large">
+        <label for="txt_distrib">Note sur les listes d'émargement</label>
+        <textarea id="txt_distrib" name="txt_distrib" rows="3">{{if .Group.TxtDistrib}}{{deref .Group.TxtDistrib}}{{end}}</textarea>
+        <p class="cyc-note">Imprimée en tête des feuilles de distribution.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="cyc-section">
+    <h4>Joindre le responsable</h4>
+    <div class="cyc-champs">
+      <div class="cyc-champ large">
+        <label for="head_email">Adresse de contact</label>
+        <input type="email" id="head_email" name="head_email"
+               value="{{if .Group.HeadEmail}}{{deref .Group.HeadEmail}}{{end}}" />
+        <p class="cyc-note">
+          L'adresse à laquelle les adhérents joignent le responsable. Laissée
+          vide, c'est son adresse personnelle qui sert ; une adresse de fonction
+          survit au changement de responsable.
+        </p>
+      </div>
+    </div>
+    <label class="cyc-bascule {{if .Group.HeadEmailIncludeAccount}}actif{{end}}">
+      <input type="checkbox" name="head_email_include_account" value="1"
+             {{if .Group.HeadEmailIncludeAccount}}checked{{end}} />
+      <span>
+        <span class="titre">Écrire aussi à son adresse personnelle</span>
+        <p class="cyc-note">
+          Les deux boîtes reçoivent — utile quand l'adresse de fonction n'est
+          pas relevée tous les jours.
+        </p>
+      </span>
+    </label>
+  </div>
+
+  <div class="cyc-section">
+    <h4>Responsables</h4>
+    <div class="cyc-champs">
+      <div class="cyc-champ">
+        <label for="contact_id">Contact principal</label>
+        <select id="contact_id" name="contact_id">
+          <option value="">— aucun —</option>
+          {{range .Admins}}
+          <option value="{{.ID}}" {{if $.Group.ContactID}}{{if eq (derefUint $.Group.ContactID) (printf "%d" .ID)}}selected{{end}}{{end}}>
+            {{.LastName}} {{.FirstName}}
+          </option>
+          {{end}}
+        </select>
+      </div>
+      <div class="cyc-champ">
+        <label for="legal_representative_id">Représentant légal</label>
+        <select id="legal_representative_id" name="legal_representative_id">
+          <option value="">— aucun —</option>
+          {{range .Admins}}
+          <option value="{{.ID}}" {{if $.Group.LegalRepresentativeID}}{{if eq (derefUint $.Group.LegalRepresentativeID) (printf "%d" .ID)}}selected{{end}}{{end}}>
+            {{.LastName}} {{.FirstName}}
+          </option>
+          {{end}}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="cyc-section">
+    <h4>Nature du groupe</h4>
+    {{$gt := .Group.GroupType}}
+    <div class="cyc-filtres" data-choix="unique">
+      <label class="cyc-filtre {{if eq $gt "Amap"}}actif{{end}}">
+        <input type="radio" name="group_type" value="Amap" {{if eq $gt "Amap"}}checked{{end}} /> AMAP
+      </label>
+      <label class="cyc-filtre {{if eq $gt "GroupedOrders"}}actif{{end}}">
+        <input type="radio" name="group_type" value="GroupedOrders" {{if eq $gt "GroupedOrders"}}checked{{end}} /> Groupement d'achat
+      </label>
+      <label class="cyc-filtre {{if eq $gt "ProducerDrive"}}actif{{end}}">
+        <input type="radio" name="group_type" value="ProducerDrive" {{if eq $gt "ProducerDrive"}}checked{{end}} /> Collectif de producteurs
+      </label>
+      <label class="cyc-filtre {{if eq $gt "FarmShop"}}actif{{end}}">
+        <input type="radio" name="group_type" value="FarmShop" {{if eq $gt "FarmShop"}}checked{{end}} /> Un seul producteur
+      </label>
+    </div>
+  </div>
+
+  <div class="cyc-section">
+    <h4>Mode de commande</h4>
+    <label class="cyc-bascule {{if .Group.HasShopMode}}actif{{end}}">
+      <input type="radio" name="flag_shop_mode" value="1" {{if .Group.HasShopMode}}checked{{end}} />
+      <span>
+        <span class="titre">Mode boutique</span>
+        <p class="cyc-note">Les adhérents composent leur panier produit par produit.</p>
+      </span>
+    </label>
+    <label class="cyc-bascule {{if not .Group.HasShopMode}}actif{{end}}">
+      <input type="radio" name="flag_shop_mode" value="0" {{if not .Group.HasShopMode}}checked{{end}} />
+      <span>
+        <span class="titre">Mode AMAP</span>
+        <p class="cyc-note">Les adhérents s'engagent sur un contrat pour une saison.</p>
+      </span>
+    </label>
+  </div>
+
+  <div class="cyc-section">
+    <h4>Inscriptions</h4>
+    {{$ro := .Group.RegOption}}
+    <label class="cyc-bascule {{if eq $ro "Closed"}}actif{{end}}">
+      <input type="radio" name="reg_option" value="Closed" {{if eq $ro "Closed"}}checked{{end}} />
+      <span>
+        <span class="titre">Fermé</span>
+        <p class="cyc-note">Seuls les gestionnaires ajoutent des membres.</p>
+      </span>
+    </label>
+    <label class="cyc-bascule {{if eq $ro "WaitingList"}}actif{{end}}">
+      <input type="radio" name="reg_option" value="WaitingList" {{if eq $ro "WaitingList"}}checked{{end}} />
+      <span>
+        <span class="titre">Sur demande</span>
+        <p class="cyc-note">Chacun peut demander à entrer ; un gestionnaire tranche.</p>
+      </span>
+    </label>
+    <label class="cyc-bascule {{if eq $ro "Open"}}actif{{end}}">
+      <input type="radio" name="reg_option" value="Open" {{if eq $ro "Open"}}checked{{end}} />
+      <span>
+        <span class="titre">Ouvert</span>
+        <p class="cyc-note">L'inscription est immédiate, sans validation.</p>
+      </span>
+    </label>
+    <label class="cyc-bascule {{if eq $ro "Full"}}actif{{end}}">
+      <input type="radio" name="reg_option" value="Full" {{if eq $ro "Full"}}checked{{end}} />
+      <span>
+        <span class="titre">Complet</span>
+        <p class="cyc-note">Le groupe n'accepte plus de nouveaux membres.</p>
+      </span>
+    </label>
+  </div>
+
+  <div class="cyc-section">
+    <h4>Réglages</h4>
+    <label class="cyc-bascule {{if .Group.HasPayments}}actif{{end}}">
+      <input type="checkbox" name="flag_payments" value="1" {{if .Group.HasPayments}}checked{{end}} />
+      <span>
+        <span class="titre">Suivre les paiements</span>
+        <p class="cyc-note">Chaque membre a un solde et un historique d'opérations.</p>
+      </span>
+    </label>
+    <label class="cyc-bascule {{if hasFlag .Group.Flags 8}}actif{{end}}">
+      <input type="checkbox" name="flag_network" value="1" {{if hasFlag .Group.Flags 8}}checked{{end}} />
+      <span>
+        <span class="titre">Paraître dans l'annuaire Alterconso</span>
+        <p class="cyc-note">Le groupe apparaît sur la carte, avec sa page publique.</p>
+      </span>
+    </label>
+    <label class="cyc-bascule {{if hasFlag .Group.Flags 16}}actif{{end}}">
+      <input type="checkbox" name="flag_custom_categories" value="1" {{if hasFlag .Group.Flags 16}}checked{{end}} />
+      <span>
+        <span class="titre">Catégories personnalisées</span>
+        <p class="cyc-note">Ranger les produits selon vos propres rayons.</p>
+      </span>
+    </label>
+    <label class="cyc-bascule {{if hasFlag .Group.Flags 32}}actif{{end}}">
+      <input type="checkbox" name="flag_hide_phone" value="1" {{if hasFlag .Group.Flags 32}}checked{{end}} />
+      <span>
+        <span class="titre">Masquer le téléphone du responsable</span>
+        <p class="cyc-note">Sur la page publique seulement ; les adhérents le voient.</p>
+      </span>
+    </label>
+    <label class="cyc-bascule {{if hasFlag .Group.Flags 64}}actif{{end}}">
+      <input type="checkbox" name="flag_phone_required" value="1" {{if hasFlag .Group.Flags 64}}checked{{end}} />
+      <span>
+        <span class="titre">Téléphone obligatoire à l'inscription</span>
+        <p class="cyc-note">Utile pour joindre quelqu'un le jour d'une distribution.</p>
+      </span>
+    </label>
+    <label class="cyc-bascule {{if hasFlag .Group.Flags 128}}actif{{end}}">
+      <input type="checkbox" name="flag_address_required" value="1" {{if hasFlag .Group.Flags 128}}checked{{end}} />
+      <span>
+        <span class="titre">Adresse obligatoire à l'inscription</span>
+        <p class="cyc-note">À n'exiger que si le groupe en a l'usage.</p>
+      </span>
+    </label>
+  </div>
+
+  {{if .IsGroupManager}}
+  <div class="cyc-pied">
+    <button type="submit" class="cyc-btn cyc-btn-primaire">
+      <i class="icon icon-check"></i> Enregistrer les paramètres
+    </button>
+  </div>
+  {{end}}
+  </fieldset>
+</form>
+
+<!-- Modal : logo du groupe -->
 <div class="modal fade" id="modalLogo" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">
-    <div class="modal-content" style="border-radius:6px;overflow:hidden;">
+    <div class="modal-content cyc" style="border-radius:12px;overflow:hidden;">
       <form method="POST" action="/amapadmin/logo" enctype="multipart/form-data">
-        <div style="padding:24px 28px 16px;">
-          <h4 style="font-style:italic;margin:0;font-size:1.4em;">Ajouter un logo</h4>
-        </div>
-        <hr style="margin:0;" />
-        <div style="padding:24px 28px;">
-          <div id="logoPreview" style="width:220px;height:220px;margin:0 auto 16px;background:#f5f5f5;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#ccc;overflow:hidden;">
-            {{if .LogoURL}}
-            <img src="{{.LogoURL}}" style="width:100%;height:100%;object-fit:cover;" />
-            {{else}}
-            <i class="icon icon-image" style="font-size:3em;"></i>
-            {{end}}
+        <div style="padding:24px 26px 0;">
+          <h4 style="margin:0 0 4px;font-weight:700;">Logo du groupe</h4>
+          <p class="cyc-note" style="margin:0 0 18px;">PNG, JPG, GIF ou WebP, 5 Mo au maximum.</p>
+          <div id="logoPreview" class="cyc-apercu-carre">
+            {{if .LogoURL}}<img src="{{.LogoURL}}" alt="Logo actuel" />
+            {{else}}<i class="icon icon-image"></i>{{end}}
           </div>
-          <div class="form-group" style="margin-bottom:0;">
-            <label style="display:block;color:#666;font-weight:normal;margin-bottom:6px;">Image (PNG, JPG, GIF, WebP — max 5 Mo)</label>
-            <input type="file" name="logo" accept="image/png,image/jpeg,image/gif,image/webp" required
-              onchange="previewLogo(this)" />
+          <div class="cyc-champs">
+            <div class="cyc-champ large">
+              <label for="logo">Choisir une image</label>
+              <input type="file" id="logo" name="logo" required
+                     accept="image/png,image/jpeg,image/gif,image/webp"
+                     onchange="previewLogo(this)" />
+            </div>
           </div>
         </div>
-        <div style="padding:16px 28px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:8px;">
-          <button type="button" class="btn btn-default" data-dismiss="modal">Annuler</button>
-          <button type="submit" class="btn btn-success"><i class="icon icon-chevron-right"></i> Enregistrer</button>
+        <div class="cyc-pied" style="padding:16px 26px;margin:20px 0 0;">
+          <button type="button" class="cyc-btn" data-dismiss="modal">Annuler</button>
+          <span class="cyc-espace"></span>
+          <button type="submit" class="cyc-btn cyc-btn-primaire">
+            <i class="icon icon-upload"></i> Enregistrer
+          </button>
         </div>
       </form>
     </div>
   </div>
 </div>
+
 <script>
+// Les bascules se teignent, et celles qui portent un bouton radio éteignent
+// leurs voisines : un choix unique doit se voir comme tel.
+document.addEventListener('change', function (e) {
+  if (e.target.type === 'checkbox') {
+    var b = e.target.closest('.cyc-bascule');
+    if (b) b.classList.toggle('actif', e.target.checked);
+    return;
+  }
+  if (e.target.type !== 'radio') return;
+  var groupe = e.target.closest('.cyc-section');
+  if (!groupe) return;
+  var etiquettes = groupe.querySelectorAll('.cyc-bascule, .cyc-filtre');
+  for (var i = 0; i < etiquettes.length; i++) {
+    var r = etiquettes[i].querySelector('input[type=radio]');
+    if (r && r.name === e.target.name) etiquettes[i].classList.toggle('actif', r.checked);
+  }
+});
+
+// Aperçu avant envoi : on voit ce qu'on choisit sans avoir à enregistrer pour
+// s'apercevoir que ce n'était pas le bon fichier.
 function previewLogo(input) {
   if (!input.files || !input.files[0]) return;
   var reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = function (e) {
     document.getElementById('logoPreview').innerHTML =
-      '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;" />';
+      '<img src="' + e.target.result + '" alt="Aperçu" />';
   };
   reader.readAsDataURL(input.files[0]);
 }
 </script>
+
+{{template "amapadmin_close" .}}
 {{end}}

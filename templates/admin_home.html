@@ -12,11 +12,18 @@
 
   <div class="ac-tuiles">
     {{range .Tiles}}
-    <div class="ac-tuile">
+    <div class="ac-tuile {{if .Danger}}danger{{end}}">
       <a href="{{.Link}}" class="ac-tuile-lien">
         <span class="ac-tuile-icone"><i class="icon {{.Icon}}"></i></span>
         <span class="ac-tuile-titre">{{.Title}}</span>
         <span class="ac-tuile-desc">{{.Desc}}</span>
+        {{/* L'avertissement est écrit, pas seulement coloré : une teinte seule
+             ne dit pas ce qu'on risque, et ne se distingue pas de tous. */}}
+        {{if .Avertissement}}
+        <span class="ac-tuile-alerte">
+          <i class="icon icon-alert"></i> {{.Avertissement}}
+        </span>
+        {{end}}
       </a>
       {{if .Extras}}
       <div class="ac-tuile-liens">

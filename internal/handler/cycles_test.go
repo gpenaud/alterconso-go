@@ -18,8 +18,10 @@ func TestCycleRoutesAreUnderTheDistributionsDelegation(t *testing.T) {
 
 	want := []string{
 		"GET /distribution/cycles",
-		"GET /distribution/cycles/:id/message",
-		"POST /distribution/cycles/:id/message",
+		"GET /distribution/cycles/new",
+		"POST /distribution/cycles/new",
+		"GET /distribution/cycles/:id",
+		"POST /distribution/cycles/:id",
 	}
 	seen := map[string]bool{}
 	for _, route := range r.Routes() {
@@ -32,63 +34,78 @@ func TestCycleRoutesAreUnderTheDistributionsDelegation(t *testing.T) {
 	}
 }
 
-// La périodicité se dit en mots : « 14 » ne se lit pas dans une liste.
-func TestRhythmIsSpelledOut(t *testing.T) {
-	for days, want := range map[int]string{
-		7:  "Toutes les semaines",
-		14: "Tous les quinze jours",
-		21: "Toutes les trois semaines",
-		30: "Tous les mois",
-	} {
-		if got := rhythmLabel(days); got != want {
-			t.Errorf("%d jours : obtenu %q, attendu %q", days, got, want)
-		}
-	}
-	// Une valeur inattendue se dit quand même, plutôt que de ne rien afficher.
-	if got := rhythmLabel(5); !strings.Contains(got, "5") {
-		t.Errorf("une périodicité inhabituelle doit rester lisible, obtenu %q", got)
-	}
-}
-
-// L'écran annonce ce qu'il fait : le courrier remplace le message par défaut,
-// et le lien n'est pas un champ libre.
-func TestMessageScreenStatesWhatItDoes(t *testing.T) {
-	tpl, err := loadTemplatesFromRoot(t, "base.html", "design.html", "distribution_cycle_message.html")
+// Le rappel se règle depuis le formulaire du cycle, derrière une case à cocher
+// qui le commande : c'est le même écran qui programme les journées et rédige
+// le courrier qui les annonce.
+func TestCycleFormCarriesTheReminderBehindACheckbox(t *testing.T) {
+	tpl, err := loadTemplatesFromRoot(t, "base.html", "design.html", "cycles_style.html", "distribution_cycle_form.html")
 	if err != nil {
 		t.Fatalf("parse : %v", err)
 	}
 
-	data := CycleMessageData{
-		PageData: PageData{
-			User: &model.User{ID: 1, FirstName: "Alice"}, Group: &model.Group{ID: 1, Name: "AMAP"},
-			HasDistributions: true,
-		},
-		Cycle:      model.DistributionCycle{ID: 3, Name: "Jeudi", Place: model.Place{Name: "Salle"}},
-		Message:    model.CycleMessage{Subject: "Ouverture", Body: "Bonjour"},
-		Categories: []string{"Membres réguliers", "Membres inactifs"},
-		RhythmText: "Toutes les semaines",
+	base := PageData{
+		User: &model.User{ID: 1, FirstName: "Alice"}, Group: &model.Group{ID: 1, Name: "AMAP"},
+		HasDistributions: true,
 	}
 
+	// Création : les champs de programmation, et le bloc replié par défaut.
+	creation := CycleFormData{
+		PageData: base, IsNew: true,
+		Places:     []model.Place{{ID: 1, Name: "Salle"}},
+		Categories: []string{"Membres réguliers"},
+	}
 	var sb strings.Builder
-	if err := tpl.ExecuteTemplate(&sb, "base", data); err != nil {
-		t.Fatalf("render : %v", err)
+	if err := tpl.ExecuteTemplate(&sb, "base", creation); err != nil {
+		t.Fatalf("render création : %v", err)
 	}
 	out := sb.String()
 
 	for _, attendu := range []string{
-		`name="subject"`, `name="body"`, `name="image"`, `name="linkLabel"`,
-		`name="recipientCategory"`, `name="enabled"`,
-		`enctype="multipart/form-data"`,
-		"Membres inactifs",
-		"remplace alors le message d",
+		`name="cycleType"`, `name="startDate"`, `name="endDate"`, `name="placeId"`,
+		`value="SemiAnnual"`, `value="Annual"`, `value="Monthly"`, `value="Weekly"`,
+		`name="name"`, `id="enabledBox"`, `id="messageBlock"`,
+		`name="subject"`, `name="body"`, `name="image"`, `name="recipientCategory"`,
+		`action="/distribution/cycles/new"`,
 	} {
 		if !strings.Contains(out, attendu) {
-			t.Errorf("%s absent de l'écran", attendu)
+			t.Errorf("%s absent du formulaire de création", attendu)
 		}
 	}
+	// Sans rappel actif, le bloc est replié : la case le commande. Le dépliage
+	// passe par la classe « ouvert », que le script pose et retire.
+	if !strings.Contains(out, `class="cyc-repli " id="messageBlock"`) &&
+		!strings.Contains(out, `class="cyc-repli" id="messageBlock"`) {
+		t.Errorf("le bloc du rappel devrait être replié tant que la case n'est pas cochée")
+	}
 
-	// L'adresse du bouton ne se saisit pas : un lien libre dans un courrier que
-	// le groupe signe est exactement ce qui fabrique un hameçon crédible.
+	// Modification : pas de replanification, mais une prolongation.
+	edition := CycleFormData{
+		PageData:   base,
+		Cycle:      model.DistributionCycle{ID: 3, Name: "Jeudi", Place: model.Place{Name: "Salle"}},
+		Message:    model.CycleMessage{Enabled: true, Subject: "Ouverture", Body: "Bonjour"},
+		RhythmText: "Toutes les semaines",
+	}
+	sb.Reset()
+	if err := tpl.ExecuteTemplate(&sb, "base", edition); err != nil {
+		t.Fatalf("render modification : %v", err)
+	}
+	out = sb.String()
+
+	if !strings.Contains(out, `name="extendTo"`) {
+		t.Error("la modification devrait permettre de prolonger le cycle")
+	}
+	if strings.Contains(out, `name="cycleType"`) {
+		t.Error("le rythme ne se replanifie pas : les journées portent des commandes")
+	}
+	if !strings.Contains(out, `action="/distribution/cycles/3"`) {
+		t.Error("le formulaire de modification vise le cycle")
+	}
+	// Rappel actif : le bloc est déplié dès le rendu, sans attendre le script.
+	if !strings.Contains(out, `cyc-repli ouvert`) {
+		t.Error("le bloc devrait être déplié quand le rappel est actif")
+	}
+
+	// L'adresse du bouton ne se saisit pas, ici non plus.
 	if strings.Contains(out, `name="linkUrl"`) || strings.Contains(out, `name="url"`) {
 		t.Error("l'adresse du lien ne doit pas être un champ")
 	}
@@ -120,7 +137,7 @@ func TestCycleDeletionIsNotAClickableLink(t *testing.T) {
 // l'envoi est décoché n'a rien à y annoncer : le signaler laissait croire qu'il
 // attendait une action.
 func TestOnlyActiveMailIsAnnounced(t *testing.T) {
-	tpl, err := loadTemplatesFromRoot(t, "base.html", "design.html", "distribution_cycles.html")
+	tpl, err := loadTemplatesFromRoot(t, "base.html", "design.html", "cycles_style.html", "distribution_cycles.html")
 	if err != nil {
 		t.Fatalf("parse : %v", err)
 	}

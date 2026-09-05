@@ -1,6 +1,10 @@
 {{define "content"}}
 {{template "cyclesStyle"}}
 <div class="col-md-12 cyc">
+  {{/* Tout l'écran dans un seul bloc blanc : titre, période, bilan et
+       tableau. Trois cartes empilées donnaient trois blocs sans hiérarchie
+       pour un seul propos. */}}
+  <div class="cyc-panneau">
 
   <div class="cyc-entete">
     <div>
@@ -13,7 +17,7 @@
     </div>
   </div>
 
-  <div class="cyc-carte">
+  <div class="cyc-section">
     {{/* Champs de date natifs plutôt qu'une bibliothèque distante : le
          navigateur sait ouvrir un calendrier, y compris au doigt, et la page
          cesse de dépendre d'un tiers pour afficher deux dates. */}}
@@ -29,17 +33,19 @@
       <button type="submit" class="cyc-btn">Afficher</button>
     </form>
 
-    <div class="ac-perm-bilan">
-      <i class="icon icon-check"></i>
+    <div class="ac-perm-bilan{{if gt .ToBeDone 0}} manque{{end}}">
+      <i class="icon {{if gt .ToBeDone 0}}icon-users{{else}}icon-check{{end}}"></i>
       <span>
-        Vous avez tenu ou prévu <b>{{.Done}}</b> permanence{{if ne .Done 1}}s{{end}}
-        sur <b>{{.ToBeDone}}</b> à assurer, du {{.PeriodStart}} au {{.PeriodEnd}}.
+        Du {{.PeriodStart}} au {{.PeriodEnd}} : vous tenez
+        <b>{{.Done}}</b> permanence{{if ne .Done 1}}s{{end}}{{if gt .ToBeDone 0}},
+        et <b>{{.ToBeDone}}</b> poste{{if ne .ToBeDone 1}}s restent{{else}} reste{{end}}
+        à pourvoir{{end}}.
       </span>
     </div>
   </div>
 
   {{if .Columns}}
-  <div class="cyc-carte" style="padding:0;overflow:hidden;">
+  <div class="cyc-deborde">
     <div class="ac-perm-defile">
       <table class="ac-perm-table">
         <thead>
@@ -96,7 +102,7 @@
     </div>
   </div>
   {{else}}
-  <div class="cyc-carte">
+  <div class="cyc-section">
     <div class="cyc-aucun">
       <i class="icon icon-calendar icone"></i>
       <p>Aucune distribution sur cette période.</p>
@@ -106,8 +112,12 @@
 
   {{/* Le retour vise la distribution d'où l'on vient : on est parti d'une
        carte précise pour choisir son poste, on y revient. */}}
-  <a href="/home{{if .Retour}}#distrib-{{.Retour}}{{end}}" class="cyc-btn">
-    <i class="icon icon-chevron-left"></i> Retour aux commandes
-  </a>
+  <div class="cyc-pied">
+    <a href="/home{{if .Retour}}#distrib-{{.Retour}}{{end}}" class="cyc-btn">
+      <i class="icon icon-chevron-left"></i> Retour aux commandes
+    </a>
+  </div>
+
+  </div>
 </div>
 {{end}}

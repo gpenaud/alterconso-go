@@ -324,6 +324,12 @@ func (h *PagesHandler) VolunteersSummaryPage(c *gin.Context) {
 		data.RoleRows = append(data.RoleRows, row)
 	}
 
+	// Le fil nomme cet écran : sans ce cran, toutes les pages de la
+	// rubrique affichaient le même chemin.
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}, {Name: "Bénévoles inscrits", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	data.Category = "distribution"
 	// Même largeur que les autres écrans de gestion.
 	data.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_volunteers_summary.html")
@@ -451,7 +457,7 @@ func (h *PagesHandler) VolunteersParticipationPage(c *gin.Context) {
 	data := VolParticipationData{PageData: pd, From: fromStr, To: toStr}
 	data.Title = "Participation aux permanences"
 	data.Category = "distribution"
-	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}}
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}, {Name: "Participation aux permanences", Link: ""}}
 
 	for _, ug := range ugs {
 		// Count volunteer entries for this user in period
@@ -588,7 +594,7 @@ func (h *PagesHandler) AmapAdminRightsPage(c *gin.Context) {
 		data.RightUsers = append(data.RightUsers, rv)
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin_rights.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "amapadmin_layout.html", "amapadmin_rights.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -812,7 +818,7 @@ func (h *PagesHandler) AmapAdminRightsAddPage(c *gin.Context) {
 }
 
 func renderRightsAdd(c *gin.Context, data AmapAdminRightsAddData) {
-	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin_rights_add.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "amapadmin_layout.html", "amapadmin_rights_add.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -995,7 +1001,7 @@ func (h *PagesHandler) AmapAdminRightsEditPage(c *gin.Context) {
 }
 
 func renderRightsEdit(c *gin.Context, data AmapAdminRightsEditData) {
-	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin_rights_edit.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "amapadmin_layout.html", "amapadmin_rights_edit.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1025,12 +1031,6 @@ func transferQuery(transfers map[model.Right]string) string {
 type AmapAdminPageData struct {
 	PageData
 	AmapAdminTab string
-	// AmapAdminTitre et AmapAdminChapeau : le titre de l'onglet ouvert et sa
-	// phrase d'explication. Portés par la coquille commune plutôt que répétés
-	// dans chaque gabarit — la mise en page de l'en-tête ne s'écrit ainsi
-	// qu'une fois.
-	AmapAdminTitre   string
-	AmapAdminChapeau string
 }
 
 // amapAdminEntete : le titre et la phrase d'explication de chaque onglet des
@@ -1114,7 +1114,7 @@ func (h *PagesHandler) AmapAdminVatRatesPage(c *gin.Context) {
 		}
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin_vatrates.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "amapadmin_layout.html", "amapadmin_vatrates.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1190,7 +1190,7 @@ func (h *PagesHandler) AmapAdminVolunteersPage(c *gin.Context) {
 	data.Title = "Permanences"
 	h.db.Where("group_id = ?", base.Group.ID).Preload("Catalog").Find(&data.VolunteerRoles)
 
-	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin_volunteers.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "amapadmin_layout.html", "amapadmin_volunteers.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1209,7 +1209,7 @@ func (h *PagesHandler) AmapAdminMembershipPage(c *gin.Context) {
 	}
 	base.Title = "Adhésions"
 
-	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin_membership.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "amapadmin_layout.html", "amapadmin_membership.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1255,7 +1255,7 @@ func (h *PagesHandler) AmapAdminCurrencyPage(c *gin.Context) {
 	}
 	base.Title = "Monnaie"
 
-	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin_currency.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "amapadmin_layout.html", "amapadmin_currency.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1333,7 +1333,7 @@ func (h *PagesHandler) AmapAdminDocumentsPage(c *gin.Context) {
 		})
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "amapadmin_layout.html", "amapadmin_documents.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "amapadmin_layout.html", "amapadmin_documents.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1833,8 +1833,13 @@ func (h *PagesHandler) AmapAdminVolunteerDelete(c *gin.Context) {
 	if !ok {
 		return
 	}
-	// Les inscriptions partent avec le poste : laissées derrière, elles
-	// désigneraient un rôle disparu sur les listes d'émargement.
+	// Le poste est retiré des distributions qui l'avaient retenu : la ligne de
+	// liaison laissée derrière désignerait un rôle disparu, et l'écran des
+	// permanences d'une distribution compterait un poste qui n'existe plus.
+	//
+	// Les bénévoles déjà inscrits, eux, ne bougent pas : `volunteers` garde le
+	// nom du rôle et non son identifiant, si bien qu'une inscription passée
+	// reste lisible sur les listes d'émargement.
 	h.db.Where("volunteer_role_id = ?", role.ID).Delete(&model.MultiDistribRole{})
 	h.db.Delete(&model.VolunteerRole{}, role.ID)
 	c.Redirect(http.StatusFound, "/amapadmin/volunteers")

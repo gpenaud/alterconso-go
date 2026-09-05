@@ -99,6 +99,12 @@ func (h *PagesHandler) DistributionValidatePage(c *gin.Context) {
 		})
 	}
 
+	// Le fil nomme cet écran : sans ce cran, toutes les pages de la
+	// rubrique affichaient le même chemin.
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}, {Name: "Validation", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	data.Category = "distribution"
 	// Même largeur que les autres écrans de gestion.
 	data.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_validate.html")
@@ -306,6 +312,15 @@ func (h *PagesHandler) VolunteersCalendarPage(c *gin.Context) {
 		roleRows[ri] = VolCalRoleRow{Name: role.Name, Cells: cells}
 	}
 
+	// Ce qui manque encore sur la période, tous postes et toutes distributions
+	// confondus : c'est le seul chiffre qui appelle une action.
+	remaining := 0
+	for _, col := range columns {
+		if col.Required > col.Registered {
+			remaining += col.Required - col.Registered
+		}
+	}
+
 	data := VolunteersCalendarData{
 		PageData:    pd,
 		From:        fromStr,
@@ -313,7 +328,8 @@ func (h *PagesHandler) VolunteersCalendarPage(c *gin.Context) {
 		FromLabel:   frDateLabelFull(from),
 		ToLabel:     frDateLabelFull(to),
 		Done:        done,
-		ToBeDone:    0,
+		ToBeDone:    remaining,
+		Retour:      volCalRetour(c.Query("retour")),
 		PeriodStart: frDateLabel(from),
 		PeriodEnd:   frDateLabel(to),
 		Columns:     columns,
@@ -321,8 +337,10 @@ func (h *PagesHandler) VolunteersCalendarPage(c *gin.Context) {
 	}
 	data.Title = "Calendrier des permanences"
 	data.Category = "distribution"
-	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}}
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}, {Name: "Calendrier des permanences", Link: ""}}
 
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
 	t, err2 := loadTemplates("base.html", "design.html", "cycles_style.html",
 		"distribution_volunteers_calendar.html")
 	if err2 != nil {
@@ -704,6 +722,9 @@ func (h *PagesHandler) DistributionInviteFarmersPage(c *gin.Context) {
 	data.Title = "Producteurs participants"
 	data.Category = "distribution"
 
+	// Le fil nomme cet écran : sans ce cran, toutes les pages de la
+	// rubrique affichaient le même chemin.
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}, {Name: "Producteurs présents", Link: ""}}
 	// Même largeur que les autres écrans de gestion.
 	data.Container = "container-fluid ac-accueil"
 	t, err2 := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_invite_farmers.html")
@@ -809,6 +830,9 @@ func (h *PagesHandler) DistributionShiftPage(c *gin.Context) {
 		return
 	}
 
+	// Le fil nomme cet écran : sans ce cran, toutes les pages de la
+	// rubrique affichaient le même chemin.
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}, {Name: "Reporter la livraison", Link: ""}}
 	// Même largeur que les autres écrans de gestion.
 	data.Container = "container-fluid ac-accueil"
 	t, err2 := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_shift.html")
@@ -887,6 +911,9 @@ func (h *PagesHandler) DistributionEditDatesPage(c *gin.Context) {
 		return
 	}
 
+	// Le fil nomme cet écran : sans ce cran, toutes les pages de la
+	// rubrique affichaient le même chemin.
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}, {Name: "Dates de commande", Link: ""}}
 	// Même largeur que les autres écrans de gestion.
 	data.Container = "container-fluid ac-accueil"
 	t2, err2 := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_edit_dates.html")
@@ -1109,6 +1136,12 @@ func (h *PagesHandler) producteursDivergents(md model.MultiDistrib) []Producteur
 }
 
 func (h *PagesHandler) renderEditMd(c *gin.Context, data EditMdData) {
+	// Le fil nomme cet écran : sans ce cran, toutes les pages de la
+	// rubrique affichaient le même chemin.
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}, {Name: "Modifier la distribution", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	data.Category = "distribution"
 	// Même largeur que les autres écrans de gestion.
 	data.Container = "container-fluid ac-accueil"
 	tmpl, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_edit_md.html")
@@ -1280,6 +1313,12 @@ func placeSuffix(md *model.MultiDistrib) string {
 }
 
 func (h *PagesHandler) renderInsertMd(c *gin.Context, data InsertMdData) {
+	// Le fil nomme cet écran : sans ce cran, toutes les pages de la
+	// rubrique affichaient le même chemin.
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}, {Name: "Nouvelle distribution", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	data.Category = "distribution"
 	// Même largeur que les autres écrans de gestion.
 	data.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_insert_md.html")
@@ -1391,6 +1430,12 @@ func (h *PagesHandler) DistribRolesPage(c *gin.Context) {
 		data.Roles = append(data.Roles, item)
 	}
 
+	// Le fil nomme cet écran : sans ce cran, toutes les pages de la
+	// rubrique affichaient le même chemin.
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}, {Name: "Postes de bénévoles", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	data.Category = "distribution"
 	// Même largeur que les autres écrans de gestion.
 	data.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_roles.html")

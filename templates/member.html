@@ -5,18 +5,35 @@
 {{define "lignesMembres"}}
 {{range .Members}}
 <tr>
+  {{/* La moitié gauche de la ligne — le nom, le courriel, l'adresse — est
+       elle-même le lien vers la fiche : c'est là qu'on vise naturellement, et
+       cela évite une icône de plus au bout de la ligne. */}}
   <td>
-    {{/* La pastille donne à l'œil un point d'accroche par ligne, ce qu'une
-         colonne de noms nus ne fait pas — et elle ne coûte aucune requête. */}}
-    <div class="cyc-identite">
-      <span class="cyc-initiales">{{initials .FirstName .LastName}}</span>
-      <span>
-        <a href="/member/view/{{.ID}}" class="nom">{{.LastName}} {{.FirstName}}</a>
-        <span class="second">{{.Email}}</span>
+    <a href="/member/view/{{.ID}}" class="cyc-cellule-lien"
+       title="Fiche de {{.FirstName}} {{.LastName}}">
+      {{/* La pastille donne à l'œil un point d'accroche par ligne, ce qu'une
+           colonne de noms nus ne fait pas — et elle ne coûte aucune requête. */}}
+      <span class="cyc-identite">
+        <span class="cyc-initiales">{{initials .FirstName .LastName}}</span>
+        <span>
+          <span class="nom">{{.LastName}} {{.FirstName}}</span>
+          <span class="second">{{.Email}}</span>
+        </span>
       </span>
-    </div>
+    </a>
   </td>
-  <td class="cyc-lieu">{{if .Address}}{{.Address}}{{else}}<span class="cyc-note">Non renseignée</span>{{end}}</td>
+  <td class="cyc-lieu">
+    <a href="/member/view/{{.ID}}" class="cyc-cellule-lien"
+       title="Fiche de {{.FirstName}} {{.LastName}}">
+      {{if .Address}}{{.Address}}{{else}}<span class="cyc-note">Non renseignée</span>{{end}}
+    </a>
+  </td>
+  {{/* Hors de la moitié cliquable : le numéro est lui-même un lien, qu'un
+       calque menant à la fiche aurait rendu inatteignable. */}}
+  <td class="serre cyc-lieu">
+    {{if .Phone}}<a href="tel:{{.Phone}}">{{telephone .Phone}}</a>
+    {{else}}<span class="cyc-note">—</span>{{end}}
+  </td>
   {{if $.Group.HasMembership}}
   <td class="serre">
     {{if .MembershipPaid}}
@@ -26,26 +43,30 @@
     {{end}}
   </td>
   {{end}}
-  <td class="serre num">{{price .Balance}} €</td>
   {{/* Les actions à l'icône, chacune sous son infobulle : cinq boutons nommés
-       en bout de ligne repoussaient le nom et l'adresse hors de vue. */}}
+       en bout de ligne repoussaient le nom et l'adresse hors de vue. Les
+       paiements n'ont pas cours sur cette version du site — l'entrée est
+       retirée d'ici, l'écran reste atteignable par son adresse. */}}
   <td class="actions">
     <div class="cyc-actions">
-      <a href="/member/view/{{.ID}}" class="cyc-icone-btn" title="Voir la fiche" aria-label="Voir la fiche">
-        <i class="icon icon-eye"></i>
-      </a>
-      <a href="/member/edit/{{.ID}}" class="cyc-icone-btn" title="Modifier" aria-label="Modifier">
-        <i class="icon icon-edit"></i>
-      </a>
-      <a href="/member/payments/{{.ID}}" class="cyc-icone-btn" title="Paiements" aria-label="Paiements">
-        <i class="icon icon-euro"></i>
-      </a>
       {{if $.IsGroupManager}}
       <a href="/member/loginAs/{{.ID}}" class="cyc-icone-btn"
          title="Se connecter à sa place" aria-label="Se connecter à sa place">
         <i class="icon icon-user"></i>
       </a>
       {{end}}
+      {{/* Écrire à cette personne seule : la messagerie s'ouvre avec elle pour
+           destinataire. Réservé à la gestion des membres — c'est un envoi
+           nominatif, que le serveur refuse d'armer pour les autres. */}}
+      {{if $.HasMembership}}
+      <a href="/messages?member={{.ID}}" class="cyc-icone-btn"
+         title="Écrire à {{.FirstName}} {{.LastName}}" aria-label="Écrire à ce membre">
+        <i class="icon icon-mail"></i>
+      </a>
+      {{end}}
+      <a href="/member/edit/{{.ID}}" class="cyc-icone-btn" title="Modifier" aria-label="Modifier">
+        <i class="icon icon-edit"></i>
+      </a>
       <a href="/member/delete/{{.ID}}" class="cyc-icone-btn danger"
          title="Retirer du groupe" aria-label="Retirer du groupe"
          onclick="return confirm('Retirer {{.FirstName}} {{.LastName}} du groupe ?');">
@@ -124,8 +145,8 @@
           <tr>
             <th>Membre</th>
             <th>Adresse</th>
+            <th class="serre">Téléphone</th>
             {{if .Group.HasMembership}}<th class="serre">Adhésion {{.AnneeCourante}}</th>{{end}}
-            <th class="serre num">Solde</th>
             <th class="actions"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>

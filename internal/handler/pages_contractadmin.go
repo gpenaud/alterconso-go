@@ -132,6 +132,13 @@ func (h *PagesHandler) CatalogAdminViewPage(c *gin.Context) {
 	var products []model.Product
 	h.db.Where("catalog_id = ?", data.Catalog.ID).Preload("Image").Find(&products)
 	data.Products = products
+	// Le fil nomme cet écran.
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"}, {Name: "Récapitulatif", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	data.Category = "contract"
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_view.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -271,6 +278,13 @@ func (h *PagesHandler) CatalogAdminEditPage(c *gin.Context) {
 
 	editData := CatalogEditData{CatalogAdminData: data, Vendors: vendors, Members: members,
 		PeutMettreEnAvant: peutMettreEnAvant(data.PageData)}
+	// Le fil nomme cet écran.
+	editData.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"}, {Name: "Réglages", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	editData.Category = "contract"
+	// Même largeur que les autres écrans de gestion.
+	editData.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_edit.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -343,6 +357,13 @@ func (h *PagesHandler) CatalogAdminProductsPage(c *gin.Context) {
 		})
 	}
 
+	// Le fil nomme cet écran.
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"}, {Name: "Produits", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	data.Category = "contract"
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_products.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -547,6 +568,13 @@ func (h *PagesHandler) CatalogAdminProductNewPage(c *gin.Context) {
 	// GET : formulaire vierge. Pas d'ImageURL — la photo s'ajoute depuis la
 	// liste une fois le produit créé, comme pour les produits existants.
 	newData := ProductEditData{CatalogAdminData: data, Product: product, Categories: cats}
+	// Le fil nomme cet écran.
+	newData.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"}, {Name: "Fiche produit", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	newData.Category = "contract"
+	// Même largeur que les autres écrans de gestion.
+	newData.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_product_edit.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -607,6 +635,14 @@ func (h *PagesHandler) CatalogAdminProductEditPage(c *gin.Context) {
 		Categories:         cats,
 		SelectedCategoryID: categoryOfProduct(h.db, &product),
 	}
+	// Le fil nomme cet écran : sans ce cran, il n'affichait que le nom du
+	// catalogue, comme les six autres onglets.
+	editData.Breadcrumb = []BreadcrumbItem{
+		{Name: "Catalogues", Link: "/contractAdmin"},
+		{Name: "Fiche produit", Link: ""},
+	}
+	// Même largeur que les autres écrans de gestion.
+	editData.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_product_edit.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -676,6 +712,13 @@ func (h *PagesHandler) CatalogAdminProductPhotoPage(c *gin.Context) {
 	}
 
 	editData := ProductEditData{CatalogAdminData: data, Product: product, ImageURL: imgURL}
+	// Le fil nomme cet écran.
+	editData.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"}, {Name: "Photo d'un produit", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	editData.Category = "contract"
+	// Même largeur que les autres écrans de gestion.
+	editData.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_product_photo.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -859,6 +902,13 @@ func (h *PagesHandler) CatalogAdminDistributionsPage(c *gin.Context) {
 	}
 	data.AllJoined = allJoined
 
+	// Le fil nomme cet écran.
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"}, {Name: "Distributions du catalogue", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	data.Category = "contract"
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_distributions.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -1057,6 +1107,13 @@ func (h *PagesHandler) CatalogAdminDistributionDatesPage(c *gin.Context) {
 	page.MinOrderStartLabel = floor.Format("02/01/2006")
 	page.Title = "Dates — " + data.Catalog.Name
 
+	// Le fil nomme cet écran.
+	page.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"}, {Name: "Dates d'une distribution", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	page.Category = "contract"
+	// Même largeur que les autres écrans de gestion.
+	page.Container = "container-fluid ac-accueil"
 	t, err2 := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_distribution_dates.html")
 	if err2 != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err2)
@@ -1143,6 +1200,13 @@ func (h *PagesHandler) CatalogAdminOrdersPage(c *gin.Context) {
 		DistribPlace:     distrib.MultiDistrib.Place.Name,
 	}
 
+	// Le fil nomme cet écran.
+	od.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"}, {Name: "Commandes", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	od.Category = "contract"
+	// Même largeur que les autres écrans de gestion.
+	od.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_orders.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -1180,6 +1244,13 @@ func (h *PagesHandler) CatalogAdminSubscriptionsPage(c *gin.Context) {
 		data.Subscriptions = append(data.Subscriptions, entry)
 	}
 
+	// Le fil nomme cet écran.
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"}, {Name: "Souscriptions", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	data.Category = "contract"
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_subscriptions.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -1294,6 +1365,12 @@ func (h *PagesHandler) DistributionListByDateConfigPage(c *gin.Context) {
 	}
 	data.Title = "Liste d'émargement — " + data.DayLabel
 
+	// Le fil nomme cet écran : sans ce cran, toutes les pages de la
+	// rubrique affichaient le même chemin.
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}, {Name: "Liste d'émargement", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	data.Category = "distribution"
 	// Même largeur que les autres écrans de gestion.
 	data.Container = "container-fluid ac-accueil"
 	t, err2 := loadTemplates("base.html", "design.html", "cycles_style.html", "emargement_config.html")
@@ -1577,6 +1654,8 @@ func (h *PagesHandler) ContractAdminVendorsByDatePage(c *gin.Context) {
 		data.Vendors = append(data.Vendors, entry)
 	}
 
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
 	t, err2 := loadTemplates("base.html", "design.html", "contractadmin_vendors_by_date.html")
 	if err2 != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err2)
@@ -1825,7 +1904,10 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 	}
 	data.Title = "Distribution du " + data.DayLabel
 	data.Category = "distribution"
-	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}}
+	data.Breadcrumb = []BreadcrumbItem{
+		{Name: "Distributions", Link: "/distribution"},
+		{Name: "Commandes du " + data.DayLabel, Link: ""},
+	}
 
 	for i, uid := range userOrder {
 		u := userMap[uid]
@@ -1879,6 +1961,8 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 		})
 	}
 
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
 	t, err2 := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_orders_by_date.html")
 	if err2 != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err2)
@@ -2097,7 +2181,14 @@ func (h *PagesHandler) CatalogAdminDuplicatePage(c *gin.Context) {
 	dp := DuplicatePage{PageData: pd, Catalog: catalog}
 	dp.Title = "Dupliquer — " + catalog.Name
 
-	t, err := loadTemplates("base.html", "design.html", "contractadmin_duplicate.html")
+	// Le fil nomme cet écran.
+	dp.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"}, {Name: "Dupliquer", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	dp.Category = "contract"
+	// Même largeur que les autres écrans de gestion.
+	dp.Container = "container-fluid ac-accueil"
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_duplicate.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -2281,6 +2372,13 @@ func (h *PagesHandler) CatalogAdminSelectDistribPage(c *gin.Context) {
 		})
 	}
 
+	// Le fil nomme cet écran.
+	sd.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"}, {Name: "Commandes", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	sd.Category = "contract"
+	// Même largeur que les autres écrans de gestion.
+	sd.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_select_distrib.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
@@ -2514,6 +2612,8 @@ func (h *PagesHandler) MemberOrderPage(c *gin.Context) {
 		}
 	}
 
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
 	t, err2 := loadTemplates("base.html", "design.html", "contractadmin_member_order.html")
 	if err2 != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err2)
@@ -2772,6 +2872,13 @@ func (h *PagesHandler) DeleteMemberOrder(c *gin.Context) {
 }
 
 func renderImportCSV(c *gin.Context, data ImportCSVData) {
+	// Le fil nomme cet écran.
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Catalogues", Link: "/contractAdmin"}, {Name: "Import CSV", Link: ""}}
+	// La rubrique place l'écran dans l'espace d'administration : elle
+	// commande le menu latéral et le premier cran du fil.
+	data.Category = "contract"
+	// Même largeur que les autres écrans de gestion.
+	data.Container = "container-fluid ac-accueil"
 	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contractadmin_layout.html", "contractadmin_products_importcsv.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)

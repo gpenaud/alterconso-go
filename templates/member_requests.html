@@ -26,7 +26,7 @@
       {{range .Requests}}
       <div class="cyc-bloc">
         <button type="button" class="cyc-sommaire" aria-expanded="false">
-          <span class="cyc-initiales">{{initials .Name ""}}</span>
+          <span class="cyc-initiales">{{initialesDe .Name}}</span>
           <span class="ident">
             <span class="nom">{{.Name}}</span>
             <span class="second">{{.Email}}</span>
@@ -44,7 +44,7 @@
             </div>
             <div>
               <dt>Téléphone</dt>
-              <dd {{if not .Phone}}class="muet"{{end}}>{{if .Phone}}{{.Phone}}{{else}}Non renseigné{{end}}</dd>
+              <dd {{if not .Phone}}class="muet"{{end}}>{{if .Phone}}{{telephone .Phone}}{{else}}Non renseigné{{end}}</dd>
             </div>
             <div>
               <dt>Commune</dt>

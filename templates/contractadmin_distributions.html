@@ -1,95 +1,88 @@
 {{define "content"}}
 {{template "contractadmin_nav" .}}
 
-<h3 style="font-style:italic;">Participation aux distributions</h3>
-
-<div style="display:flex;gap:8px;margin-bottom:16px;">
-  <form method="POST" style="display:inline;">
+<div class="cyc-barre">
+  <form method="POST" style="margin:0;">
     <input type="hidden" name="action" value="{{if .AllJoined}}leaveAll{{else}}joinAll{{end}}" />
-    <button type="submit" class="btn btn-default btn-sm">
+    <button type="submit" class="cyc-btn {{if not .AllJoined}}cyc-btn-primaire{{end}}">
       <i class="icon icon-{{if .AllJoined}}delete{{else}}check{{end}}"></i>
-      {{if .AllJoined}}Ne plus participer à toutes{{else}}Participer à toutes les distributions{{end}}
+      {{if .AllJoined}}Ne plus participer à aucune{{else}}Participer à toutes{{end}}
     </button>
   </form>
-  {{if .ShowOld}}
-  <a href="/contractAdmin/distributions/{{.Catalog.ID}}" class="btn btn-default btn-sm">
-    <i class="icon icon-calendar"></i> Distributions à venir
-  </a>
-  {{else}}
-  <a href="/contractAdmin/distributions/{{.Catalog.ID}}?old=1" class="btn btn-default btn-sm">
-    <i class="icon icon-archive"></i> Anciennes distributions
-  </a>
-  {{end}}
+  <div class="cyc-filtres">
+    {{if .ShowOld}}
+    <a href="/contractAdmin/distributions/{{.Catalog.ID}}" class="cyc-filtre">
+      <i class="icon icon-calendar"></i> Distributions à venir
+    </a>
+    {{else}}
+    <a href="/contractAdmin/distributions/{{.Catalog.ID}}?old=1" class="cyc-filtre">
+      <i class="icon icon-archive"></i> Distributions passées
+    </a>
+    {{end}}
+  </div>
 </div>
 
 {{if .CatalogDistribs}}
-<div style="border-top:1px solid #eee;">
+<div class="cyc-liste">
   {{range .CatalogDistribs}}
-  <div style="display:flex;align-items:center;padding:12px 0;border-bottom:1px solid #eee;gap:12px;{{if .IsPast}}opacity:0.5;{{end}}">
+  <div class="cyc-bloc {{if .IsPast}}eteint{{end}}">
+    <div class="cyc-sommaire statique">
+      <span class="ident">
+        <span class="nom">{{.DateLabel}}</span>
+        <span class="second">de {{.StartHour}} à {{.EndHour}} · {{.Place}}</span>
+      </span>
 
-    <div style="flex:1;min-width:0;">
-      <div style="font-weight:bold;">{{.DateLabel}}</div>
-      <div style="color:#888;font-size:0.9em;">de {{.StartHour}} à {{.EndHour}}</div>
-    </div>
-
-    <div style="flex:1;color:#555;">{{.Place}}</div>
-
-    {{if .Participating}}
-    <div style="flex:0 0 210px;font-size:0.85em;">
-      <div>
-        {{if .OrdersOpen}}
-        <span style="color:#5cb85c;font-weight:bold;">● Commandes ouvertes</span>
-        {{else}}
-        <span style="color:#c0392b;font-weight:bold;">● Commandes fermées</span>
-        {{end}}
-      </div>
-      <div style="color:#888;">
-        {{if .OrderEndLabel}}Clôture le {{.OrderEndLabel}}{{else}}Sans clôture{{end}}
-        {{if .OrderEndOverridden}}
-        <span class="label label-default"
-              title="Clôture propre à ce catalogue, différente de celle du jour">modifiée</span>
-        {{end}}
-      </div>
-    </div>
-    {{else}}
-    <div style="flex:0 0 210px;"></div>
-    {{end}}
-
-    <div style="flex-shrink:0;display:flex;gap:4px;">
       {{if .Participating}}
-      <a href="/contractAdmin/ordersByDate/{{.Date}}/{{$.Group.ID}}?catalog={{$.Catalog.ID}}"
-         class="btn btn-default btn-sm">
-        <i class="icon icon-basket"></i> Commandes
-        {{if .NbOrders}}<span class="badge" style="margin-left:4px;">{{.NbOrders}}</span>{{end}}
-      </a>
-      <a href="/contractAdmin/distributions/{{$.Catalog.ID}}/dates/{{.DistribID}}"
-         class="btn btn-default btn-sm" title="Date de distribution et clôture des commandes">
-        <i class="icon icon-calendar"></i> Dates
-      </a>
-      <form method="POST" style="display:inline;">
-        <input type="hidden" name="action" value="leave" />
-        <input type="hidden" name="distrib_id" value="{{.DistribID}}" />
-        <button type="submit" class="btn btn-default btn-sm"
-          onclick="return confirm('Ne plus participer à cette distribution ?')">
-          <i class="icon icon-delete"></i> Ne plus participer
-        </button>
-      </form>
+      {{if .OrdersOpen}}
+      <span class="cyc-badge ok"><i class="icon icon-basket"></i> Commandes ouvertes</span>
       {{else}}
-      <form method="POST" style="display:inline;">
-        <input type="hidden" name="action" value="join" />
-        <input type="hidden" name="multi_distrib_id" value="{{.MultiDistribID}}" />
-        <button type="submit" class="btn btn-success btn-sm">
-          <i class="icon icon-plus"></i> Participer
-        </button>
-      </form>
+      <span class="cyc-badge">Commandes fermées</span>
       {{end}}
-    </div>
+      <span class="cyc-note" style="margin:0;flex:0 1 auto;">
+        {{if .OrderEndLabel}}clôture le {{.OrderEndLabel}}{{else}}sans clôture{{end}}
+        {{if .OrderEndOverridden}}<b title="Clôture propre à ce catalogue, différente de celle du jour">— propre</b>{{end}}
+      </span>
+      {{else}}
+      <span class="cyc-badge">Ne participe pas</span>
+      {{end}}
 
+      <div class="cyc-actions">
+        {{if .Participating}}
+        <a href="/contractAdmin/ordersByDate/{{.Date}}/{{$.Group.ID}}?catalog={{$.Catalog.ID}}"
+           class="cyc-icone-btn" title="Commandes de cette distribution{{if .NbOrders}} ({{.NbOrders}}){{end}}">
+          <i class="icon icon-basket"></i><span class="sr-only">Commandes</span>
+        </a>
+        <a href="/contractAdmin/distributions/{{$.Catalog.ID}}/dates/{{.DistribID}}"
+           class="cyc-icone-btn" title="Dates propres à ce catalogue">
+          <i class="icon icon-calendar"></i><span class="sr-only">Dates</span>
+        </a>
+        <form method="POST">
+          <input type="hidden" name="action" value="leave" />
+          <input type="hidden" name="distrib_id" value="{{.DistribID}}" />
+          <button type="submit" class="cyc-icone-btn danger" title="Ne plus participer"
+                  onclick="return confirm('Ne plus participer à la distribution du {{.DateLabel}} ?')">
+            <i class="icon icon-delete"></i><span class="sr-only">Ne plus participer</span>
+          </button>
+        </form>
+        {{else}}
+        <form method="POST">
+          <input type="hidden" name="action" value="join" />
+          <input type="hidden" name="multi_distrib_id" value="{{.MultiDistribID}}" />
+          <button type="submit" class="cyc-btn">
+            <i class="icon icon-plus"></i> Participer
+          </button>
+        </form>
+        {{end}}
+      </div>
+    </div>
   </div>
   {{end}}
 </div>
 {{else}}
-<p class="text-muted">Aucune distribution planifiée pour ce groupe.</p>
+<div class="cyc-aucun">
+  <i class="icon icon-calendar icone"></i>
+  <p>Aucune distribution planifiée pour ce groupe.</p>
+</div>
 {{end}}
 
 {{template "contractadmin_close" .}}

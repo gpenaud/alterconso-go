@@ -35,7 +35,7 @@
       <dd><a href="mailto:{{.Catalog.Vendor.Email}}">{{.Catalog.Vendor.Email}}</a></dd>
     </div>
     {{if .Catalog.Vendor.Phone}}
-    <div><dt>Téléphone</dt><dd>{{deref .Catalog.Vendor.Phone}}</dd></div>
+    <div><dt>Téléphone</dt><dd>{{telephone .Catalog.Vendor.Phone}}</dd></div>
     {{end}}
   </dl>
 </div>
