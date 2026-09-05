@@ -395,7 +395,12 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	// frontend/dist/index.html si l'URL ressemble à une route SPA. Sinon 404.
 	// Ça permet à React Router de gérer /shop/:id, /groups/:id/..., /login,
 	// /profile sans préfixe.
-	spaPrefixes := []string{"/login", "/profile", "/groups", "/shop/"}
+	// /refonte y figure au même titre que les autres : ses dix-sept écrans
+	// n'étaient joignables que par navigation interne, React Router prenant la
+	// main sans repasser par le serveur. Ouvrir l'adresse, la recharger ou
+	// suivre un lien reçu tombait sur un 404 — ce qui rendait la refonte
+	// invisible à qui n'entrait pas par l'ancienne interface.
+	spaPrefixes := []string{"/login", "/profile", "/groups", "/shop/", "/refonte"}
 	r.NoRoute(func(c *gin.Context) {
 		p := c.Request.URL.Path
 		for _, pref := range spaPrefixes {
