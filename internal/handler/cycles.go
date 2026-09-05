@@ -96,7 +96,7 @@ func (h *PagesHandler) DistributionCyclesPage(c *gin.Context) {
 		})
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "distribution_cycles.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_cycles.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -677,7 +677,7 @@ func (h *PagesHandler) removeCycleImage(msg *model.CycleMessage) {
 
 // renderCycleForm rend le formulaire, commun à la création et à la modification.
 func (h *PagesHandler) renderCycleForm(c *gin.Context, data CycleFormData) {
-	t, err := loadTemplates("base.html", "design.html", "distribution_cycle_form.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "distribution_cycle_form.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return

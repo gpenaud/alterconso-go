@@ -42,7 +42,7 @@ func (h *PagesHandler) MemberMoreFragment(c *gin.Context) {
 	}
 	pd.AnneeCourante = anneeCourante()
 
-	t, err := loadTemplates("member.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "member.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return

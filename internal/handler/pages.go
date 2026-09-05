@@ -597,7 +597,7 @@ func (h *PagesHandler) LoginPage(c *gin.Context) {
 	if redirect == "" {
 		redirect = "/user/choose"
 	}
-	t, err := loadTemplates("base.html", "login.html")
+	t, err := loadTemplates("base.html", "cycles_style.html", "login.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1147,7 +1147,7 @@ func (h *PagesHandler) HomePage(c *gin.Context) {
 		return
 	}
 
-	t, err := loadTemplates("base.html", "design.html", "home.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "home.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return
@@ -1254,7 +1254,7 @@ func (h *PagesHandler) ContractViewPage(c *gin.Context) {
 	pd.Contact = catalog.Contact
 	pd.Distribs = distribViews
 
-	t, err := loadTemplates("base.html", "design.html", "contract_view.html")
+	t, err := loadTemplates("base.html", "design.html", "cycles_style.html", "contract_view.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return

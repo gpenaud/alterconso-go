@@ -102,7 +102,7 @@ func loadTemplatesFromRoot(t *testing.T, names ...string) (*template.Template, e
 func renderNav(t *testing.T, pd PageData) string {
 	t.Helper()
 	chdirRepoRoot(t)
-	tpl, err := loadTemplates("base.html", "design.html", "home.html")
+	tpl, err := loadTemplates("base.html", "design.html", "cycles_style.html", "home.html")
 	if err != nil {
 		t.Fatalf("parse : %v", err)
 	}

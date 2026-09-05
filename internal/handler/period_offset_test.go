@@ -29,7 +29,7 @@ func TestPeriodArrowsFollowCurrentOffset(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.nom, func(t *testing.T) {
-			tpl, err := loadTemplates("base.html", "design.html", tc.tpl)
+			tpl, err := loadTemplates("base.html", "design.html", "cycles_style.html", tc.tpl)
 			if err != nil {
 				t.Fatalf("parse : %v", err)
 			}

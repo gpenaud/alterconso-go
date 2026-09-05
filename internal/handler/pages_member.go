@@ -996,7 +996,7 @@ func (h *PagesHandler) RegisterPage(c *gin.Context) {
 		}
 	}
 
-	t, err := loadTemplates("base.html", "register.html")
+	t, err := loadTemplates("base.html", "cycles_style.html", "register.html")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err)
 		return

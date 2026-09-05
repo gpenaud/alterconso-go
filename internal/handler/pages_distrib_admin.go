@@ -323,7 +323,8 @@ func (h *PagesHandler) VolunteersCalendarPage(c *gin.Context) {
 	data.Category = "distribution"
 	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}}
 
-	t, err2 := loadTemplates("base.html", "design.html", "distribution_volunteers_calendar.html")
+	t, err2 := loadTemplates("base.html", "design.html", "cycles_style.html",
+		"distribution_volunteers_calendar.html")
 	if err2 != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err2)
 		return
