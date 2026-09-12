@@ -554,6 +554,33 @@ label { font-weight:600; color:#4a4a4a; }
   border-radius:12px; overflow:hidden; margin-top:14px; margin-bottom:4px; }
 .ac-producteur:first-child { border-top:0; }
 
+/* LE PRODUCTEUR DONT LA COMMANDE N'EST PAS ENCORE OUVERTE.
+   Chacun ouvre quand il veut : une distribution peut etre ouverte tout en
+   comptant des producteurs qu'on ne peut pas encore commander. Ils restent
+   dans le volet — les retirer les ferait passer pour absents, et l'adherent
+   qui les attend ne saurait pas qu'ils viennent — mais en retrait, pour qu'on
+   ne cherche pas leurs produits dans le shop.
+   L'attenuation ne porte PAS sur la mention qui l'explique : celle-ci doit se
+   lire, justement. */
+.ac-producteur.en-attente > header h4,
+.ac-producteur.en-attente .ac-producteur-lieu,
+.ac-producteur.en-attente .ac-producteur-texte,
+.ac-producteur.en-attente .ac-producteur-produits { opacity:.55;
+  filter:saturate(.65); }
+.ac-producteur.en-attente .ac-pas-encore { opacity:1; filter:none; }
+/* La mention porte le gris du texte secondaire, et non un rouge d'alerte :
+   rien n'est en defaut, la date n'est simplement pas venue. */
+.ac-pas-encore { display:inline-flex; align-items:center; gap:5px;
+  margin-left:8px; padding:2px 9px; border-radius:999px;
+  background:var(--ac-creme); border:1px solid var(--ac-trait);
+  color:var(--ac-gris); font-size:.62em; font-weight:700;
+  letter-spacing:.04em; text-transform:uppercase; white-space:nowrap;
+  vertical-align:middle; }
+.ac-pas-encore i.icon { opacity:.7; }
+/* Dans la liste des noms de la barre, la meme mise en retrait, sans mention :
+   la place y manque, et le volet l'explique des qu'on l'ouvre. */
+.ac-volet-noms .en-attente { opacity:.5; }
+
 .ac-producteur { padding:20px 20px 22px; background:#fff;
   border-top:1px solid var(--ac-trait); }
 .ac-producteur header { display:flex; align-items:baseline; gap:14px;

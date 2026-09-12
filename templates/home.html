@@ -9,7 +9,7 @@
     {{len .Vendors}} producteur{{if gt (len .Vendors) 1}}s{{end}}
   </span>
   <span class="ac-volet-noms">
-    {{range $i, $v := .Vendors}}{{if $i}} · {{end}}{{$v.Name}}{{end}}
+    {{range $i, $v := .Vendors}}{{if $i}} · {{end}}<span{{if $v.PasEncoreOuvert}} class="en-attente"{{end}}>{{$v.Name}}</span>{{end}}
   </span>
   <i class="icon icon-chevron-down chevron"></i>
 </button>
@@ -119,11 +119,15 @@
         <div class="ac-volet-panneau {{if .OuvrirProducteurs}}ouvert{{end}}"
              id="producteurs-{{.ID}}"><div>
           {{range .Vendors}}
-          <article class="ac-producteur">
+          <article class="ac-producteur{{if .PasEncoreOuvert}} en-attente{{end}}">
             <header>
               <h4>
                 {{.Name}}
                 {{if .Organic}}<span class="ac-bio"><i class="icon icon-bio"></i> Bio</span>{{end}}
+                {{/* Le dire, et pas seulement le griser : un producteur pale
+                     se lit comme une erreur d'affichage tant qu'on n'a pas
+                     appris ce que la nuance signifie. */}}
+                {{if .PasEncoreOuvert}}<span class="ac-pas-encore"><i class="icon icon-clock"></i> Pas encore ouvert</span>{{end}}
               </h4>
               {{if .City}}<span class="ac-producteur-lieu"><i class="icon icon-map-marker"></i> {{.City}}</span>{{end}}
             </header>

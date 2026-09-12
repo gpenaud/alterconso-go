@@ -32,11 +32,24 @@ export function ShopPage() {
   // écran d'administration. Seuls les chemins internes sont retenus — une URL
   // absolue, ou un "//hôte" que le navigateur lit comme tel, ferait de ce
   // paramètre une redirection ouverte vers n'importe quel site.
+  // Où revenir une fois la commande validée.
+  //
+  // « ?return= » l'emporte : il vient des écrans d'administration, qui
+  // ramènent à la liste d'où l'on est parti. À défaut, l'accueil — mais À LA
+  // HAUTEUR DE LA DISTRIBUTION qu'on vient de commander, et non tout en haut.
+  // Une page qui en compte plusieurs obligeait sinon à retrouver des yeux
+  // celle qu'on venait de quitter, alors que c'est précisément celle dont on
+  // veut voir le total se mettre à jour.
+  //
+  // L'ancre existe déjà dans les deux formes de carte, « id="distrib-<id>" »,
+  // et leur CSS porte le « scroll-margin-top » qui evite qu'elles se collent
+  // au bandeau.
   const returnTo = useMemo(() => {
     const v = searchParams.get("return");
-    if (!v || !v.startsWith("/") || v.startsWith("//")) return undefined;
-    return v;
-  }, [searchParams]);
+    if (v && v.startsWith("/") && !v.startsWith("//")) return v;
+    if (Number.isNaN(multiDistribId)) return undefined;
+    return `/home#distrib-${multiDistribId}`;
+  }, [searchParams, multiDistribId]);
 
   // ?for=Nom : affiché en bandeau, pour qu'on sache au nom de qui on commande.
   const targetUserName = searchParams.get("for") ?? undefined;

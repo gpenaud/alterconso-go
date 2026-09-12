@@ -682,3 +682,46 @@ func TestLienMesProduits(t *testing.T) {
 		}
 	}
 }
+
+// Un producteur dont la commande n'est pas encore ouverte se distingue des
+// autres : chacun ouvre quand il veut, et une distribution peut etre ouverte
+// tout en en comptant qui ne le sont pas.
+func TestProducteurPasEncoreOuvert(t *testing.T) {
+	tpl, err := loadTemplatesFromRoot(t, "base.html", "design.html", "cycles_style.html", "home.html")
+	if err != nil {
+		t.Fatalf("parse : %v", err)
+	}
+	pd := PageData{
+		User:  &model.User{ID: 1, FirstName: "Marie"},
+		Group: &model.Group{ID: 1, Name: "AMAP"}, Category: "home",
+	}
+	pd.MultiDistribs = []MultiDistribView{{
+		ID: 1, Day: "12", Month: "septembre", DayOfWeek: "jeudi",
+		DayLabelFull: "Jeudi 12 septembre", Place: "Salle",
+		StartHour: "18:00", EndHour: "19:30", CanOrder: true, Distributions: true,
+		Vendors: []VendorView{
+			{ID: 1, Name: "Ferme du Pré"},
+			{ID: 2, Name: "Les Ruchers", PasEncoreOuvert: true},
+		},
+	}}
+	pd.HeroDistrib, pd.NextDistribs = splitDistribs(pd.MultiDistribs)
+
+	var sb strings.Builder
+	if err := tpl.ExecuteTemplate(&sb, "base", pd); err != nil {
+		t.Fatalf("rendu : %v", err)
+	}
+	out := sb.String()
+
+	if !strings.Contains(out, "ac-producteur en-attente") {
+		t.Error("la fiche du producteur en attente n'est pas mise en retrait")
+	}
+	if !strings.Contains(out, "Pas encore ouvert") {
+		t.Error("la mention manque : un producteur pâle sans explication se lit comme un défaut")
+	}
+	// Celui qui est ouvert ne doit pas l'etre : une classe posee sur les deux
+	// reviendrait a n'en distinguer aucun.
+	if strings.Count(out, "ac-producteur en-attente") != 1 {
+		t.Errorf("la mise en retrait touche %d fiches, attendu 1",
+			strings.Count(out, "ac-producteur en-attente"))
+	}
+}

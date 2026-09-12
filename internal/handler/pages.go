@@ -638,6 +638,15 @@ type VendorView struct {
 	Organic     bool               `json:"organic"`
 	Description string             `json:"description,omitempty"`
 	Products    []ProductImageView `json:"products,omitempty"`
+	// PasEncoreOuvert : aucun des catalogues de ce producteur n'a commencé sa
+	// fenêtre de commande pour cette distribution.
+	//
+	// Chacun ouvre quand il veut — la date se règle par catalogue, pas pour le
+	// jour entier — si bien qu'une distribution peut être ouverte tout en
+	// comptant des producteurs qu'on ne peut pas encore commander. Le volet les
+	// listait comme les autres, et l'on cherchait leurs produits dans le shop
+	// sans les y trouver.
+	PasEncoreOuvert bool `json:"notYetOpen,omitempty"`
 }
 
 type ProductImageView struct {
@@ -1193,6 +1202,10 @@ func (h *PagesHandler) homePeriodData(c *gin.Context, offsetWeeks int) *PageData
 			}
 		}
 
+		// Un seul instant pour tout l'assemblage : deux appels a time.Now()
+		// pourraient tomber de part et d'autre d'une ouverture, et le meme
+		// producteur paraitre ouvert ici et ferme trois lignes plus bas.
+		maintenant := time.Now()
 		parVendeur := make(map[uint]int, len(md.Distributions))
 		candidats := make([][]ProductImageView, 0, len(md.Distributions))
 
@@ -1203,7 +1216,12 @@ func (h *PagesHandler) homePeriodData(c *gin.Context, offsetWeeks int) *PageData
 			}
 			idx, connu := parVendeur[v.ID]
 			if !connu {
-				vv := VendorView{ID: v.ID, Name: v.Name, Organic: v.Organic}
+				// Pas encore ouvert jusqu'a preuve du contraire : un producteur
+				// peut tenir plusieurs catalogues, et il suffit que l'un d'eux
+				// soit ouvert pour qu'on puisse lui commander quelque chose.
+				// La preuve arrive plus bas, au catalogue suivant.
+				vv := VendorView{ID: v.ID, Name: v.Name, Organic: v.Organic,
+					PasEncoreOuvert: !d.OrderWindowStarted(maintenant)}
 				if v.City != nil {
 					vv.City = *v.City
 				}
@@ -1214,6 +1232,10 @@ func (h *PagesHandler) homePeriodData(c *gin.Context, offsetWeeks int) *PageData
 				candidats = append(candidats, nil)
 				idx = len(view.Vendors) - 1
 				parVendeur[v.ID] = idx
+			} else if d.OrderWindowStarted(maintenant) {
+				// Un autre catalogue du meme producteur, celui-ci ouvert : le
+				// producteur cesse d'etre en attente.
+				view.Vendors[idx].PasEncoreOuvert = false
 			}
 
 			// On ratisse large — bien au-delà des six vignettes retenues.
