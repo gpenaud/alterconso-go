@@ -870,8 +870,11 @@ func (h *CompatHandler) ShopSubmit(c *gin.Context) {
 	targetID := claims.UserID
 	isManager := false
 	if body.UserID != 0 && body.UserID != claims.UserID {
+		// « CanManageDistributions » et non « IsGroupManager » : c'est celui
+		// qui tient la distribution qui ajuste une commande sur place, un
+		// panier oublié ou une quantité corrigée au moment du retrait.
 		ug := loadGroupAccess(h.db, claims.UserID, distrib.Catalog.GroupID)
-		if ug == nil || !ug.IsGroupManager() {
+		if ug == nil || !ug.CanManageDistributions() {
 			c.JSON(http.StatusForbidden, gin.H{"error": "only group admins can edit orders for other users"})
 			return
 		}

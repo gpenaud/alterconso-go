@@ -1780,7 +1780,7 @@ func (h *PagesHandler) ContractAdminVendorsByDatePage(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
-	if !pd.IsGroupManager && !pd.HasCatalogAdmin {
+	if !pd.IsGroupManager && !pd.HasCatalogAdmin && !pd.HasDistributions {
 		c.String(http.StatusForbidden, "accès refusé")
 		return
 	}
@@ -1981,7 +1981,7 @@ func (h *PagesHandler) ContractAdminOrdersByDatePage(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
-	if !pd.IsGroupManager && !pd.HasCatalogAdmin {
+	if !pd.IsGroupManager && !pd.HasCatalogAdmin && !pd.HasDistributions {
 		c.String(http.StatusForbidden, "accès refusé")
 		return
 	}
@@ -2211,7 +2211,7 @@ func (h *PagesHandler) ContractAdminOrdersByDateCSV(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/user/choose")
 		return
 	}
-	if !pd.IsGroupManager && !pd.HasCatalogAdmin {
+	if !pd.IsGroupManager && !pd.HasCatalogAdmin && !pd.HasDistributions {
 		c.String(http.StatusForbidden, "accès refusé")
 		return
 	}
@@ -2678,7 +2678,7 @@ func (h *PagesHandler) MemberOrderPage(c *gin.Context) {
 	// Outil d'admin agissant sur la commande d'un membre arbitraire (:userId).
 	// Sans ce gate, IDOR : tout membre pourrait lire/modifier la commande d'un
 	// autre via le paramètre d'URL. Réservé gestionnaire / droit catalogue.
-	if !pd.IsGroupManager && !pd.HasCatalogAdmin {
+	if !pd.IsGroupManager && !pd.HasCatalogAdmin && !pd.HasDistributions {
 		c.String(http.StatusForbidden, "accès refusé")
 		return
 	}
@@ -2864,7 +2864,7 @@ func (h *PagesHandler) UpdateMemberOrders(c *gin.Context) {
 	}
 	// Écrit la commande d'un membre arbitraire (:userId) → même IDOR que
 	// MemberOrderPage. Réservé gestionnaire / droit catalogue.
-	if !pd.IsGroupManager && !pd.HasCatalogAdmin {
+	if !pd.IsGroupManager && !pd.HasCatalogAdmin && !pd.HasDistributions {
 		c.JSON(http.StatusForbidden, gin.H{"error": "accès refusé"})
 		return
 	}
