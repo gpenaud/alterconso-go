@@ -34,6 +34,11 @@ func rubriqueAdministration(categorie string) bool {
 }
 
 var funcMap = template.FuncMap{
+	// L'empreinte des feuilles de style, a coller en parametre d'URL. Une
+	// fonction et non un champ de PageData : tous les ecrans ne passent pas
+	// la meme structure a « base.html », et l'un d'eux serait tombe sur un
+	// champ inconnu.
+	"versionStyles": assetVersion,
 	// Les numéros sont saisis à la main : d'un trait, espacés, parfois d'un
 	// double espace. Les écrans mêlaient tous ces formats ; on les redit ici
 	// deux chiffres par deux, comme on les prononce. Chaîne ou pointeur
