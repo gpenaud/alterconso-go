@@ -2,6 +2,8 @@ package handler
 
 import (
 	"fmt"
+	"html/template"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -362,30 +364,13 @@ func TestDateBadgeCarriesTheState(t *testing.T) {
 		t.Fatalf("parse : %v", err)
 	}
 
-	rendu := func(peutCommander bool) string {
-		pd := PageData{
-			User:  &model.User{ID: 1, FirstName: "Marie"},
-			Group: &model.Group{ID: 1, Name: "AMAP"}, Category: "home",
-		}
-		pd.MultiDistribs = []MultiDistribView{{
-			ID: 1, Day: "12", Month: "septembre", DayOfWeek: "jeudi",
-			DayLabelFull: "Jeudi 12 septembre", Place: "Salle",
-			StartHour: "18:00", EndHour: "19:30",
-			CanOrder: peutCommander, Distributions: true,
-		}}
-		pd.HeroDistrib, pd.NextDistribs = splitDistribs(pd.MultiDistribs)
-		var sb strings.Builder
-		if err := tpl.ExecuteTemplate(&sb, "base", pd); err != nil {
-			t.Fatalf("rendu : %v", err)
-		}
-		return sb.String()
-	}
+	rendu := func(peutCommander bool) string { return rendreEtat(t, tpl, peutCommander, false) }
 
 	// La date vit dans la pastille, le titre porte le lieu : la répéter aux
 	// deux endroits prenait la place de ce qui manquait.
 	ouvert := rendu(true)
 	for _, attendu := range []string{"ac-pastille-date ouverte", ">jeudi<", ">12<",
-		">septembre<", "Commandes ouvertes", "<h2 class=\"ac-prochaine-date\">Salle</h2>"} {
+		">septembre<", "Ouvert", "<h2 class=\"ac-prochaine-date\">Salle</h2>"} {
 		if !strings.Contains(ouvert, attendu) {
 			t.Errorf("%q manque quand les commandes sont ouvertes", attendu)
 		}
@@ -398,6 +383,78 @@ func TestDateBadgeCarriesTheState(t *testing.T) {
 	if !strings.Contains(ferme, "ac-pastille-date ") {
 		t.Error("la pastille doit rester présente, dans son état neutre")
 	}
+}
+
+// rendreEtat rend l'accueil pour une distribution dans l'état demandé.
+func rendreEtat(t *testing.T, tpl *template.Template, peutCommander, pasEncore bool) string {
+	t.Helper()
+	pd := PageData{
+		User:  &model.User{ID: 1, FirstName: "Marie"},
+		Group: &model.Group{ID: 1, Name: "AMAP"}, Category: "home",
+	}
+	pd.MultiDistribs = []MultiDistribView{{
+		ID: 1, Day: "12", Month: "septembre", DayOfWeek: "jeudi",
+		DayLabelFull: "Jeudi 12 septembre", Place: "Salle",
+		StartHour: "18:00", EndHour: "19:30",
+		CanOrder: peutCommander, OrderNotYetOpen: pasEncore, Distributions: true,
+	}}
+	pd.HeroDistrib, pd.NextDistribs = splitDistribs(pd.MultiDistribs)
+	var sb strings.Builder
+	if err := tpl.ExecuteTemplate(&sb, "base", pd); err != nil {
+		t.Fatalf("rendu : %v", err)
+	}
+	return sb.String()
+}
+
+// LES TROIS ETATS RESTENT DISTINCTS, et c'est ce qui justifie de garder
+// l'etiquette : la pastille, elle, n'en montre que deux — sa couleur dit
+// « ouvert » ou rien. Sans ces mots, « pas encore ouvertes » et « closes »
+// se ressembleraient trait pour trait.
+func TestLesTroisEtatsSeDistinguent(t *testing.T) {
+	tpl, err := loadTemplatesFromRoot(t, "base.html", "design.html", "cycles_style.html", "home.html")
+	if err != nil {
+		t.Fatalf("parse : %v", err)
+	}
+	cas := []struct {
+		nom               string
+		ouvert, pasEncore bool
+		phrase, mot       string
+	}{
+		{"ouvert", true, false, "Commandes ouvertes", "Ouvert"},
+		{"pas encore ouvert", false, true, "Commandes pas encore ouvertes", "Bientôt"},
+		{"clos", false, false, "Commandes closes", "Clos"},
+	}
+	for _, c := range cas {
+		rendu := rendreEtat(t, tpl, c.ouvert, c.pasEncore)
+		if got := etatAffiche(t, rendu, etiquetteLongue); got != c.phrase {
+			t.Errorf("%s : l'écran large dit %q, attendu %q", c.nom, got, c.phrase)
+		}
+		if got := etatAffiche(t, rendu, etiquetteCourte); got != c.mot {
+			t.Errorf("%s : le téléphone dit %q, attendu %q", c.nom, got, c.mot)
+		}
+	}
+}
+
+// L'état s'écrit deux fois : la phrase pour l'écran large, le mot pour le
+// téléphone. Le CSS n'en montre qu'une, mais les deux sont dans le rendu.
+var (
+	etiquetteLongue = regexp.MustCompile(`(?s)ac-etat-long">(.*?)</span>`)
+	etiquetteCourte = regexp.MustCompile(`(?s)ac-etat-court">(.*?)</span>`)
+)
+
+// etatAffiche rend le libellé porté par l'une des deux écritures, espaces ôtés.
+//
+// On compare le CONTENU de l'étiquette, et non la présence du mot dans la
+// page : « Clos » se trouve aussi dans le « Close » des boutons de fermeture
+// de Bootstrap, et un simple Contains y voyait un état clos sur une
+// distribution ouverte.
+func etatAffiche(t *testing.T, rendu string, motif *regexp.Regexp) string {
+	t.Helper()
+	m := motif.FindStringSubmatch(rendu)
+	if m == nil {
+		t.Fatal("aucune étiquette d'état dans le rendu")
+	}
+	return strings.TrimSpace(m[1])
 }
 
 // Les permanences se disent par une pastille sous le lieu : rouge si personne

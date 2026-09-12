@@ -341,30 +341,37 @@ label { font-weight:600; color:#4a4a4a; }
    Le dégradé est déclaré sous l'image : si le fichier manque, il reste un
    fond digne au lieu d'un rectangle blanc. */
 .ac-banniere { position:relative; border-radius:16px; overflow:hidden;
-  margin-bottom:26px; min-height:215px; display:flex; align-items:flex-end;
-  background-color:#3d4a25; }
+  margin-bottom:26px; min-height:270px; display:flex; align-items:flex-end;
+  background-color:var(--ac-creme); }
 /* L'image sur un pseudo-element, et non sur la boite elle-meme : « opacity »
-   posee sur la boite aurait emporte le titre et le texte avec elle. Elle se
-   fond ainsi dans le vert de la charte — moins presente, et le blanc du titre
-   y gagne meme un peu de contraste. */
+   posee sur la boite aurait emporte le titre et le texte avec elle.
+   « center 40% » plutot que le centre : cette photo est panoramique — 1024 par
+   268 — et sa moitie basse part sous le voile. On cadre donc un peu plus haut
+   que le milieu. */
 .ac-banniere::before { content:""; position:absolute; inset:0;
-  background-image:url("/img/default-banner.jpg");
-  background-size:cover; background-position:center 62%;
-  opacity:.8; filter:saturate(.88); }
-/* Au-dessus de l'image, sans quoi le degrade passerait dessous et le titre
-   se lirait sur la photo nue. */
-.ac-banniere-voile { position:relative; z-index:1; width:100%; padding:60px 32px 28px;
+  background-image:url("/img/separation-cagettes.jpg");
+  background-size:cover; background-position:center 40%;
+  opacity:.92; filter:saturate(.95); }
+/* LE VOILE S'EST INVERSE AVEC L'IMAGE. L'ancienne etait sombre — 42 de
+   luminance sous le texte — et portait du blanc. Celle-ci est claire : 74, ou
+   le blanc tombe a 1,33:1, trois fois moins que le minimum lisible. C'est donc
+   un voile CLAIR qui monte du bas, et une encre sombre par-dessus.
+   Au-dessus de l'image, sans quoi le degrade passerait dessous et le titre se
+   lirait sur la photo nue. */
+.ac-banniere-voile { position:relative; z-index:1; width:100%; padding:76px 32px 28px;
   background:linear-gradient(to top,
-    rgba(28,34,16,.86) 0%, rgba(28,34,16,.62) 45%, rgba(28,34,16,0) 100%); }
+    rgba(251,249,244,.94) 0%, rgba(251,249,244,.78) 42%, rgba(251,249,244,0) 100%); }
+/* Le brun terre de la charte : 7,9:1 sur le bas de cette image, et c'est deja
+   la couleur des titres du site. */
 .ac-banniere-titre { font-family:var(--ac-police-titre); font-size:2.05em;
-  font-weight:700; line-height:1.15; letter-spacing:-.02em; color:#fff;
-  margin:0 0 8px; text-shadow:0 1px 12px rgba(0,0,0,.35); }
-.ac-banniere-texte { margin:0; max-width:52ch; color:#f2efe6; font-size:1.02em;
-  line-height:1.5; text-shadow:0 1px 10px rgba(0,0,0,.35); }
+  font-weight:700; line-height:1.15; letter-spacing:-.02em; color:var(--ac-titre);
+  margin:0 0 8px; text-shadow:0 1px 10px rgba(251,249,244,.8); }
+.ac-banniere-texte { margin:0; max-width:52ch; color:var(--ac-encre); font-size:1.02em;
+  line-height:1.5; text-shadow:0 1px 8px rgba(251,249,244,.8); }
 
 @media (max-width:768px) {
-  .ac-banniere { min-height:165px; margin-bottom:20px; }
-  .ac-banniere-voile { padding:44px 18px 20px; }
+  .ac-banniere { min-height:190px; margin-bottom:20px; }
+  .ac-banniere-voile { padding:56px 18px 20px; }
   .ac-banniere-titre { font-size:1.5em; }
   .ac-banniere-texte { font-size:.95em; }
 }
@@ -400,6 +407,13 @@ label { font-weight:600; color:#4a4a4a; }
   letter-spacing:.11em; text-transform:uppercase; color:var(--ac-gris-clair);
   margin-bottom:8px; }
 .ac-prochaine-etiquette.ouvert { color:var(--ac-vert-fonce); }
+/* Des deux ecritures de l'etat, l'ecran large prend la phrase. Le telephone
+   prendra le mot, plus bas. */
+.ac-etat-court { display:none; }
+
+/* Le volet des infos n'existe que sur telephone : sur grand ecran, les
+   informations vivent a droite de la pastille et rien ne se replie. */
+.ac-infos-volet { display:none; }
 /* Le gris clair passait à 2,6:1 sur le bandeau brun pâle — illisible. Cette
    teinte atteint 4,75:1, et l'étiquette reste discrète face au titre. */
 .ac-prochaine-etiquette.ferme { color:var(--ac-gris); }
@@ -427,6 +441,18 @@ label { font-weight:600; color:#4a4a4a; }
   color:var(--ac-titre); }
 .ac-pastille-date .mois { display:block; font-size:.8em; font-weight:600;
   text-transform:uppercase; letter-spacing:.05em; padding:0 6px 12px; }
+/* LA PASTILLE S'ETIRE, SON CONTENU NON. Elle prend la hauteur de la colonne de
+   droite — c'est ce qui donne son ancrage a la carte — mais le quantieme
+   restait cale sous le bandeau du jour, laissant dessous un vide d'autant plus
+   grand que la droite etait chargee : horaires, adresse et permanences
+   l'allongent sans que la date en profite.
+   Le bandeau du jour garde le haut, ou sa couleur fait office de titre ; le
+   quantieme et le mois se centrent dans ce qui reste. Deux marges
+   automatiques suffisent, et aucun balisage ne change. */
+.ac-pastille-date { display:flex; flex-direction:column; }
+.ac-pastille-date .jour { flex:none; }
+.ac-pastille-date .numero { margin-top:auto; }
+.ac-pastille-date .mois { margin-bottom:auto; }
 /* Ouverte : la pastille prend le vert de l'action. */
 .ac-pastille-date.ouverte { background:var(--ac-vert-pale); border-color:#b8d18d;
   color:var(--ac-vert-fonce); }
@@ -479,19 +505,36 @@ label { font-weight:600; color:#4a4a4a; }
 /* La barre des producteurs se pose où la carte lui fait de la place : dans
    l'en-tête, à côté de la pastille, dont la hauteur laissait un vide. Son
    panneau, lui, se déroule en bas — il faut de la largeur pour des fiches. */
-.ac-volet-tete { display:flex; align-items:center; gap:14px; width:100%;
-  padding:12px 16px; border:1px solid var(--ac-trait); border-radius:10px;
-  background:var(--ac-creme); text-align:left; cursor:pointer;
-  transition:background .12s ease, border-color .12s ease; }
-.ac-volet-tete:hover { background:#f6f3ea; border-color:#d9d3c4; }
-.ac-volet-tete.ouvert { background:#f4f1e7; border-color:#d9d3c4; }
+/* DEUX BARRES, UN SEUL DESSIN. Celle des producteurs et celle des infos
+   pratiques ouvrent toutes deux un panneau sous la carte : elles partagent
+   donc leur mise en forme, et il n'y a qu'un endroit ou la changer. Seul leur
+   contenu differe — des noms d'un cote, rien de l'autre. */
+.ac-volet-tete, .ac-infos-tete { display:flex; align-items:center; gap:10px;
+  width:100%; padding:12px 16px; border:1px solid var(--ac-trait);
+  border-radius:10px; background:var(--ac-creme); text-align:left;
+  cursor:pointer; transition:background .12s ease, border-color .12s ease; }
+/* L'icone du sujet, en tete : le panier pour les producteurs, le « i » pour
+   les informations pratiques. Elle annonce le contenu du panneau avant qu'on
+   l'ouvre, et distingue les deux barres au premier regard, la ou seul le
+   libelle les separait. Discrete — c'est un reperage, pas un ornement — et
+   « flex:none » pour qu'elle ne se comprime pas quand le titre s'allonge. */
+.ac-volet-tete > i.icon:first-child,
+.ac-infos-tete > i.icon:first-child { flex:none; font-size:1.05em;
+  color:var(--ac-gris-clair); }
+.ac-volet-tete:hover, .ac-infos-tete:hover { background:#f6f3ea; border-color:#d9d3c4; }
+.ac-volet-tete.ouvert, .ac-infos-tete.ouvert { background:#f4f1e7; border-color:#d9d3c4; }
 .ac-volet-titre { font-family:var(--ac-police-titre); font-weight:700;
   color:var(--ac-titre); white-space:nowrap; font-size:.96em; }
 .ac-volet-noms { color:var(--ac-gris); font-size:.88em; flex:1;
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.ac-volet-tete .chevron { color:var(--ac-gris-clair); margin-left:auto;
-  transition:transform .22s ease; }
-.ac-volet-tete.ouvert .chevron { transform:rotate(180deg); }
+.ac-volet-tete .chevron, .ac-infos-tete .chevron { color:var(--ac-gris-clair);
+  margin-left:auto; transition:transform .22s ease; }
+.ac-volet-tete.ouvert .chevron, .ac-infos-tete.ouvert .chevron { transform:rotate(180deg); }
+
+/* Sur grand ecran la barre des infos n'a pas lieu d'etre : le panneau y est
+   deja ouvert, et deroule a droite de la pastille. Declaree APRES le style
+   commun, faute de quoi le « display:flex » de celui-ci l'emporterait. */
+.ac-infos-tete { display:none; }
 
 .ac-volet-panneau { display:grid; grid-template-rows:0fr;
   transition:grid-template-rows .3s ease; }
@@ -561,6 +604,14 @@ label { font-weight:600; color:#4a4a4a; }
 /* Volet déroulé, le bouton n'est plus le dernier élément : il lui faut son
    propre espace en dessous, sinon il colle au cadre des producteurs. */
 .ac-prochaine-action + .ac-volet-panneau.ouvert > div { margin-top:26px; }
+/* Le volet des infos s'intercale desormais entre le bouton et celui des
+   producteurs. Replie, il ne se voit pas — mais il rompt la contiguite dont
+   la regle ci-dessus depend, et les producteurs se seraient resserres contre
+   le bouton sans qu'on touche a rien chez eux. */
+.ac-infos-volet + .ac-volet-panneau.ouvert > div { margin-top:26px; }
+/* Les deux ouverts, en revanche, se suivent : c'est l'ecart entre panneaux
+   qui vaut, pas celui qui les detache du bouton. */
+.ac-infos-volet.ouvert + .ac-volet-panneau.ouvert > div { margin-top:14px; }
 .ac-btn-commander { display:inline-flex; align-items:center; gap:9px;
   background:var(--ac-vert); color:#fff; padding:14px 30px; border-radius:10px;
   font-size:1.05em; font-weight:600; text-decoration:none;
@@ -698,23 +749,6 @@ label { font-weight:600; color:#4a4a4a; }
    « center 58% » et non « center » : le cadrage est deja serre sur les
    cagettes, et sur un ecran large ou « cover » agrandit l'image, c'est le
    bois du bas qu'on veut voir partir plutot que les betteraves du haut. */
-.ac-separation { position:relative; height:118px; border-radius:16px;
-  margin:0 0 26px; overflow:hidden; background-color:var(--ac-creme);
-  box-shadow:0 1px 2px rgba(0,0,0,.04); }
-/* Meme facon de faire que la banniere, pour la meme raison : l'image
-   s'attenue sur le creme de la page. Elle separe, elle n'annonce rien — a
-   pleine opacite, elle pesait autant que les cartes qu'elle departage. */
-.ac-separation::before { content:""; position:absolute; inset:0;
-  background-image:url("/img/separation-cagettes.jpg");
-  background-size:cover; background-position:center 50%;
-  opacity:.84; filter:saturate(.92); }
-
-@media (max-width:768px) {
-  /* Plus basse : sur un telephone, la meme hauteur repousserait les
-     distributions suivantes hors de l'ecran a elle seule. */
-  .ac-separation { height:86px; border-radius:14px; margin-bottom:20px; }
-}
-
 .ac-chargement { text-align:center; color:var(--ac-gris-clair); font-size:.88em;
   padding:16px; }
 
@@ -758,23 +792,60 @@ label { font-weight:600; color:#4a4a4a; }
 .ac-aucune-distrib p { margin:0; }
 
 @media (max-width:768px) {
-  .ac-prochaine-corps { padding:20px 18px 22px; }
+  /* UNE CARTE PAR COUP D'OEIL. Sur telephone, l'en-tete d'une distribution
+     occupait presque tout l'ecran : chaque marge prise isolement se
+     defendait, leur somme obligeait a faire defiler pour lire la deuxieme
+     date. Ces retraits ne suppriment aucune information — ils rapprochent ce
+     qui se lit ensemble. */
+  .ac-prochaine-corps { padding:16px 16px 18px; }
   .ac-prochaine-date { font-size:1.5em; }
   /* Sur petit écran, deux colonnes n'ont plus de sens : la droite repasse
      dessous, alignée à gauche comme le reste. */
-  .ac-prochaine-entete { gap:14px; padding-bottom:16px; margin-bottom:18px; }
+  .ac-prochaine-entete { gap:14px; padding-bottom:12px; margin-bottom:14px; }
   .ac-pastille-date { width:88px; }
-  .ac-pastille-date .numero { font-size:2.3em; padding-top:7px; }
-  .ac-pastille-date .mois { font-size:.72em; padding-bottom:9px; }
-  /* Sur petit écran, trois colonnes ne tiennent pas : la pastille garde sa
-     colonne, le reste s'empile à sa droite puis en dessous. */
+  .ac-pastille-date .jour { padding:6px 6px 5px; }
+  .ac-pastille-date .numero { font-size:2.3em; padding-top:5px; }
+  .ac-pastille-date .mois { font-size:.72em; padding-bottom:7px; }
+  /* L'ETAT REJOINT LA LIGNE DU LIEU, et c'est la qu'une ligne disparait
+     vraiment. Reduit a un mot — « Ouvert », « Bientot », « Clos » — il n'a
+     plus besoin d'une rangee a lui : raccourcir le texte sans le deplacer
+     n'aurait fait que le raccourcir, « COMMANDES PAS ENCORE OUVERTES » tenant
+     deja sur une ligne a 390 px.
+     « order » place le lieu devant sans toucher au balisage, ou l'etat vient
+     en premier. Si le lieu est long, ou si une mise en avant l'accompagne,
+     l'etat repasse dessous de lui-meme. */
+  .ac-prochaine-titres { flex-direction:row; flex-wrap:wrap;
+    align-items:baseline; gap:0 10px; padding-top:2px; }
+  .ac-prochaine-date { order:1; margin-bottom:0; }
+  .ac-prochaine-etats { order:2; margin-bottom:0; }
+  .ac-prochaine-etiquette { margin-bottom:0; font-size:.68em;
+    letter-spacing:.08em; }
+  .ac-etat-long { display:none; }
+  .ac-etat-court { display:inline; }
   /* Sur petit écran, le haut s'empile : titre puis horaires, la barre
      restant en pied de la colonne. */
-  .ac-prochaine-entete { gap:14px; }
-  .ac-prochaine-haut { flex-direction:column; gap:10px; }
+  .ac-prochaine-haut { flex-direction:column; gap:6px; }
   .ac-permanences { align-self:flex-start; }
-  .ac-prochaine-infos { align-items:flex-start; text-align:left;
-    padding-top:0; gap:4px; white-space:normal; }
+  /* DANS LE PANNEAU, UNE INFORMATION PAR LIGNE. On les avait mises en ligne
+     pour economiser de la hauteur tant que le bloc restait toujours visible ;
+     replie, il n'a plus rien a economiser. Et cette mise en ligne se lisait
+     mal des que l'adresse debordait : elle passait a la ligne au milieu des
+     autres, et l'oeil ne savait plus ou commencait chaque information.
+     En colonne, les trois icones s'alignent et chaque ligne se lit seule. */
+  .ac-prochaine-infos { flex-direction:column; align-items:flex-start;
+    text-align:left; gap:7px; white-space:normal; }
+  /* La barre des infos prend la forme de celle des producteurs, juste en
+     dessous : deux acces de meme nature se presentent de la meme facon, et la
+     carte se termine sur deux barres accordees plutot que sur deux dessins qui
+     se disputent. */
+  .ac-infos-tete { display:flex; }
+  /* Le volet prend le relais des informations de l'en-tete, qui s'effacent :
+     elles ne sont plus servies qu'ici, sous le bouton de commande. */
+  .ac-infos-fixe { display:none; }
+  .ac-infos-volet { display:grid; }
+  /* Le contenu du volet respire comme celui des producteurs, dont il partage
+     le cadre. */
+  .ac-infos-volet .ac-prochaine-infos { padding:14px 16px; background:#fff; }
   /* Sur téléphone, onze vignettes sur une ligne feraient 25 px chacune : on
      laisse la bande défiler horizontalement plutôt que de les rendre
      illisibles. */

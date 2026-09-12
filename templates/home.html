@@ -4,6 +4,7 @@
         data-volet="producteurs-{{.ID}}"
         aria-expanded="{{if .OuvrirProducteurs}}true{{else}}false{{end}}"
         aria-controls="producteurs-{{.ID}}">
+  <i class="icon icon-basket"></i>
   <span class="ac-volet-titre">
     {{len .Vendors}} producteur{{if gt (len .Vendors) 1}}s{{end}}
   </span>
@@ -105,6 +106,14 @@
              pastille, où elle occupe le vide que la date y laissait. Les deux
              se retrouvent par identifiant, ce qui permet de les séparer sans
              que le clic cesse d'agir. */}}
+        {{/* Le volet des infos pratiques, sous le bouton de commande comme
+             celui des producteurs. Il ne s'ouvre que sur telephone : sa barre
+             y est la seule visible. */}}
+        <div class="ac-volet-panneau ac-infos-volet" id="infos-{{.ID}}"><div>
+          <div class="ac-prochaine-infos">
+            {{template "infosDistrib" .}}
+          </div>
+        </div></div>
         {{if .Vendors}}
         {{if not .TeteAilleurs}}{{template "teteProducteurs" .}}{{end}}
         <div class="ac-volet-panneau {{if .OuvrirProducteurs}}ouvert{{end}}"
@@ -139,43 +148,10 @@
         {{end}}
 {{end}}
 
-{{define "enteteDistrib"}}
-        <div class="ac-prochaine-entete">
-          <div class="ac-pastille-date {{if .CanOrder}}ouverte{{end}}">
-            <span class="jour">{{.DayOfWeek}}</span>
-            <span class="numero">{{.Day}}</span>
-            <span class="mois">{{.Month}}</span>
-          </div>
-
-          {{/* La colonne de droite s'étire à la hauteur de la pastille et
-               répartit son contenu entre haut et bas : le titre en tête, la
-               barre des producteurs en pied. C'est ce qui aligne leurs bases,
-               ce qu'une grille ne garantissait pas — ses deux rangs mesuraient
-               presque exactement la pastille, si bien qu'il n'y avait rien à
-               répartir. */}}
-          <div class="ac-prochaine-droite">
-            <div class="ac-prochaine-haut">
-              <div class="ac-prochaine-titres">
-                <div class="ac-prochaine-etats">
-                  <span class="ac-prochaine-etiquette {{if .CanOrder}}ouvert{{else}}ferme{{end}}">
-                    {{if .CanOrder}}Commandes ouvertes
-                    {{else if .OrderNotYetOpen}}Commandes pas encore ouvertes
-                    {{else}}Commandes closes{{end}}
-                  </span>
-                  {{/* La mise en avant ne dit pas un état de commande : elle
-                       porte donc sa propre couleur, terracotta, et non le vert
-                       qui signifie déjà « ouvert ». Confondues, les deux
-                       s'annulent. */}}
-                  {{if .Highlight}}
-                  <span class="ac-mise-en-avant" title="Campagne exceptionnelle">
-                    <i class="icon icon-star"></i> {{.Highlight}}
-                  </span>
-                  {{end}}
-                </div>
-                <h2 class="ac-prochaine-date">{{.Place}}</h2>
-              </div>
-
-              <div class="ac-prochaine-infos">
+{{/* Horaire, lieu et permanences. Pose deux fois — a droite de la pastille
+     sur grand ecran, dans un volet en bas de carte sur telephone — et defini
+     une seule. */}}
+{{define "infosDistrib"}}
                 <span><i class="icon icon-clock"></i> de {{.StartHour}} à {{.EndHour}}</span>
                 {{if .PlaceAddress}}
                 <span><i class="icon icon-map-marker"></i> {{.PlaceAddress}}</span>
@@ -195,9 +171,80 @@
                   {{if .UserIsVolunteer}}<b>· vous</b>{{end}}
                 </a>
                 {{end}}
+{{end}}
+
+{{define "enteteDistrib"}}
+        <div class="ac-prochaine-entete">
+          <div class="ac-pastille-date {{if .CanOrder}}ouverte{{end}}">
+            <span class="jour">{{.DayOfWeek}}</span>
+            <span class="numero">{{.Day}}</span>
+            <span class="mois">{{.Month}}</span>
+          </div>
+
+          {{/* La colonne de droite s'étire à la hauteur de la pastille et
+               répartit son contenu entre haut et bas : le titre en tête, la
+               barre des producteurs en pied. C'est ce qui aligne leurs bases,
+               ce qu'une grille ne garantissait pas — ses deux rangs mesuraient
+               presque exactement la pastille, si bien qu'il n'y avait rien à
+               répartir. */}}
+          <div class="ac-prochaine-droite">
+            <div class="ac-prochaine-haut">
+              <div class="ac-prochaine-titres">
+                <div class="ac-prochaine-etats">
+                  <span class="ac-prochaine-etiquette {{if .CanOrder}}ouvert{{else}}ferme{{end}}">
+                    {{/* DEUX ECRITURES DU MEME ETAT, et le CSS n'en montre
+                         qu'une. Sur grand ecran la phrase entiere, qui a la
+                         place et se lit mieux ; sur telephone un seul mot, qui
+                         tient sur la ligne du lieu au lieu d'occuper la
+                         sienne. Les trois cas restent distincts de part et
+                         d'autre — la pastille, elle, n'en distingue que deux
+                         par sa couleur. */}}
+                    <span class="ac-etat-long">
+                      {{- if .CanOrder}}Commandes ouvertes
+                      {{- else if .OrderNotYetOpen}}Commandes pas encore ouvertes
+                      {{- else}}Commandes closes
+                      {{- end -}}
+                    </span>
+                    <span class="ac-etat-court">
+                      {{- if .CanOrder}}Ouvert
+                      {{- else if .OrderNotYetOpen}}Bientôt
+                      {{- else}}Clos
+                      {{- end -}}
+                    </span>
+                  </span>
+                  {{/* La mise en avant ne dit pas un état de commande : elle
+                       porte donc sa propre couleur, terracotta, et non le vert
+                       qui signifie déjà « ouvert ». Confondues, les deux
+                       s'annulent. */}}
+                  {{if .Highlight}}
+                  <span class="ac-mise-en-avant" title="Campagne exceptionnelle">
+                    <i class="icon icon-star"></i> {{.Highlight}}
+                  </span>
+                  {{end}}
+                </div>
+                <h2 class="ac-prochaine-date">{{.Place}}</h2>
+              </div>
+
+              {{/* SUR GRAND ECRAN, LES INFOS RESTENT ICI, a droite de la
+                   pastille, ou elles comblent le vide qu'elle laisse. Sur
+                   telephone elles descendent en bas de carte, dans un volet —
+                   voir « corpsDistrib » — et cet exemplaire-ci s'efface. Un
+                   seul gabarit pour les deux, faute de quoi l'un aurait fini
+                   par dire autre chose que l'autre. */}}
+              <div class="ac-prochaine-infos ac-infos-fixe">
+                {{template "infosDistrib" .}}
               </div>
             </div>
 
+            {{/* LE MEME MECANISME QUE LES PRODUCTEURS, et au meme endroit : la
+                 barre en pied d'en-tete, le panneau en bas de carte, les deux
+                 relies par identifiant. */}}
+            <button type="button" class="ac-infos-tete" data-volet="infos-{{.ID}}"
+                    aria-expanded="false" aria-controls="infos-{{.ID}}">
+              <i class="icon icon-info"></i>
+              <span class="ac-volet-titre">Infos pratiques</span>
+              <i class="icon icon-chevron-down chevron"></i>
+            </button>
             {{template "teteProducteurs" .}}
           </div>
         </div>
@@ -232,16 +279,6 @@
         {{template "corpsDistrib" $d}}
       </div>
     </section>
-    {{end}}
-
-    {{/* Une bande d'image entre la prochaine distribution et ce qui suit.
-         Elle ne dit rien — d'ou « aria-hidden » : ce qu'elle porte, la carte
-         du dessus l'a deja ecrit. Elle marque la fin de ce qu'on vient
-         chercher, et l'entree dans ce qu'on ne fait que consulter : les
-         liens, puis les distributions suivantes, qui se suivaient jusqu'ici
-         sans qu'on voie ou l'une s'arretait. */}}
-    {{if .HeroDistrib}}
-    <div class="ac-separation" role="presentation" aria-hidden="true"></div>
     {{end}}
 
     {{/* Le producteur qui tient son catalogue ne vient pas ici pour commander,
@@ -382,7 +419,8 @@
       // carte mise en avant comme dans les lignes dépliées, et dans celles que
       // le défilement ajoutera plus tard.
       document.addEventListener('click', function (e) {
-        var tete = e.target.closest ? e.target.closest('.ac-volet-tete') : null;
+        var tete = e.target.closest
+          ? e.target.closest('.ac-volet-tete, .ac-infos-tete') : null;
         if (!tete) return;
         // La barre et son panneau se retrouvent par identifiant : ils ne sont
         // plus voisins dans la page, la première vivant dans l'en-tête et le
