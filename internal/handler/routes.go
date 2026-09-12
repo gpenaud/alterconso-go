@@ -73,6 +73,19 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	// Les deux délégations qui remplacent les anciens « droits administrateur » :
 	// le calendrier d'un côté, les réglages du groupe de l'autre.
 	reqDistributions := pagesH.RequireGroupRight(model.RightDistributions)
+	// Les commandes d'une DATE, et ce qui permet de les corriger sur place.
+	//
+	// Elles vivent sous « /contractAdmin » par héritage — l'écran vient de
+	// l'administration des catalogues — mais ce sont les documents avec
+	// lesquels on RÉALISE la distribution : la liste par adhérent, sa
+	// répartition par producteur, son export. Les réserver au droit
+	// « catalogues » refusait à celui qui tient la distribution ce dont il a
+	// besoin le jour même, alors que la page de distribution lui montre le
+	// nombre de commandes et lui propose le lien.
+	//
+	// Les autres pages de « /contractAdmin » restent au catalogue : produits,
+	// prix, abonnements ne servent pas à distribuer.
+	reqOrders := pagesH.RequireGroupRight(model.RightCatalogAdmin, model.RightDistributions)
 	reqParameters := pagesH.RequireGroupRight(model.RightParameters)
 	reqMembership := pagesH.RequireGroupRight(model.RightMembership)  // gestionnaire ou Membership
 	// Plus étroit que reqManager : l'attribution des droits reste au
@@ -157,9 +170,9 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.POST("/member/membership/:id", pageAuth, reqMembership, pagesH.MembershipUpsert)
 
 	// ContractAdmin sub-pages
-	r.GET("/contractAdmin/ordersByDate/:date/:groupId", pageAuth, reqCatalog, pagesH.ContractAdminOrdersByDatePage)
-	r.GET("/contractAdmin/vendorsByDate/:date/:groupId", pageAuth, reqCatalog, pagesH.ContractAdminVendorsByDatePage)
-	r.GET("/contractAdmin/ordersByDate/:date/:groupId/csv", pageAuth, reqCatalog, pagesH.ContractAdminOrdersByDateCSV)
+	r.GET("/contractAdmin/ordersByDate/:date/:groupId", pageAuth, reqOrders, pagesH.ContractAdminOrdersByDatePage)
+	r.GET("/contractAdmin/vendorsByDate/:date/:groupId", pageAuth, reqOrders, pagesH.ContractAdminVendorsByDatePage)
+	r.GET("/contractAdmin/ordersByDate/:date/:groupId/csv", pageAuth, reqOrders, pagesH.ContractAdminOrdersByDateCSV)
 	r.GET("/contractAdmin/view/:id", pageAuth, reqCatalog, pagesH.CatalogAdminViewPage)
 	r.GET("/contractAdmin/edit/:id", pageAuth, reqCatalog, pagesH.CatalogAdminEditPage)
 	r.POST("/contractAdmin/edit/:id", pageAuth, reqCatalog, pagesH.CatalogAdminEditPage)
@@ -185,11 +198,11 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.POST("/contractAdmin/distributions/:id/dates/:distribId", pageAuth, reqCatalog, pagesH.CatalogAdminDistributionDatesPage)
 	r.GET("/contractAdmin/orders/:id", pageAuth, reqCatalog, pagesH.CatalogAdminOrdersPage)
 	r.GET("/contractAdmin/selectDistrib/:id", pageAuth, reqCatalog, pagesH.CatalogAdminSelectDistribPage)
-	r.GET("/contractAdmin/memberOrder/:multiDistribId/:userId", pageAuth, reqCatalog, pagesH.MemberOrderPage)
-	r.POST("/contractAdmin/memberOrder/:multiDistribId/:userId", pageAuth, reqCatalog, pagesH.MemberOrderPage)
-	r.POST("/contractAdmin/updateOrders/:multiDistribId/:userId", pageAuth, reqCatalog, pagesH.UpdateMemberOrders)
-	r.POST("/contractAdmin/addProduct/:multiDistribId/:userId", pageAuth, reqCatalog, pagesH.AddMemberProduct)
-	r.POST("/contractAdmin/deleteOrder/:multiDistribId/:userId/:orderId", pageAuth, reqCatalog, pagesH.DeleteMemberOrder)
+	r.GET("/contractAdmin/memberOrder/:multiDistribId/:userId", pageAuth, reqOrders, pagesH.MemberOrderPage)
+	r.POST("/contractAdmin/memberOrder/:multiDistribId/:userId", pageAuth, reqOrders, pagesH.MemberOrderPage)
+	r.POST("/contractAdmin/updateOrders/:multiDistribId/:userId", pageAuth, reqOrders, pagesH.UpdateMemberOrders)
+	r.POST("/contractAdmin/addProduct/:multiDistribId/:userId", pageAuth, reqOrders, pagesH.AddMemberProduct)
+	r.POST("/contractAdmin/deleteOrder/:multiDistribId/:userId/:orderId", pageAuth, reqOrders, pagesH.DeleteMemberOrder)
 	r.GET("/contractAdmin/subscriptions/:id", pageAuth, reqCatalog, pagesH.CatalogAdminSubscriptionsPage)
 
 	// Distribution admin
