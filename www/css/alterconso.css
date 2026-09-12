@@ -368,7 +368,7 @@ label { font-weight:600; color:#4a4a4a; }
    meme rang que celui de la carte qui la suit.
    L'encre ne sert de titre nulle part ailleurs : elle distingue sans inventer
    de teinte. 13,9:1 sur le fond voile, contre 9,5 pour le brun. */
-.ac-banniere-titre { font-family:var(--ac-police-titre); font-size:2.05em;
+.ac-banniere-titre { font-family:var(--ac-police-titre); font-size:1.8em;
   font-weight:700; line-height:1.15; letter-spacing:-.02em; color:var(--ac-encre);
   margin:0 0 8px; text-shadow:0 1px 10px rgba(251,249,244,.8); }
 /* Le gris du texte secondaire, qui creuse l'ecart avec le titre desormais
@@ -380,7 +380,7 @@ label { font-weight:600; color:#4a4a4a; }
 @media (max-width:768px) {
   .ac-banniere { min-height:190px; margin-bottom:20px; }
   .ac-banniere-voile { padding:56px 18px 20px; }
-  .ac-banniere-titre { font-size:1.5em; }
+  .ac-banniere-titre { font-size:1.35em; }
   .ac-banniere-texte { font-size:.95em; }
 }
 
