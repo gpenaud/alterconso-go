@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -647,6 +648,10 @@ type VendorView struct {
 	// listait comme les autres, et l'on cherchait leurs produits dans le shop
 	// sans les y trouver.
 	PasEncoreOuvert bool `json:"notYetOpen,omitempty"`
+	// MisEnAvant : au moins un catalogue de ce producteur porte une note de
+	// mise en avant. C'est une decision explicite d'un gestionnaire, rare, et
+	// elle s'affiche a cote de son nom.
+	MisEnAvant bool `json:"highlighted,omitempty"`
 }
 
 type ProductImageView struct {
@@ -1192,16 +1197,6 @@ func (h *PagesHandler) homePeriodData(c *gin.Context, offsetWeeks int) *PageData
 			Header   []byte
 		}
 		view.Highlight = highlightDesDistribs(md.Distributions)
-		// Le producteur derrière la mise en avant : c'est lui qu'on épingle en
-		// tête du volet, une fois les vignettes rapportées.
-		var vendeurMisEnAvant uint
-		for _, d := range md.Distributions {
-			if d.Catalog.Highlight() != "" {
-				vendeurMisEnAvant = d.Catalog.VendorID
-				break
-			}
-		}
-
 		// Un seul instant pour tout l'assemblage : deux appels a time.Now()
 		// pourraient tomber de part et d'autre d'une ouverture, et le meme
 		// producteur paraitre ouvert ici et ferme trois lignes plus bas.
@@ -1221,7 +1216,8 @@ func (h *PagesHandler) homePeriodData(c *gin.Context, offsetWeeks int) *PageData
 				// soit ouvert pour qu'on puisse lui commander quelque chose.
 				// La preuve arrive plus bas, au catalogue suivant.
 				vv := VendorView{ID: v.ID, Name: v.Name, Organic: v.Organic,
-					PasEncoreOuvert: !d.OrderWindowStarted(maintenant)}
+					PasEncoreOuvert: !d.OrderWindowStarted(maintenant),
+					MisEnAvant:      d.Catalog.Highlight() != ""}
 				if v.City != nil {
 					vv.City = *v.City
 				}
@@ -1232,10 +1228,17 @@ func (h *PagesHandler) homePeriodData(c *gin.Context, offsetWeeks int) *PageData
 				candidats = append(candidats, nil)
 				idx = len(view.Vendors) - 1
 				parVendeur[v.ID] = idx
-			} else if d.OrderWindowStarted(maintenant) {
-				// Un autre catalogue du meme producteur, celui-ci ouvert : le
-				// producteur cesse d'etre en attente.
-				view.Vendors[idx].PasEncoreOuvert = false
+			} else {
+				// Un autre catalogue du meme producteur : chaque propriete se
+				// cumule sur l'ensemble de ses catalogues. Il suffit que l'un
+				// soit ouvert pour qu'il cesse d'attendre, et qu'un seul porte
+				// une note pour qu'il soit signale.
+				if d.OrderWindowStarted(maintenant) {
+					view.Vendors[idx].PasEncoreOuvert = false
+				}
+				if d.Catalog.Highlight() != "" {
+					view.Vendors[idx].MisEnAvant = true
+				}
 			}
 
 			// On ratisse large — bien au-delà des six vignettes retenues.
@@ -1293,10 +1296,10 @@ func (h *PagesHandler) homePeriodData(c *gin.Context, offsetWeeks int) *PageData
 			}
 		}
 
-		// L'épinglage vient après l'attribution des vignettes : les index de
+		// Le rangement vient après l'attribution des vignettes : les index de
 		// « candidats » suivent l'ordre de construction, et les brouiller
 		// avant donnerait à chaque producteur les produits de son voisin.
-		view.Vendors = epinglerEnTete(view.Vendors, vendeurMisEnAvant)
+		view.Vendors = rangerProducteurs(view.Vendors)
 
 		// La bande de vignettes se compose une fois tous les producteurs
 		// connus, sans requête supplémentaire : elle pioche dans ce qu'ils ont
@@ -2608,30 +2611,35 @@ const vendorProductCount = 6
 // qu'on y distingue quoi que ce soit.
 const bandeMax = 12
 
-// epinglerEnTete remonte un producteur en première place, en préservant
-// l'ordre des autres.
+// rangerProducteurs ordonne le volet : les signales d'abord, puis ceux dont la
+// commande est ouverte, puis ceux qui attendent leur date.
 //
-// La mise en avant annonce une campagne rare ; la laisser en cinquième
-// position dans le volet reviendrait à l'annoncer puis à la cacher. Rendue
-// telle quelle quand le producteur ne figure pas dans la liste — un catalogue
-// mis en avant peut n'avoir aucun produit ce jour-là.
-func epinglerEnTete(vendors []VendorView, id uint) []VendorView {
-	if id == 0 || len(vendors) < 2 {
-		return vendors
-	}
-	pos := -1
-	for i := range vendors {
-		if vendors[i].ID == id {
-			pos = i
-			break
+// DEUX CRITERES, ET LEUR ORDRE EST LE POINT. Une mise en avant est une
+// decision explicite d'un gestionnaire, rare, et elle porte son libelle a
+// l'ecran : un producteur signale reste donc en tete meme si sa commande n'est
+// pas encore ouverte — c'est precisement l'annonce qu'on a voulu faire. Vient
+// ensuite l'ouverture, qui dit ce qu'on peut faire aujourd'hui.
+//
+// TRI STABLE : a criteres egaux l'ordre d'origine tient, et la liste ne change
+// pas d'un chargement a l'autre sans raison.
+//
+// Il remplace un epinglage qui ne remontait qu'UN producteur, le premier
+// rencontre : deux campagnes le meme jour n'en voyaient qu'une remonter.
+func rangerProducteurs(vendors []VendorView) []VendorView {
+	// Sur une copie : « sort » trie en place, et l'epinglage qu'il remplace
+	// rendait une nouvelle tranche sans toucher a la sienne. Rien ne relit
+	// l'ordre de construction a ce stade — les vignettes sont deja attribuees —
+	// mais une fonction qui remanie ce qu'on lui prete est une surprise qui
+	// attend son heure.
+	range_ := append([]VendorView(nil), vendors...)
+	sort.SliceStable(range_, func(i, j int) bool {
+		a, b := range_[i], range_[j]
+		if a.MisEnAvant != b.MisEnAvant {
+			return a.MisEnAvant
 		}
-	}
-	if pos <= 0 {
-		return vendors
-	}
-	tete := vendors[pos]
-	reste := append(vendors[:pos:pos], vendors[pos+1:]...)
-	return append([]VendorView{tete}, reste...)
+		return !a.PasEncoreOuvert && b.PasEncoreOuvert
+	})
+	return range_
 }
 
 // highlightDesDistribs rend la mise en avant d'une journée : le libellé du

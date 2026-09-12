@@ -570,47 +570,50 @@ func TestHighlightDesDistribs(t *testing.T) {
 }
 
 // Le producteur d'une campagne mise en avant ouvre le volet : l'annoncer puis
-// le laisser en cinquième position reviendrait à le cacher.
-func TestEpinglerEnTete(t *testing.T) {
-	liste := func(ids ...uint) []VendorView {
-		out := make([]VendorView, 0, len(ids))
-		for _, id := range ids {
-			out = append(out, VendorView{ID: id})
-		}
-		return out
-	}
+// Le volet se range en deux temps : les producteurs signales d'abord, puis
+// ceux dont la commande est ouverte. Une mise en avant est un arbitrage
+// explicite du groupe — elle l'emporte donc sur l'ouverture, qui ne dit que ce
+// qu'on peut faire aujourd'hui.
+func TestRangerProducteurs(t *testing.T) {
 	ordre := func(vs []VendorView) string {
-		out := ""
-		for _, v := range vs {
-			out += fmt.Sprintf("%d ", v.ID)
+		noms := make([]string, len(vs))
+		for i, v := range vs {
+			noms[i] = v.Name
 		}
-		return strings.TrimSpace(out)
+		return strings.Join(noms, ",")
+	}
+	ouvert := func(n string) VendorView { return VendorView{Name: n} }
+	attente := func(n string) VendorView { return VendorView{Name: n, PasEncoreOuvert: true} }
+	signale := func(n string) VendorView { return VendorView{Name: n, MisEnAvant: true} }
+	signaleEnAttente := func(n string) VendorView {
+		return VendorView{Name: n, MisEnAvant: true, PasEncoreOuvert: true}
 	}
 
 	cas := []struct {
 		nom    string
 		in     []VendorView
-		id     uint
 		attend string
 	}{
-		{"remonte et garde l'ordre des autres", liste(1, 2, 3, 4), 3, "3 1 2 4"},
-		{"déjà en tête", liste(7, 1, 2), 7, "7 1 2"},
-		{"absent de la liste", liste(1, 2), 9, "1 2"},
-		{"aucune mise en avant", liste(1, 2, 3), 0, "1 2 3"},
-		{"un seul producteur", liste(5), 5, "5"},
+		{"les attentes reculent", []VendorView{attente("A"), ouvert("B"), attente("C"), ouvert("D")}, "B,D,A,C"},
+		{"le signale passe devant", []VendorView{ouvert("A"), signale("B"), ouvert("C")}, "B,A,C"},
+		{"signale meme en attente", []VendorView{ouvert("A"), signaleEnAttente("B")}, "B,A"},
+		{"DEUX signales remontent, la ou l'epinglage n'en voyait qu'un",
+			[]VendorView{ouvert("A"), signale("B"), ouvert("C"), signale("D")}, "B,D,A,C"},
+		{"rien a faire si tout se vaut", []VendorView{ouvert("C"), ouvert("A"), ouvert("B")}, "C,A,B"},
+		{"liste vide", nil, ""},
 	}
 	for _, c := range cas {
-		if got := ordre(epinglerEnTete(c.in, c.id)); got != c.attend {
+		if got := ordre(rangerProducteurs(c.in)); got != c.attend {
 			t.Errorf("%s : %q, attendu %q", c.nom, got, c.attend)
 		}
 	}
 
-	// L'entrée ne doit pas être écrasée en place : la vue d'origine sert
-	// encore à distribuer les vignettes.
-	src := liste(1, 2, 3)
-	epinglerEnTete(src, 3)
-	if ordre(src) != "1 2 3" {
-		t.Errorf("la liste d'origine a été remaniée : %q", ordre(src))
+	// L'entree ne doit pas etre ecrasee en place : une fonction qui remanie ce
+	// qu'on lui prete est une surprise qui attend son heure.
+	src := []VendorView{ouvert("A"), signale("B")}
+	rangerProducteurs(src)
+	if ordre(src) != "A,B" {
+		t.Errorf("la liste d'origine a ete remaniee : %q", ordre(src))
 	}
 }
 
@@ -725,3 +728,8 @@ func TestProducteurPasEncoreOuvert(t *testing.T) {
 			strings.Count(out, "ac-producteur en-attente"))
 	}
 }
+
+// Les producteurs dont la commande est ouverte passent devant ceux qui
+
+// La mise en avant l'emporte sur le tri : c'est une décision explicite, et
+// elle porte son libellé à l'écran. Un producteur signalé reste en tête même
