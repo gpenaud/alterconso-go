@@ -361,12 +361,20 @@ label { font-weight:600; color:#4a4a4a; }
 .ac-banniere-voile { position:relative; z-index:1; width:100%; padding:76px 32px 28px;
   background:linear-gradient(to top,
     rgba(251,249,244,.94) 0%, rgba(251,249,244,.78) 42%, rgba(251,249,244,0) 100%); }
-/* Le brun terre de la charte : 7,9:1 sur le bas de cette image, et c'est deja
-   la couleur des titres du site. */
+/* L'ENCRE, ET NON LE BRUN DES TITRES. Ce dernier nomme les choses du site —
+   le lieu d'une distribution, un volet, un intitule de page — et l'accroche de
+   la banniere n'est rien de tout cela : elle ne designe aucun objet, elle
+   parle. Partageant leur couleur, elle se lisait comme un titre de plus, au
+   meme rang que celui de la carte qui la suit.
+   L'encre ne sert de titre nulle part ailleurs : elle distingue sans inventer
+   de teinte. 13,9:1 sur le fond voile, contre 9,5 pour le brun. */
 .ac-banniere-titre { font-family:var(--ac-police-titre); font-size:2.05em;
-  font-weight:700; line-height:1.15; letter-spacing:-.02em; color:var(--ac-titre);
+  font-weight:700; line-height:1.15; letter-spacing:-.02em; color:var(--ac-encre);
   margin:0 0 8px; text-shadow:0 1px 10px rgba(251,249,244,.8); }
-.ac-banniere-texte { margin:0; max-width:52ch; color:var(--ac-encre); font-size:1.02em;
+/* Le gris du texte secondaire, qui creuse l'ecart avec le titre desormais
+   presque noir. 4,8:1 sur la partie basse du voile, la plus opaque — c'est la
+   que ce paragraphe se pose. */
+.ac-banniere-texte { margin:0; max-width:52ch; color:var(--ac-gris); font-size:1.02em;
   line-height:1.5; text-shadow:0 1px 8px rgba(251,249,244,.8); }
 
 @media (max-width:768px) {
