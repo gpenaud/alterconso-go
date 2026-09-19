@@ -40,22 +40,38 @@ var assetFiles = []string{
 // parametre d'URL. « dev » si rien n'est lisible — mieux vaut un cache
 // discutable qu'une page sans style.
 func assetVersion() string {
-	assetVersionOnce.Do(func() {
-		somme := sha256.New()
-		lu := false
-		for _, f := range assetFiles {
-			contenu, err := os.ReadFile(f)
+	assetVersionOnce.Do(func() { assetVersionValue = empreinteDes(assetFiles) })
+	return assetVersionValue
+}
+
+// empreinteDes rend une empreinte courte du contenu des fichiers donnes, en
+// acceptant leurs formes compressees. « dev » si aucun n'est lisible — mieux
+// vaut un cache discutable qu'une page sans style.
+func empreinteDes(fichiers []string) string {
+	somme := sha256.New()
+	lu := false
+	for _, f := range fichiers {
+		// LE FICHIER BRUT N'EXISTE PAS DANS L'IMAGE. Le build precompresse les
+		// feuilles — « StaticPrecompressed » ne sert que du .br ou du .gz — et
+		// « alterconso.css » tout court n'y figure pas. Faute de le trouver,
+		// l'empreinte retombait sur « dev » : figee, donc inutile, ce qui
+		// privait de tout effet le versionnage qu'elle devait porter.
+		//
+		// L'ordre compte peu : c'est le meme contenu sous trois formes, et
+		// n'importe laquelle change des que la feuille change. On prend la
+		// premiere qui repond, en developpement comme en production.
+		for _, essai := range []string{f, f + ".br", f + ".gz"} {
+			contenu, err := os.ReadFile(essai)
 			if err != nil {
 				continue
 			}
 			somme.Write(contenu)
 			lu = true
+			break
 		}
-		if !lu {
-			assetVersionValue = "dev"
-			return
-		}
-		assetVersionValue = hex.EncodeToString(somme.Sum(nil))[:10]
-	})
-	return assetVersionValue
+	}
+	if !lu {
+		return "dev"
+	}
+	return hex.EncodeToString(somme.Sum(nil))[:10]
 }
