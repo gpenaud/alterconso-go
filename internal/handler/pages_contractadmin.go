@@ -2898,10 +2898,15 @@ func (h *PagesHandler) UpdateMemberOrders(c *gin.Context) {
 			"quantity": qty,
 		}
 
+		// « sommeSaisie » et non « ParseFloat » : le champ accepte une suite de
+		// pesees — « 4,20+3,15+3,85 » — que le navigateur reduit deja au moment
+		// ou l'on quitte la case. Valider avec Entree ne l'en fait pas toujours
+		// sortir : sans cette lecture-ci, l'expression arrivait telle quelle et
+		// le prix etait ignore sans un mot.
 		forcedRaw := strings.TrimSpace(c.PostForm("forced_price_" + orderIDStr))
 		if forcedRaw == "" {
 			updates["forced_price"] = nil
-		} else if fp, err := strconv.ParseFloat(forcedRaw, 64); err == nil && fp >= 0 {
+		} else if fp, ok := sommeSaisie(forcedRaw); ok && fp >= 0 {
 			updates["forced_price"] = fp
 		}
 

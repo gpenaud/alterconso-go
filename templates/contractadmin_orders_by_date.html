@@ -183,12 +183,18 @@
               <td style="vertical-align:middle;">
                 {{if .VariablePrice}}
                 <div style="display:flex;align-items:center;gap:6px;">
-                  <input type="number" name="forced_price_{{.OrderID}}"
+                  {{/* « text » et non « number » : le champ accepte une suite de
+                       pesées — « 4,20+3,15+3,85 » — que trois pièces d'un même
+                       produit imposaient jusqu'ici de poser de tête, devant
+                       l'adhérent qui attend. « inputmode=decimal » garde le pavé
+                       numérique sur téléphone, où la pesée se saisit souvent.
+                       La case se réduit à son total dès qu'on la quitte : on
+                       voit ce qui sera enregistré avant de valider. */}}
+                  <input type="text" inputmode="decimal" name="forced_price_{{.OrderID}}"
                     class="form-control line-forced-price"
                     style="width:160px;font-size:1.1em;padding:6px 10px;"
-                    step="0.01" min="0"
                     placeholder="—"
-                    title="Prix total après pesée (€) — laisser vide pour utiliser (quantité × prix unitaire)"
+                    title="Prix total après pesée (€). Plusieurs pièces : additionnez-les — 4,20+3,15+3,85. Laisser vide pour utiliser (quantité × prix unitaire)."
                     value="{{if .HasForcedPrice}}{{price .ForcedPriceValue}}{{end}}" />
                   <span style="color:#888;">€</span>
                 </div>
@@ -411,7 +417,7 @@ function applyOrderUpdate(userId, data) {
       '<td style="vertical-align:middle;">' +
         (data.variablePrice ?
           '<div style="display:flex;align-items:center;gap:6px;">' +
-            '<input type="number" name="forced_price_' + data.orderId + '" class="form-control line-forced-price" ' +
+            '<input type="text" inputmode="decimal" name="forced_price_' + data.orderId + '" class="form-control line-forced-price" ' +
             'style="width:160px;font-size:1.1em;padding:6px 10px;" step="0.01" min="0" placeholder="—" ' +
             'title="Prix total après pesée (€) — laisser vide pour utiliser (quantité × prix unitaire)" />' +
             '<span style="color:#888;">€</span>' +
@@ -510,6 +516,27 @@ function refreshLineEstimatedTotal(row) {
   totalSpan.classList.toggle('overridden', overridden);
 }
 
+// Lit une suite de pesees : « 4,20+3,15+3,85 ». Rien d'autre que des nombres,
+// des « + » et des « - » — ce n'est pas un evaluateur d'expressions, et
+// surtout pas un « eval ». Le serveur applique la meme regle de son cote :
+// valider avec Entree n'enleve pas toujours le focus de la case, et
+// l'expression partirait alors telle quelle.
+function sommeSaisie(brut) {
+  var s = String(brut).replace(/,/g, '.').replace(/[\s ]/g, '');
+  if (!/^[+-]?(\d+(\.\d*)?|\.\d+)([+-](\d+(\.\d*)?|\.\d+))*$/.test(s)) return NaN;
+  var total = 0, signe = 1, terme = '';
+  for (var i = 0; i < s.length; i++) {
+    var c = s[i];
+    if (c === '+' || c === '-') {
+      if (i > 0) { total += signe * parseFloat(terme); terme = ''; }
+      signe = (c === '-') ? -1 : 1;
+    } else {
+      terme += c;
+    }
+  }
+  return total + signe * parseFloat(terme);
+}
+
 function refreshMemberTotal(modal) {
   if (!modal) return;
   var rows = modal.querySelectorAll('tbody tr[data-order-id]');
@@ -523,7 +550,7 @@ function refreshMemberTotal(modal) {
     var forced = row.querySelector('.line-forced-price');
     var base;
     if (forced && forced.value.trim() !== '') {
-      base = parseFloat(forced.value) || 0;
+      base = sommeSaisie(forced.value) || 0;
     } else {
       base = qty * unitPrice;
     }
@@ -546,7 +573,9 @@ document.body.addEventListener('blur', function(e) {
   if (!e.target.classList || !e.target.classList.contains('line-forced-price')) return;
   var raw = e.target.value.trim();
   if (raw === '') return;
-  var v = parseFloat(raw);
+  // La case se reduit a son total des qu'on la quitte : le producteur voit ce
+  // qui sera enregistre, et peut le corriger avant de valider.
+  var v = sommeSaisie(raw);
   if (!isNaN(v)) e.target.value = v.toFixed(2);
 }, true);
 
