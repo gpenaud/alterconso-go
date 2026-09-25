@@ -67,9 +67,10 @@ func (h *DistributionHandler) Get(c *gin.Context) {
 		return
 	}
 
-	// Charger les commandes si admin ou gestionnaire
+	// Charger les commandes pour qui peut les corriger : responsable, ou
+	// gestion des distributions.
 	var orders []model.UserOrder
-	if ug.IsGroupManager() {
+	if canCorrectMemberOrders(ug) {
 		h.db.
 			Where("distribution_id = ?", distrib.ID).
 			Preload("User").

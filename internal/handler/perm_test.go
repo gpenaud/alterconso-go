@@ -92,3 +92,30 @@ func TestDistributionsNeDonnePasLeCatalogue(t *testing.T) {
 		t.Error("le droit distributions ne fait pas de son porteur un responsable de groupe")
 	}
 }
+
+// TestDistributionsCorrigeLesCommandes fige le pouvoir de corriger la commande
+// d'un adhérent : le droit « Gestion des distributions » l'a au même titre que
+// le responsable de groupe — et que le responsable technique, qui passe par
+// GroupAdmin. C'est ce pouvoir qui lève la clôture du catalogue et le
+// producteur clos dans le shop, l'API des commandes et la page de
+// distribution ; il était lu à quatre endroits, dont trois ne connaissaient
+// que le responsable.
+func TestDistributionsCorrigeLesCommandes(t *testing.T) {
+	cases := []struct {
+		name string
+		ug   *model.UserGroup
+		want bool
+	}{
+		{"gestion des distributions ⇒ corrige", ug(`[{"right":"Distributions"}]`), true},
+		{"responsable de groupe ⇒ corrige", ug(`[{"right":"GroupAdmin"}]`), true},
+		{"gestion des catalogues ⇒ non : elle prépare, elle ne distribue pas", ug(`[{"right":"CatalogAdmin"}]`), false},
+		{"gestion des paramètres ⇒ non", ug(`[{"right":"Parameters"}]`), false},
+		{"simple membre ⇒ non", ug(`[{"right":"Messages"}]`), false},
+		{"non-membre ⇒ non (fail-closed)", nil, false},
+	}
+	for _, tc := range cases {
+		if got := canCorrectMemberOrders(tc.ug); got != tc.want {
+			t.Errorf("%s : canCorrectMemberOrders=%v, attendu %v", tc.name, got, tc.want)
+		}
+	}
+}

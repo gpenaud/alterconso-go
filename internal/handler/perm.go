@@ -53,6 +53,24 @@ func authorize(ug *model.UserGroup, rights []model.Right) bool {
 	return false
 }
 
+// canCorrectMemberOrders dit si ce membre peut lire et corriger la commande
+// d'un autre adhérent — y compris après la clôture du catalogue et quand le
+// producteur est clos.
+//
+// C'est le geste de qui tient la distribution : rattraper un panier oublié,
+// ajuster une quantité au moment du retrait. Le responsable de groupe et le
+// responsable technique l'ont par leurs pleins pouvoirs ; le droit « Gestion
+// des distributions » l'a au même titre, sans quoi il ne servait à rien le
+// jour même. La seule borne qui reste est l'ouverture : avant elle, il n'y a
+// rien à corriger, et c'est aux appelants de la vérifier.
+//
+// Une seule fonction pour le shop, l'API des commandes et la page de
+// distribution : le même pouvoir se lisait à quatre endroits, avec quatre
+// réponses différentes.
+func canCorrectMemberOrders(ug *model.UserGroup) bool {
+	return ug != nil && ug.CanManageDistributions()
+}
+
 // RequireGroupRight est le middleware d'autorisation central pour les pages
 // HTML. Il s'insère APRÈS middleware.PageAuth (qui a posé les claims) et AVANT
 // le handler. Réservé aux routes admin ; les routes membre n'en portent pas.

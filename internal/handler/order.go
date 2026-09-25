@@ -67,7 +67,17 @@ func prepareOrder(o model.UserOrder) OrderResponse {
 func (h *OrderHandler) GetForUser(c *gin.Context) {
 	claims := middleware.GetClaims(c)
 
-	// Par défaut : l'utilisateur connecté; un admin peut demander pour un autre user
+	distribID, err := strconv.Atoi(c.Query("distributionId"))
+	if err != nil || distribID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "distributionId is required"})
+		return
+	}
+
+	// Par défaut : l'utilisateur connecté. Les commandes d'un autre adhérent
+	// se lisent avec le pouvoir de les corriger, dans le groupe de la
+	// distribution — et non plus au seul responsable technique, qui les
+	// avait par un chemin à part alors que le responsable de groupe et qui
+	// tient la distribution les ont au même titre.
 	userID := claims.UserID
 	if uidStr := c.Query("userId"); uidStr != "" {
 		uid, err := strconv.Atoi(uidStr)
@@ -76,19 +86,17 @@ func (h *OrderHandler) GetForUser(c *gin.Context) {
 			return
 		}
 		if uint(uid) != claims.UserID {
-			var requester model.User
-			if err := h.db.First(&requester, claims.UserID).Error; err != nil || !isTechnicalManagerEmail(requester.Email) {
+			var distrib model.Distribution
+			if err := h.db.Preload("Catalog").First(&distrib, distribID).Error; err != nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "distribution not found"})
+				return
+			}
+			if !canCorrectMemberOrders(loadGroupAccess(h.db, claims.UserID, distrib.Catalog.GroupID)) {
 				c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 				return
 			}
 		}
 		userID = uint(uid)
-	}
-
-	distribID, err := strconv.Atoi(c.Query("distributionId"))
-	if err != nil || distribID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "distributionId is required"})
-		return
 	}
 
 	var catalogID *uint
@@ -144,14 +152,14 @@ func (h *OrderHandler) CreateOrUpdate(c *gin.Context) {
 	// Résoudre l'utilisateur cible
 	targetID := claims.UserID
 	if payload.UserID != 0 && payload.UserID != claims.UserID {
-		// Il faut être admin du groupe de la distribution (ou admin site-wide)
+		// Il faut corriger les commandes du groupe de la distribution :
+		// responsable, responsable technique ou gestion des distributions.
 		var distrib model.Distribution
 		if err := h.db.Preload("Catalog").First(&distrib, payload.DistributionID).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "distribution not found"})
 			return
 		}
-		ug := loadGroupAccess(h.db, claims.UserID, distrib.Catalog.GroupID)
-		if ug == nil || !ug.IsGroupManager() {
+		if !canCorrectMemberOrders(loadGroupAccess(h.db, claims.UserID, distrib.Catalog.GroupID)) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "only group admins can edit orders for other users"})
 			return
 		}

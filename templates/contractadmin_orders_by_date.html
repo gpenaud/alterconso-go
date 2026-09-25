@@ -47,8 +47,11 @@
     <span style="display:flex;gap:6px;">
       {{/* Modifier la commande passe par le shop : c'est là que vivent le
            catalogue, les stocks et les prix. La modale reste pour ce que le
-           shop ne sait pas faire — la saisie des prix après pesée. */}}
-      {{if $.IsGroupManager}}
+           shop ne sait pas faire — la saisie des prix après pesée.
+           HasDistributions couvre le responsable de groupe, le responsable
+           technique et la gestion des distributions : les trois corrigent une
+           commande, clôture ou producteur clos compris. */}}
+      {{if $.HasDistributions}}
       <a href="/shop/{{$.MultiDistribID}}?userId={{.UserID}}&for={{.UserName}}&return={{$.BackURL}}"
          class="btn btn-primary btn-xs">
         <i class="icon icon-basket"></i> Modifier la commande
@@ -222,7 +225,7 @@
           <button type="submit" class="btn btn-success" style="font-weight:bold;letter-spacing:0.05em;">
             <i class="icon icon-chevron-right"></i> VALIDER
           </button>
-          {{if $.IsGroupManager}}
+          {{if $.HasDistributions}}
           <a class="btn btn-default" style="font-weight:bold;"
              href="/shop/{{$.MultiDistribID}}?userId={{.UserID}}&for={{.UserName}}&return={{$.BackURL}}">
             <i class="icon icon-plus"></i> AJOUTER UN PRODUIT

@@ -150,15 +150,15 @@ func (h *CompatHandler) OrderCatalogs(c *gin.Context) {
 // ---- /api/order/get/:userId ----
 // ?catalog=<catalogId>&multiDistrib=<multiDistribId>
 
-// callerManages dit si l'appelant administre ce groupe. Sert à lever les
-// bornes de clôture pour qui vient corriger une commande.
+// callerManages dit si l'appelant corrige les commandes de ce groupe. Sert à
+// lever les bornes de clôture pour qui vient corriger une commande : le
+// responsable, et qui tient la distribution — voir canCorrectMemberOrders.
 func (h *CompatHandler) callerManages(c *gin.Context, groupID uint) bool {
 	claims := middleware.GetClaims(c)
 	if claims == nil || groupID == 0 {
 		return false
 	}
-	ug := loadGroupAccess(h.db, claims.UserID, groupID)
-	return ug != nil && ug.IsGroupManager()
+	return canCorrectMemberOrders(loadGroupAccess(h.db, claims.UserID, groupID))
 }
 
 // groupOfOrderScope retourne le groupe auquel se rattache une consultation de
@@ -200,8 +200,7 @@ func (h *CompatHandler) OrderGet(c *gin.Context) {
 	// modifier.
 	if uint(userIDParam) != claims.UserID {
 		groupID := h.groupOfOrderScope(mdID, catalogID)
-		ug := loadGroupAccess(h.db, claims.UserID, groupID)
-		if groupID == 0 || ug == nil || !ug.IsGroupManager() {
+		if groupID == 0 || !canCorrectMemberOrders(loadGroupAccess(h.db, claims.UserID, groupID)) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 			return
 		}
@@ -870,11 +869,10 @@ func (h *CompatHandler) ShopSubmit(c *gin.Context) {
 	targetID := claims.UserID
 	isManager := false
 	if body.UserID != 0 && body.UserID != claims.UserID {
-		// « CanManageDistributions » et non « IsGroupManager » : c'est celui
+		// Le même pouvoir que pour lire et préparer le panier : c'est celui
 		// qui tient la distribution qui ajuste une commande sur place, un
 		// panier oublié ou une quantité corrigée au moment du retrait.
-		ug := loadGroupAccess(h.db, claims.UserID, distrib.Catalog.GroupID)
-		if ug == nil || !ug.CanManageDistributions() {
+		if !canCorrectMemberOrders(loadGroupAccess(h.db, claims.UserID, distrib.Catalog.GroupID)) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "only group admins can edit orders for other users"})
 			return
 		}
