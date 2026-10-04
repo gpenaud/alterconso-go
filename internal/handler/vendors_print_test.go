@@ -84,7 +84,10 @@ func TestVendorsByDatePrintOptionsForm(t *testing.T) {
 	}
 	out := b.String()
 	for _, want := range []string{`action="/contractAdmin/vendorsByDate/2026-10-09/7/print"`,
-		`name="mode" value="all" checked`, `name="fontSize" value="M" checked`, `name="mode" value="perpage"`, `name="mode" value="noprice"`} {
+		`name="mode" value="all" checked`, `name="fontSize" value="M" checked`, `name="mode" value="perpage"`, `name="mode" value="noprice"`,
+		// On arrive ici depuis la liste des commandes : Retour y ramène, et la
+		// vue écran des totaux reste à un clic.
+		`href="/contractAdmin/ordersByDate/2026-10-09/7"`, `href="/contractAdmin/vendorsByDate/2026-10-09/7"`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("%q manque", want)
 		}

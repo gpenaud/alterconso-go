@@ -27,8 +27,13 @@
     </button>
   </form>
 
-  <a href="/contractAdmin/vendorsByDate/{{.DateISO}}/{{.Group.ID}}" class="btn btn-default btn-sm" style="margin-top:12px;">
-    <i class="icon icon-chevron-left"></i> Retour
-  </a>
+  <div style="margin-top:12px;display:flex;gap:8px;">
+    <a href="/contractAdmin/ordersByDate/{{.DateISO}}/{{.Group.ID}}" class="btn btn-default btn-sm">
+      <i class="icon icon-chevron-left"></i> Retour
+    </a>
+    <a href="/contractAdmin/vendorsByDate/{{.DateISO}}/{{.Group.ID}}" class="btn btn-default btn-sm">
+      Voir à l'écran
+    </a>
+  </div>
 </div>
 {{end}}

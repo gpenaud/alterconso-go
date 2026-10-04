@@ -26,8 +26,8 @@
   <a href="/distribution/listByDate/{{.DateISO}}/{{.Group.ID}}{{if .Catalog.ID}}?catalog={{.Catalog.ID}}{{end}}" class="btn btn-default btn-sm">
     <i class="icon icon-print"></i> Liste d'émargement
   </a>
-  <a href="/contractAdmin/vendorsByDate/{{.DateISO}}/{{.Group.ID}}" class="btn btn-default btn-sm">
-    Totaux par producteur
+  <a href="/contractAdmin/vendorsByDate/{{.DateISO}}/{{.Group.ID}}/printOptions" class="btn btn-default btn-sm">
+    <i class="icon icon-print"></i> Totaux par producteur
   </a>
   {{if .HasMessages}}
   <a href="/messages?distribOrders={{.DateISO}}{{if .Catalog.ID}}&amp;catalog={{.Catalog.ID}}{{end}}" class="btn btn-default btn-sm">
