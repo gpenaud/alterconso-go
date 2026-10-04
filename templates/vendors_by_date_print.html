@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Totaux par producteur — {{.DayLabel}}</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #fff;
+  font-family: Arial, sans-serif;
+  font-size: {{if eq .FontSize "S"}}10px{{else if eq .FontSize "L"}}14px{{else if eq .FontSize "XL"}}17px{{else}}12px{{end}};
+  color: #222;
+  padding: 16px 24px;
+}
+h2 { font-size: 1.5em; text-align: center; margin-bottom: 2px; }
+h3 { font-size: 1.1em; text-align: center; font-style: italic; font-weight: normal; margin-bottom: 6px; }
+.place { text-align: center; font-size: 0.9em; color: #555; margin-bottom: 8px; }
+.vendor { margin-top: 12px; }
+.vendor-title {
+  font-size: 1.15em;
+  font-weight: bold;
+  font-style: italic;
+  padding: 4px 6px;
+  background: #ddd;
+  border: 1px solid #bbb;
+  border-bottom: none;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+th, td {
+  border: 1px solid #bbb;
+  padding: 2px 5px;
+  vertical-align: middle;
+}
+thead th {
+  background: #eee;
+  font-weight: bold;
+  text-align: center;
+  padding: 3px 5px;
+}
+tr.vendor-total td {
+  font-weight: bold;
+  background: #f5f5f5;
+}
+.grand-total {
+  text-align: right;
+  font-weight: bold;
+  padding: 6px 0;
+  border-top: 2px solid #333;
+  margin-top: 12px;
+}
+.actions {
+  margin-bottom: 10px;
+  display: flex;
+  gap: 8px;
+}
+.btn {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #f5f5f5;
+  cursor: pointer;
+  text-decoration: none;
+  color: #333;
+}
+.btn-success { background: #5cb85c; border-color: #4cae4c; color: #fff; }
+.print-footer {
+  text-align: center;
+  margin-top: 16px;
+  color: #888;
+  font-size: 0.9em;
+  font-style: italic;
+}
+@media print {
+  .actions { display: none; }
+  .print-footer { display: none; }
+  body { padding: 0; margin: 0; }
+  @page { margin: 4mm; }
+  /* Un producteur par page : chaque bloc commence une feuille, sauf le
+     premier, et un tableau ne se coupe pas au milieu d'une ligne. */
+  .perpage .vendor + .vendor { page-break-before: always; }
+  tr { page-break-inside: avoid; }
+}
+</style>
+</head>
+<body class="{{if eq .Mode "perpage"}}perpage{{end}}">
+{{$noprice := eq .Mode "noprice"}}
+
+<div class="actions">
+  <a href="/contractAdmin/vendorsByDate/{{.DateISO}}/{{.Group.ID}}/printOptions" class="btn">&#8592; Modifier les options</a>
+  <button onclick="window.print()" class="btn btn-success">&#128438; Imprimer</button>
+</div>
+
+<h2>{{.GroupName}}</h2>
+<h3>Totaux par producteur — livraison du {{.DayLabel}}</h3>
+{{if .Place}}<p class="place">{{.Place}}</p>{{end}}
+
+{{if .Vendors}}
+{{range .Vendors}}
+<div class="vendor">
+  <div class="vendor-title">Commande {{.CatalogName}} — {{.VendorName}}</div>
+  <table>
+    <colgroup>
+      <col style="width:{{if $noprice}}20%{{else}}15%{{end}}">
+      <col style="width:{{if $noprice}}60%{{else}}41%{{end}}">
+      <col style="width:{{if $noprice}}20%{{else}}14%{{end}}">
+      {{if not $noprice}}
+      <col style="width:16%">
+      <col style="width:14%">
+      {{end}}
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Quantités</th>
+        <th>Produit</th>
+        <th>Référence</th>
+        {{if not $noprice}}
+        <th>P.U. TTC</th>
+        <th>Total</th>
+        {{end}}
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Lines}}
+      <tr>
+        <td style="white-space:nowrap;">{{.Qty}}</td>
+        <td>{{.Product}}</td>
+        <td style="color:#555;font-size:0.9em;">{{.Ref}}</td>
+        {{if not $noprice}}
+        <td style="text-align:right;">{{price .UnitPrice}} €</td>
+        <td style="text-align:right;">{{price .Total}} €</td>
+        {{end}}
+      </tr>
+      {{end}}
+    </tbody>
+    {{if not $noprice}}
+    <tfoot>
+      <tr class="vendor-total">
+        <td colspan="4" style="text-align:right;">Total {{.VendorName}}</td>
+        <td style="text-align:right;">{{price .Total}} €</td>
+      </tr>
+    </tfoot>
+    {{end}}
+  </table>
+</div>
+{{end}}
+
+{{if not $noprice}}
+<div class="grand-total">Total de toutes les commandes : {{price .GrandTotal}} €</div>
+{{end}}
+
+{{else}}
+<p style="color:#888;margin-top:12px;">Aucune commande pour cette distribution.</p>
+{{end}}
+
+<p class="print-footer">Appuyez sur "Control + P" pour imprimer cette page.</p>
+</body>
+</html>

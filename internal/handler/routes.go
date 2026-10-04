@@ -172,6 +172,8 @@ func Register(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	// ContractAdmin sub-pages
 	r.GET("/contractAdmin/ordersByDate/:date/:groupId", pageAuth, reqOrders, pagesH.ContractAdminOrdersByDatePage)
 	r.GET("/contractAdmin/vendorsByDate/:date/:groupId", pageAuth, reqOrders, pagesH.ContractAdminVendorsByDatePage)
+	r.GET("/contractAdmin/vendorsByDate/:date/:groupId/printOptions", pageAuth, reqOrders, pagesH.ContractAdminVendorsByDatePrintOptionsPage)
+	r.GET("/contractAdmin/vendorsByDate/:date/:groupId/print", pageAuth, reqOrders, pagesH.ContractAdminVendorsByDatePrintPage)
 	r.GET("/contractAdmin/ordersByDate/:date/:groupId/csv", pageAuth, reqOrders, pagesH.ContractAdminOrdersByDateCSV)
 	r.GET("/contractAdmin/view/:id", pageAuth, reqCatalog, pagesH.CatalogAdminViewPage)
 	r.GET("/contractAdmin/edit/:id", pageAuth, reqCatalog, pagesH.CatalogAdminEditPage)

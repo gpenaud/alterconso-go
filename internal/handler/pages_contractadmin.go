@@ -1427,10 +1427,16 @@ func (h *PagesHandler) DistributionListByDatePrintPage(c *gin.Context) {
 
 type VendorsByDateData struct {
 	PageData
-	DayLabel string
-	DateISO  string
-	Place    string
-	Vendors  []VendorByDateEntry
+	GroupName  string
+	DayLabel   string
+	DateISO    string
+	Place      string
+	Vendors    []VendorByDateEntry
+	GrandTotal float64
+	// Options de la version imprimable, mêmes valeurs que l'émargement :
+	// mode all | perpage | noprice, police S | M | L | XL.
+	Mode     string
+	FontSize string
 }
 
 type VendorByDateEntry struct {
@@ -1449,22 +1455,20 @@ type VendorByDateLine struct {
 	Total    float64
 }
 
-func (h *PagesHandler) ContractAdminVendorsByDatePage(c *gin.Context) {
-	pd := h.buildPageData(c)
-	if pd.User == nil || pd.Group == nil {
-		c.Redirect(http.StatusFound, "/user/choose")
-		return
-	}
+// vendorsByDate rassemble, pour une date, ce que chaque producteur doit
+// préparer : les quantités par produit, agrégées sur toutes les commandes
+// du groupe. Commun à la page écran et à la version imprimable ; rend une
+// erreur HTTP déjà formulée, que l'appelant renvoie telle quelle.
+func (h *PagesHandler) vendorsByDate(c *gin.Context, pd PageData) (VendorsByDateData, int, string) {
+	var data VendorsByDateData
 	if !pd.IsGroupManager && !pd.HasCatalogAdmin && !pd.HasDistributions {
-		c.String(http.StatusForbidden, "accès refusé")
-		return
+		return data, http.StatusForbidden, "accès refusé"
 	}
 
 	dateStr := c.Param("date")
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
-		c.String(http.StatusBadRequest, "date invalide")
-		return
+		return data, http.StatusBadRequest, "date invalide"
 	}
 
 	dayStart := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
@@ -1476,21 +1480,18 @@ func (h *PagesHandler) ContractAdminVendorsByDatePage(c *gin.Context) {
 		Preload("Place").
 		Preload("Distributions.Catalog.Vendor").
 		First(&md).Error; err != nil {
-		c.String(http.StatusNotFound, "aucune distribution ce jour")
-		return
+		return data, http.StatusNotFound, "aucune distribution ce jour"
 	}
 
-	data := VendorsByDateData{
-		PageData: pd,
-		DayLabel: frDayLabel(date),
-		DateISO:  dateStr,
+	data = VendorsByDateData{
+		PageData:  pd,
+		GroupName: pd.Group.Name,
+		DayLabel:  frDayLabel(date),
+		DateISO:   dateStr,
 	}
 	if md.Place.ID != 0 {
 		data.Place = md.Place.Name
 	}
-	data.Title = "Vue globale des commandes — " + data.DayLabel
-	data.Category = "distribution"
-	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}}
 
 	for _, distrib := range md.Distributions {
 		var orders []model.UserOrder
@@ -1552,7 +1553,25 @@ func (h *PagesHandler) ContractAdminVendorsByDatePage(c *gin.Context) {
 			entry.Total += a.total
 		}
 		data.Vendors = append(data.Vendors, entry)
+		data.GrandTotal += entry.Total
 	}
+	return data, 0, ""
+}
+
+func (h *PagesHandler) ContractAdminVendorsByDatePage(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil {
+		c.Redirect(http.StatusFound, "/user/choose")
+		return
+	}
+	data, status, msg := h.vendorsByDate(c, pd)
+	if status != 0 {
+		c.String(status, msg)
+		return
+	}
+	data.Title = "Vue globale des commandes — " + data.DayLabel
+	data.Category = "distribution"
+	data.Breadcrumb = []BreadcrumbItem{{Name: "Distributions", Link: "/distribution"}}
 
 	t, err2 := loadTemplates("base.html", "design.html", "contractadmin_vendors_by_date.html")
 	if err2 != nil {
@@ -1560,6 +1579,72 @@ func (h *PagesHandler) ContractAdminVendorsByDatePage(c *gin.Context) {
 		return
 	}
 	if err2 := t.ExecuteTemplate(c.Writer, "base", data); err2 != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err2)
+	}
+}
+
+// ---- /contractAdmin/vendorsByDate/:date/:groupId/printOptions ----
+//
+// Même parcours que la liste d'émargement : un écran d'options (mode, taille
+// de police), puis la page imprimable avec son bouton Imprimer.
+
+func (h *PagesHandler) ContractAdminVendorsByDatePrintOptionsPage(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil {
+		c.Redirect(http.StatusFound, "/user/choose")
+		return
+	}
+	if !pd.IsGroupManager && !pd.HasCatalogAdmin && !pd.HasDistributions {
+		c.String(http.StatusForbidden, "accès refusé")
+		return
+	}
+	dateStr := c.Param("date")
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "date invalide")
+		return
+	}
+	data := VendorsByDateData{
+		PageData: pd,
+		DateISO:  dateStr,
+		DayLabel: frDayLabel(date),
+	}
+	data.Title = "Totaux par producteur — " + data.DayLabel
+
+	t, err2 := loadTemplates("base.html", "design.html", "vendors_by_date_config.html")
+	if err2 != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err2)
+		return
+	}
+	if err2 := t.ExecuteTemplate(c.Writer, "base", data); err2 != nil {
+		c.String(http.StatusInternalServerError, "render error: %v", err2)
+	}
+}
+
+// ---- /contractAdmin/vendorsByDate/:date/:groupId/print ----
+
+func (h *PagesHandler) ContractAdminVendorsByDatePrintPage(c *gin.Context) {
+	pd := h.buildPageData(c)
+	if pd.User == nil || pd.Group == nil {
+		c.Redirect(http.StatusFound, "/user/choose")
+		return
+	}
+	data, status, msg := h.vendorsByDate(c, pd)
+	if status != 0 {
+		c.String(status, msg)
+		return
+	}
+	data.Mode = c.DefaultQuery("mode", "all")
+	data.FontSize = c.DefaultQuery("fontSize", "M")
+	data.Title = "Totaux par producteur — " + data.DayLabel
+
+	t, err2 := loadTemplates("vendors_by_date_print.html")
+	if err2 != nil {
+		c.String(http.StatusInternalServerError, "template error: %v", err2)
+		return
+	}
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	if err2 := t.ExecuteTemplate(c.Writer, "vendors_by_date_print.html", data); err2 != nil {
 		c.String(http.StatusInternalServerError, "render error: %v", err2)
 	}
 }
