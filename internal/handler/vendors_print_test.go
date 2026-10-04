@@ -70,7 +70,8 @@ func TestVendorsByDatePrintModes(t *testing.T) {
 // de l'émargement : tout à la suite, police M.
 func TestVendorsByDatePrintOptionsForm(t *testing.T) {
 	chdirRepoRoot(t)
-	tpl, err := loadTemplates("base.html", "design.html", "vendors_by_date_config.html")
+	// cycles_style.html porte le gabarit de style des écrans refondus.
+	tpl, err := loadTemplates("base.html", "design.html", "cycles_style.html", "vendors_by_date_config.html")
 	if err != nil {
 		t.Fatalf("parse : %v", err)
 	}
@@ -84,7 +85,8 @@ func TestVendorsByDatePrintOptionsForm(t *testing.T) {
 	}
 	out := b.String()
 	for _, want := range []string{`action="/contractAdmin/vendorsByDate/2026-10-09/7/print"`,
-		`name="mode" value="all" checked`, `name="fontSize" value="M" checked`, `name="mode" value="perpage"`, `name="mode" value="noprice"`} {
+		`name="mode" value="all" checked`, `name="fontSize" value="M" checked`, `name="mode" value="perpage"`, `name="mode" value="noprice"`,
+		`class="cyc-panneau"`, "Un producteur par page"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("%q manque", want)
 		}

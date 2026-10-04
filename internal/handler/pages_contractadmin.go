@@ -1938,7 +1938,7 @@ func (h *PagesHandler) ContractAdminVendorsByDatePrintOptionsPage(c *gin.Context
 	}
 	data.Title = "Totaux par producteur — " + data.DayLabel
 
-	t, err2 := loadTemplates("base.html", "design.html", "vendors_by_date_config.html")
+	t, err2 := loadTemplates("base.html", "design.html", "cycles_style.html", "vendors_by_date_config.html")
 	if err2 != nil {
 		c.String(http.StatusInternalServerError, "template error: %v", err2)
 		return
