@@ -1,9 +1,15 @@
 {{define "content"}}
 <div class="col-md-10 col-md-offset-1">
 
-  <h2 style="font-style:italic;font-weight:bold;margin:0 0 24px;font-size:1.8em;">
+  <h2 style="font-style:italic;font-weight:bold;margin:0 0 16px;font-size:1.8em;">
     Vue globale des commandes - livraison du {{.DayLabel}}
   </h2>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;">
+    <a href="/contractAdmin/vendorsByDate/{{.DateISO}}/{{.Group.ID}}/printOptions" class="btn btn-default btn-sm">
+      <i class="icon icon-print"></i> Imprimer
+    </a>
+  </div>
 
   {{if .Vendors}}
   {{range .Vendors}}
